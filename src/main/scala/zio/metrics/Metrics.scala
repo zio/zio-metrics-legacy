@@ -24,15 +24,11 @@ trait HtmlRender[A] {
   def render(a: A): String
 }
 
-case class Label[A: Show](name: A, labels: Array[A], val sep: String)
+case class Label[A: Show](name: A, labels: Array[String])
 
 object Label {
-  def apply[A: Show](name: A, arr: Array[A], sep: String = ".") =
-    new Label(name, arr, sep)
-
-  implicit def labelShow[A: Show]: Show[Label[A]] = new Show[Label[A]] {
-    override def shows(l: Label[A]): String =s"${l.name}"
-  }
+  def apply[A: Show](name: A, arr: Array[String]) =
+    new Label(name, arr)
 }
 
 trait Metrics[F[_], Ctx] {

@@ -2,9 +2,9 @@ package zio.metrics
 
 import scalaz.Scalaz._
 import zio.{ App, IO, Task }
+import com.codahale.metrics.MetricRegistry
 
 import scala.math.Numeric.IntIsIntegral
-import zio.DefaultRuntime
 
 object DropwizardMetricsSpec extends App {
 
@@ -14,12 +14,12 @@ object DropwizardMetricsSpec extends App {
 
   def performTests: Task[Unit] =
     for {
-      f  <- dropwizardMetrics.counter(Label("simple_counter", Array("test", "counter")))
+      f  <- dropwizardMetrics.counter(Label(DropwizardMetricsSpec.getClass(), Array("test", "counter")))
       _  <- f(1)
       _  <- f(2)
-      g  <- dropwizardMetrics.gauge(Label("simple_gauge", Array("test", "gauge")))(tester)
+      g  <- dropwizardMetrics.gauge(Label(DropwizardMetricsSpec.getClass(), Array("test", "gauge")))(tester)
       _  <- g(None)
-      t  <- dropwizardMetrics.timer(Label("simple_timer", Array("test", "timer")))
+      t  <- dropwizardMetrics.timer(Label(DropwizardMetricsSpec.getClass(), Array("test", "timer")))
       t1 = t.start
       l <- IO.foreach(
             List(
@@ -28,9 +28,9 @@ object DropwizardMetricsSpec extends App {
               Thread.sleep(1200L)
             )
           )(_ => t.stop(t1))
-      h <- dropwizardMetrics.histogram(Label("simple_histogram", Array("test", "histogram")))
+      h <- dropwizardMetrics.histogram(Label(DropwizardMetricsSpec.getClass(), Array("test", "histogram")))
       _ <- IO.foreach(List(h(10), h(25), h(50), h(57), h(19)))(_.unit)
-      m <- dropwizardMetrics.meter(Label("simple_meter", Array("test", "meter")))
+      m <- dropwizardMetrics.meter(Label(DropwizardMetricsSpec.getClass(), Array("test", "meter")))
       _ <- IO.foreach(1 to 5)(_ => IO.succeed(m(1)))
     } yield { println(s"time $l ns"); () }
 
@@ -48,58 +48,58 @@ object DropwizardMetricsSpec extends App {
     println(
       dropwizardMetrics.registry
         .getCounters()
-        .get("simple_counter")
+        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "counter"):_*))
         .getCount
     )
     println(
       dropwizardMetrics.registry
         .getGauges()
-        .get("simple_gauge")
+        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "gauge"):_*))
         .getValue
     )
     println(
       dropwizardMetrics.registry
         .getTimers()
-        .get("simple_timer")
+        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "timer"):_*))
         .getCount
     )
     println(
       dropwizardMetrics.registry
         .getTimers()
-        .get("simple_timer")
+        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "timer"):_*))
         .getMeanRate
     )
     println(
       dropwizardMetrics.registry
         .getHistograms()
-        .get("simple_histogram")
+        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "histogram"):_*))
         .getSnapshot
         .get75thPercentile
     )
     println(
       dropwizardMetrics.registry
         .getHistograms()
-        .get("simple_histogram")
+        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "histogram"):_*))
         .getSnapshot
         .get99thPercentile
     )
     println(
       dropwizardMetrics.registry
         .getHistograms()
-        .get("simple_histogram")
+        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "histogram"):_*))
         .getSnapshot
         .getMean
     )
     println(
       dropwizardMetrics.registry
         .getMeters()
-        .get("simple_meter")
+        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "meter"):_*))
         .getMeanRate
     )
     println(
       dropwizardMetrics.registry
         .getMeters()
-        .get("simple_meter")
+        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "meter"):_*))
         .getCount
     )
   }

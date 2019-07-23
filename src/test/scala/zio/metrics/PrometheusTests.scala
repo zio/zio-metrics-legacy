@@ -13,20 +13,20 @@ object PrometheusTests extends DefaultRuntime {
   val prometheusMetrics = new PrometheusMetrics
 
   val testCounter: Task[Unit] = for {
-    f <- prometheusMetrics.counter(Label("simple_counter", Array("test", "counter"), ""))
+    f <- prometheusMetrics.counter(Label("simple_counter", Array("test", "counter")))
     _ <- f(1)
     b <- f(2)
   } yield b
 
   val testGauge: (Option[Double] => Double) => Task[Unit] = (f: Option[Double] => Double) =>
     for {
-      g <- prometheusMetrics.gauge[Double, Double, String](Label("simple_gauge", Array("test", "gauge"), ""))(f)
+      g <- prometheusMetrics.gauge[Double, Double, String](Label("simple_gauge", Array("test", "gauge")))(f)
       _ <- g(5.0.some)
       b <- g((-3.0).some)
     } yield b
 
   val testTimer: Task[List[Double]] = for {
-    t  <- prometheusMetrics.timer(Label("simple_timer", Array("test", "timer"), ""))
+    t  <- prometheusMetrics.timer(Label("simple_timer", Array("test", "timer")))
     t1 = t.start
     l <- IO.foreach(
           List(
@@ -40,7 +40,7 @@ object PrometheusTests extends DefaultRuntime {
   val testHistogram: Task[Unit] = {
     import scala.math.Numeric.IntIsIntegral
     for {
-      h <- prometheusMetrics.histogram(Label("simple_histogram", Array("test", "hist"), ""))
+      h <- prometheusMetrics.histogram(Label("simple_histogram", Array("test", "hist")))
       _ <- IO.foreach(List(h(10), h(25), h(50), h(57), h(19)))(_.unit)
     } yield ()
   }
@@ -48,7 +48,7 @@ object PrometheusTests extends DefaultRuntime {
   val testHistogramTimer: Task[Unit] = {
     import scala.math.Numeric.IntIsIntegral
     for {
-      h <- prometheusMetrics.histogramTimer(Label("simple_histogram_timer", Array("test", "tid"), ""))
+      h <- prometheusMetrics.histogramTimer(Label("simple_histogram_timer", Array("test", "tid")))
       _ <- IO.foreach(List(h(), h(), h(), h(), h()))(io => {
             Thread.sleep(500)
             io.unit
@@ -57,7 +57,7 @@ object PrometheusTests extends DefaultRuntime {
   }
 
   val testMeter: Task[Unit] = for {
-    m <- prometheusMetrics.meter(Label("simple_meter", Array("test", "meter"), ""))
+    m <- prometheusMetrics.meter(Label("simple_meter", Array("test", "meter")))
     _ <- IO.foreach(1 to 5)(_ => m(2))
   } yield ()
 

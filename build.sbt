@@ -3,9 +3,9 @@ import Build._
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-pgpPublicRing := file("/tmp/public.asc")
+/*pgpPublicRing := file("/tmp/public.asc")
 pgpSecretRing := file("/tmp/secret.asc")
-releaseEarlyWith := SonatypePublisher
+releaseEarlyWith := SonatypePublisher*/
 scmInfo := Some(
   ScmInfo(url("https://github.com/zio/zio-metrics/"), "scm:git:git@github.com:zio/zio-metrics.git")
 )

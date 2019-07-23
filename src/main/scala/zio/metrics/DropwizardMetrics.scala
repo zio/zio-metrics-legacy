@@ -3,7 +3,6 @@ package zio.metrics
 import com.codahale.metrics.MetricRegistry.MetricSupplier
 import com.codahale.metrics.Timer.Context
 import com.codahale.metrics.{ Reservoir => DWReservoir, _ }
-import zio.metrics.Label._
 import zio.metrics.Reservoir._
 import zio.{ Task, UIO, ZIO }
 import scalaz.{ Semigroup, Show }
@@ -12,23 +11,23 @@ class DropwizardMetrics extends Metrics[Task[?], Context] {
 
   val registry: MetricRegistry = new MetricRegistry()
 
-  override def counter[L: Show](label: Label[L]): Task[Long => UIO[Unit]] = {
-    val lbl = Show[Label[L]].shows(label)
+  override def counter[A: Show](label: Label[A]): Task[Long => UIO[Unit]] = {
+    val name = MetricRegistry.name(Show[A].shows(label.name), label.labels:_*)
     ZIO.effect(
       (l: Long) => {
-        ZIO.succeedLazy(registry.counter(lbl).inc(l))
+        ZIO.succeedLazy(registry.counter(name).inc(l))
       }
     )
   }
 
-  override def gauge[A, B: Semigroup, L: Show](
-    label: Label[L]
+  override def gauge[A, B: Semigroup, S: Show](
+    label: Label[S]
   )(f: Option[A] => B): Task[Option[A] => UIO[Unit]] = {
-    val lbl = Show[Label[L]].shows(label)
+    val name = MetricRegistry.name(Show[S].shows(label.name), label.labels:_*)
     ZIO.effect(
       (op: Option[A]) =>
         ZIO.succeedLazy({
-          registry.register(lbl, new Gauge[B]() {
+          registry.register(name, new Gauge[B]() {
             override def getValue: B = f(op)
           })
           ()
@@ -43,21 +42,21 @@ class DropwizardMetrics extends Metrics[Task[?], Context] {
       io.map(c => c.stop().toDouble)
   }
 
-  override def timer[L: Show](label: Label[L]): ZIO[Any, Nothing, IOTimer] = {
-    val lbl = Show[Label[L]].shows(label)
-    val iot = ZIO.succeed(registry.timer(lbl))
+  override def timer[A: Show](label: Label[A]): ZIO[Any, Nothing, IOTimer] = {
+    val name = MetricRegistry.name(Show[A].shows(label.name), label.labels:_*)
+    val iot = ZIO.succeed(registry.timer(name))
     val r   = iot.map(t => new IOTimer(t.time()))
     r
   }
 
-  override def histogram[A: Numeric, L: Show](
-    label: Label[L],
+  override def histogram[A: Numeric, S: Show](
+    label: Label[S],
     res: Reservoir[A]
   )(
     implicit
     num: Numeric[A]
   ): Task[A => Task[Unit]] = {
-    val lbl = Show[Label[L]].shows(label)
+    val name = MetricRegistry.name(Show[S].shows(label.name), label.labels:_*)
     val reservoir: DWReservoir = res match {
       case Uniform(config @ _)               => new UniformReservoir
       case ExponentiallyDecaying(config @ _) => new ExponentiallyDecayingReservoir
@@ -67,12 +66,12 @@ class DropwizardMetrics extends Metrics[Task[?], Context] {
       override def newMetric(): Histogram = new Histogram(reservoir)
     }
 
-    ZIO.effect((a: A) => ZIO.effect(registry.histogram(lbl, supplier).update(num.toLong(a))))
+    ZIO.effect((a: A) => ZIO.effect(registry.histogram(name, supplier).update(num.toLong(a))))
   }
 
-  override def meter[L: Show](label: Label[L]): Task[Double => Task[Unit]] = {
-    val lbl = Show[Label[L]].shows(label)
-    ZIO.effect(d => ZIO.succeed(registry.meter(lbl)).map(m => m.mark(d.toLong)))
+  override def meter[A: Show](label: Label[A]): Task[Double => Task[Unit]] = {
+    val name = MetricRegistry.name(Show[A].shows(label.name), label.labels:_*)
+    ZIO.effect(d => ZIO.succeed(registry.meter(name)).map(m => m.mark(d.toLong)))
   }
 }
 
