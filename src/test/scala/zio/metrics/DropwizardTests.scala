@@ -3,25 +3,28 @@ package zio.metrics
 import scalaz.Scalaz._
 import zio.{ DefaultRuntime, IO, Task }
 import testz.{ assert, Harness, PureHarness }
+import com.codahale.metrics.MetricRegistry
 
 object DropwizardTests extends DefaultRuntime {
 
   val dropwizardMetrics = new DropwizardMetrics
 
   val testCounter: Task[Unit] = for {
-    f <- dropwizardMetrics.counter(Label("simple_counter", Array("test", "counter")))
+    f <- dropwizardMetrics.counter(Label(DropwizardTests.getClass(), Array("test", "counter")))
     _ <- f(1)
     b <- f(2)
   } yield b
 
   val testGauge: (Option[Unit] => Long) => Task[Unit] = (f: Option[Unit] => Long) =>
     for {
-      a <- dropwizardMetrics.gauge[Unit, Long, String](Label("simple_gauge", Array("test", "gauge")))(f)
+      a <- dropwizardMetrics.gauge(Label(DropwizardTests.getClass(), Array("test", "gauge")))(
+            f
+          )
       r <- a(Some(()))
     } yield r
 
   val testTimer: Task[List[Double]] = for {
-    t  <- dropwizardMetrics.timer(Label("simple_timer", Array("test", "timer")))
+    t  <- dropwizardMetrics.timer(Label(DropwizardTests.getClass(), Array("test", "timer")))
     t1 = t.start
     l <- IO.foreach(
           List(
@@ -35,13 +38,13 @@ object DropwizardTests extends DefaultRuntime {
   val testHistogram: Task[Unit] = {
     import scala.math.Numeric.IntIsIntegral
     for {
-      h <- dropwizardMetrics.histogram(Label("simple_histogram", Array("test", "histogram")))
+      h <- dropwizardMetrics.histogram(Label(DropwizardTests.getClass(), Array("test", "histogram")))
       _ <- IO.foreach(List(h(10), h(25), h(50), h(57), h(19)))(_.unit)
     } yield ()
   }
 
   val testMeter: Task[Unit] = for {
-    m <- dropwizardMetrics.meter(Label("simple_meter", Array("test", "meter")))
+    m <- dropwizardMetrics.meter(Label(DropwizardTests.getClass(), Array("test", "meter")))
     _ <- IO.foreach(Seq(1.0, 2.0, 3.0, 4.0, 5.0))(_ => m(1.0))
   } yield ()
 
@@ -52,7 +55,7 @@ object DropwizardTests extends DefaultRuntime {
         unsafeRun(testCounter)
         val counter = dropwizardMetrics.registry
           .getCounters()
-          .get("simple_counter")
+          .get(MetricRegistry.name(DropwizardTests.getClass().getName(), Array("test", "counter"): _*))
           .getCount
 
         assert(counter == 3)
@@ -63,13 +66,13 @@ object DropwizardTests extends DefaultRuntime {
         unsafeRun(testGauge(tester))
         val a1 = dropwizardMetrics.registry
           .getGauges()
-          .get("simple_gauge")
+          .get(MetricRegistry.name(DropwizardTests.getClass().getName(), Array("test", "gauge"): _*))
           .getValue
           .asInstanceOf[Long]
 
         val a2 = dropwizardMetrics.registry
           .getGauges()
-          .get("simple_gauge")
+          .get(MetricRegistry.name(DropwizardTests.getClass().getName(), Array("test", "gauge"): _*))
           .getValue
           .asInstanceOf[Long]
 
@@ -79,7 +82,7 @@ object DropwizardTests extends DefaultRuntime {
         unsafeRun(testTimer)
         val counter = dropwizardMetrics.registry
           .getTimers()
-          .get("simple_timer")
+          .get(MetricRegistry.name(DropwizardTests.getClass().getName(), Array("test", "timer"): _*))
           .getCount
 
         assert(counter == 3)
@@ -88,7 +91,7 @@ object DropwizardTests extends DefaultRuntime {
         unsafeRun(testTimer)
         val meanRate = dropwizardMetrics.registry
           .getTimers()
-          .get("simple_timer")
+          .get(MetricRegistry.name(DropwizardTests.getClass().getName(), Array("test", "timer"): _*))
           .getMeanRate
 
         assert(meanRate > 0.78 && meanRate < 0.84)
@@ -97,7 +100,7 @@ object DropwizardTests extends DefaultRuntime {
         unsafeRun(testHistogram)
         val perc75th = dropwizardMetrics.registry
           .getHistograms()
-          .get("simple_histogram")
+          .get(MetricRegistry.name(DropwizardTests.getClass().getName(), Array("test", "histogram"): _*))
           .getSnapshot
           .get75thPercentile
 
@@ -107,7 +110,7 @@ object DropwizardTests extends DefaultRuntime {
         unsafeRun(testHistogram)
         val perc99th = dropwizardMetrics.registry
           .getHistograms()
-          .get("simple_histogram")
+          .get(MetricRegistry.name(DropwizardTests.getClass().getName(), Array("test", "histogram"): _*))
           .getSnapshot
           .get999thPercentile
 
@@ -117,7 +120,7 @@ object DropwizardTests extends DefaultRuntime {
         unsafeRun(testMeter)
         val counter = dropwizardMetrics.registry
           .getMeters()
-          .get("simple_meter")
+          .get(MetricRegistry.name(DropwizardTests.getClass().getName(), Array("test", "meter"): _*))
           .getCount
 
         assert(counter == 5)
@@ -126,10 +129,12 @@ object DropwizardTests extends DefaultRuntime {
         unsafeRun(testMeter)
         val meanRate = dropwizardMetrics.registry
           .getMeters()
-          .get("simple_meter")
+          .get(MetricRegistry.name(DropwizardTests.getClass().getName(), Array("test", "meter"): _*))
           .getMeanRate
 
-        assert(meanRate > 720 && meanRate < 9000)
+        println(meanRate)
+
+        assert(meanRate > 600 && meanRate < 8000)
       }
     )
   }
