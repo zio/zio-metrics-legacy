@@ -53,9 +53,10 @@ object DropwizardTests extends DefaultRuntime {
     section(
       test("counter increases by `inc` amount") { () =>
         unsafeRun(testCounter)
+        val name = MetricRegistry.name(DropwizardTests.getClass().getName(), Array("test", "counter"): _*)
         val counter = dropwizardMetrics.registry
           .getCounters()
-          .get(MetricRegistry.name(DropwizardTests.getClass().getName(), Array("test", "counter"): _*))
+          .get(name)
           .getCount
 
         assert(counter == 3)

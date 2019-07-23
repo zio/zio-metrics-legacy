@@ -26,11 +26,6 @@ trait HtmlRender[A] {
 
 case class Label[A: Show](name: A, labels: Array[String])
 
-object Label {
-  def apply[A: Show](name: A, arr: Array[String]) =
-    new Label(name, arr)
-}
-
 trait Metrics[F[_], Ctx] {
 
   def counter[L: Show](label: Label[L]): F[Long => F[Unit]]

@@ -11,16 +11,17 @@ class PrometheusMetrics extends Metrics[Task[?], Summary.Timer] {
 
   val registry: CollectorRegistry = CollectorRegistry.defaultRegistry
 
-  override def counter[L: Show](label: Label[L]): Task[Long => UIO[Unit]] = {
-    val name = Show[L].shows(label.name)
+  override def counter[A: Show](label: Label[A]): Task[Long => UIO[Unit]] = {
+    val name = Show[A].shows(label.name)
     val c = Counter
       .build()
       .name(name)
       .labelNames(label.labels: _*)
       .help(s"$name counter")
       .register()
-    IO.effect { l: Long =>
+    IO.effect { l: Long => {
       IO.succeedLazy(c.inc(l.toDouble))
+    }
     }
   }
 
