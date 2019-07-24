@@ -2,9 +2,6 @@ package zio.metrics
 
 import java.util
 
-import scalaz.Scalaz._
-import zio.metrics.PrometheusMetrics.DoubleSemigroup
-import scalaz.std.string.stringInstance
 import zio.{ DefaultRuntime, IO, Task }
 import testz.{ assert, Harness, PureHarness, Result }
 

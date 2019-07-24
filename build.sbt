@@ -46,7 +46,6 @@ lazy val root =
     )
 
 libraryDependencies ++= Seq(
-  "org.scalaz" %% "scalaz-core"                 % "7.2.27",
   "dev.zio" %% "zio"                  % zioVersion,
   "dev.zio" %% "zio-interop-cats"     % interopVersion,
   "dev.zio" %% "zio-interop-scalaz7x" % interopVersion,

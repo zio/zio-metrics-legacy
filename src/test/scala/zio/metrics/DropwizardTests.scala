@@ -1,6 +1,5 @@
 package zio.metrics
 
-import scalaz.Scalaz._
 import zio.{ DefaultRuntime, IO, Task }
 import testz.{ assert, Harness, PureHarness }
 import com.codahale.metrics.MetricRegistry

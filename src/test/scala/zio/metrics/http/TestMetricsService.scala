@@ -5,8 +5,7 @@ import org.http4s.argonaut._
 import org.http4s.dsl.impl.Root
 import org.http4s.dsl.io._
 import org.http4s.{ HttpRoutes, Response }
-import scalaz.Scalaz._
-import zio.metrics.{ Label, Metrics }
+import zio.metrics._
 import zio.interop.catz._
 import zio.{ Task, TaskR, ZIO }
 import Server._

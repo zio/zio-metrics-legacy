@@ -5,14 +5,13 @@ import java.io.IOException
 import io.prometheus.client._
 import zio.metrics.Reservoir.{ Bounded, Config, ExponentiallyDecaying, Uniform }
 import zio.{ IO, Task, UIO }
-import scalaz.{ Semigroup, Show }
 
 class PrometheusMetrics extends Metrics[Task[?], Summary.Timer] {
 
   val registry: CollectorRegistry = CollectorRegistry.defaultRegistry
 
   override def counter[A: Show](label: Label[A]): Task[Long => UIO[Unit]] = {
-    val name = Show[A].shows(label.name)
+    val name = Show[A].show(label.name)
     val c = Counter
       .build()
       .name(name)
@@ -28,7 +27,7 @@ class PrometheusMetrics extends Metrics[Task[?], Summary.Timer] {
   override def gauge[A, B: Semigroup, L: Show](label: Label[L])(
     f: Option[A] => B
   ): Task[Option[A] => UIO[Unit]] = {
-    val name = Show[L].shows(label.name)
+    val name = Show[L].show(label.name)
     val g = Gauge
       .build()
       .name(name)
@@ -48,7 +47,7 @@ class PrometheusMetrics extends Metrics[Task[?], Summary.Timer] {
   override def histogram[A: scala.Numeric, L: Show](label: Label[L], res: Reservoir[A])(
     implicit num: scala.Numeric[A]
   ): Task[A => Task[Unit]] = {
-    val name = Show[L].shows(label.name)
+    val name = Show[L].show(label.name)
     val h = Histogram
       .build()
       .name(name)
@@ -83,7 +82,7 @@ class PrometheusMetrics extends Metrics[Task[?], Summary.Timer] {
     label: Label[L],
     res: Reservoir[A] = Reservoir.ExponentiallyDecaying(None)
   ): Task[() => Task[Unit]] = {
-    val name = Show[L].shows(label.name)
+    val name = Show[L].show(label.name)
     val hb = Histogram
       .build()
       .name(name)
@@ -122,7 +121,7 @@ class PrometheusMetrics extends Metrics[Task[?], Summary.Timer] {
   }
 
   override def timer[L: Show](label: Label[L]): IO[IOException, Timer[Task[?], SummaryTimer]] = {
-    val name = Show[L].shows(label.name)
+    val name = Show[L].show(label.name)
     val iot = IO.succeed(
       Summary
         .build()
@@ -136,7 +135,7 @@ class PrometheusMetrics extends Metrics[Task[?], Summary.Timer] {
   }
 
   override def meter[L: Show](label: Label[L]): Task[Double => Task[Unit]] = {
-    val name = Show[L].shows(label.name)
+    val name = Show[L].show(label.name)
     val iot = IO.succeed(
       Summary
         .build()
@@ -148,8 +147,4 @@ class PrometheusMetrics extends Metrics[Task[?], Summary.Timer] {
     IO.effect((d: Double) => iot.map(s => s.observe(d)))
   }
 
-}
-
-object PrometheusMetrics {
-  implicit def DoubleSemigroup: Semigroup[Double] = Semigroup.instance((a, b) => a + b)
 }

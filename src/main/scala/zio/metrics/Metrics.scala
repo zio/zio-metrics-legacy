@@ -1,7 +1,6 @@
 package zio.metrics
 
 //import javax.management.openmbean.OpenType
-import scalaz.{ Semigroup, Show }
 import scala.concurrent.duration.TimeUnit
 
 sealed trait Reservoir[+A]
