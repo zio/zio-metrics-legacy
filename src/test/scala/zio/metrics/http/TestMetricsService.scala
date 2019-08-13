@@ -16,18 +16,18 @@ import scala.math.Numeric.IntIsIntegral
 object TestMetricsService {
   println("Serving")
 
-  val s: Stream[Int]                     = Stream.from(1)
+  val s: Stream[Int] = Stream.from(1)
   val tester: Option[Int] => Int =
-    (opt: Option[Int]) => opt.map(i => s.takeWhile(_ < i).fold(1)((i,j) => i*j)).get
+    (opt: Option[Int]) => opt.map(i => s.takeWhile(_ < i).fold(1)((i, j) => i * j)).get
 
   //def performTests[Ctx](metrics: Metrics[Task[?], Ctx]): Task[String] =
   def performTests[Ctx](metrics: Metrics[Task[?], Ctx]): HttpTask[String] =
     for {
-      f <- metrics.counter(Label("simple_counter", Array("test", "counter"), "_"))
-      _ <- f(1)
-      _ <- f(2)
-      g <- metrics.gauge(Label("simple_gauge", Array("test", "gauge"), "_"))(tester)
-      _ <- g(10.some)
+      f  <- metrics.counter(Label("simple_counter", Array("test", "counter"), "_"))
+      _  <- f(1)
+      _  <- f(2)
+      g  <- metrics.gauge(Label("simple_gauge", Array("test", "gauge"), "_"))(tester)
+      _  <- g(10.some)
       t  <- metrics.timer(Label("simple_timer", Array("test", "timer"), "_"))
       t1 = t.start
       l <- ZIO.foreachPar(

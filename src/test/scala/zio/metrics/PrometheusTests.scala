@@ -119,7 +119,7 @@ object PrometheusTests extends DefaultRuntime {
         unsafeRun(testHistogramTimer)
         val set: util.Set[String] = new util.HashSet[String]()
         set.add("simple_histogram_timer_count")
-          set.add("simple_histogram_timer_sum")
+        set.add("simple_histogram_timer_sum")
         val count = prometheusMetrics.registry.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
 
         val sum = prometheusMetrics.registry.filteredMetricFamilySamples(set).nextElement().samples.get(1).value

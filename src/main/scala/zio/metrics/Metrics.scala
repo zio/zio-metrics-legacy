@@ -31,7 +31,7 @@ object Label {
     new Label(name, arr, sep)
 
   implicit def labelShow[A: Show]: Show[Label[A]] = new Show[Label[A]] {
-    override def shows(l: Label[A]): String =s"${l.name}"
+    override def shows(l: Label[A]): String = s"${l.name}"
   }
 }
 

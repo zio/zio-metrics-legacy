@@ -20,24 +20,24 @@ class ReportPrinter[Ctx, M <: Metrics[Task[?], Ctx]] {
   def report[F[_], A](metrics: M, filter: Option[String])(
     cons: (String, A) => A
   )(implicit M: Monoid[A], L: Foldable[F], R: Reporter[Ctx, M, F, A]): A = {
-     import scalaz.syntax.semigroup._
+    import scalaz.syntax.semigroup._
 
-        val fs = Seq(
-          ("counters", R.extractCounters),
-          ("gauges", R.extractGauges),
-          ("timers", R.extractTimers),
-          ("histograms", R.extractHistograms),
-          ("meters", R.extractMeters)
-        )
+    val fs = Seq(
+      ("counters", R.extractCounters),
+      ("gauges", R.extractGauges),
+      ("timers", R.extractTimers),
+      ("histograms", R.extractHistograms),
+      ("meters", R.extractMeters)
+    )
 
-        fs.foldLeft(M.zero)((acc0, f) => {
-          val m = f._2(metrics)(filter)
-          acc0 |+| L.foldMap(m)(a => cons(f._1, a))
-        })
+    fs.foldLeft(M.zero)((acc0, f) => {
+      val m = f._2(metrics)(filter)
+      acc0 |+| L.foldMap(m)(a => cons(f._1, a))
+    })
   }
 }
 
-object ReportPrinter  {
+object ReportPrinter {
   def apply[Ctx, M <: Metrics[Task[?], Ctx]]() =
     new ReportPrinter[Ctx, M]()
 }
