@@ -53,8 +53,8 @@ libraryDependencies ++= Seq(
   "dev.zio"    %% "zio"                  % zioVersion,
   "dev.zio"    %% "zio-interop-cats"     % interopVersion,
   "dev.zio"    %% "zio-interop-scalaz7x" % interopVersion,
-  "org.scalaz" %% "testz-core"           % "0.0.5",
-  "org.scalaz" %% "testz-stdlib"         % "0.0.5"
+  "org.scalaz" % "testz-core_2.12"       % "0.0.5",
+  "org.scalaz" % "testz-stdlib_2.12"     % "0.0.5"
 )
 
 libraryDependencies ++= Seq(
