@@ -22,11 +22,11 @@ object TestMetricsService {
   //def performTests[Ctx](metrics: Metrics[Task[?], Ctx]): Task[String] =
   def performTests[Ctx](metrics: Metrics[Task[?], Ctx]): HttpTask[String] =
     for {
-      f <- metrics.counter(Label("simple_counter", Array("test", "counter")))
-      _ <- f(1)
-      _ <- f(2)
-      g <- metrics.gauge(Label("simple_gauge", Array("test", "gauge")))(tester)
-      _ <- g(10.some)
+      f  <- metrics.counter(Label("simple_counter", Array("test", "counter")))
+      _  <- f(1)
+      _  <- f(2)
+      g  <- metrics.gauge(Label("simple_gauge", Array("test", "gauge")))(tester)
+      _  <- g(10.some)
       t  <- metrics.timer(Label("simple_timer", Array("test", "timer")))
       t1 = t.start
       l <- ZIO.foreachPar(

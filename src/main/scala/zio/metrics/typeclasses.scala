@@ -21,8 +21,8 @@ object Show {
     def show(value: String): String = value
   }
 
- implicit def showClass[A] = new Show[Class[A]] {
-   override def show(f: Class[A]): String = f.getName()
+  implicit def showClass[A] = new Show[Class[A]] {
+    override def show(f: Class[A]): String = f.getName()
   }
 }
 
@@ -37,8 +37,8 @@ object Semigroup {
   def combine[A: Semigroup](x: A, y: A): A = Semigroup[A].combine(x, y)
 
   implicit class SemigroupSyntax[A: Semigroup](x: A) { self =>
-    def combine(y: A): A =  Semigroup.combine(x, y)
-    def |+|(y: A): A = self.combine(y)
+    def combine(y: A): A = Semigroup.combine(x, y)
+    def |+|(y: A): A     = self.combine(y)
   }
 
   implicit def numericAddSG[N: Numeric[?]] = new Semigroup[N] {

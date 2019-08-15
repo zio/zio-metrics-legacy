@@ -10,7 +10,7 @@ object PrometheusTests extends DefaultRuntime {
   val prometheusMetrics = new PrometheusMetrics
 
   val testCounter: Task[Unit] = for {
-    f <- prometheusMetrics.counter(Label("simple_counter", Array.empty[String]))
+    f <- prometheusMetrics.counter(Label("simple_counter", Array("test", "prod")))
     _ <- f(1)
     b <- f(2)
   } yield b

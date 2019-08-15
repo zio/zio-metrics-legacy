@@ -18,9 +18,10 @@ class PrometheusMetrics extends Metrics[Task[?], Summary.Timer] {
       .labelNames(label.labels: _*)
       .help(s"$name counter")
       .register()
-    IO.effect { l: Long => {
-      IO.succeedLazy(c.inc(l.toDouble))
-    }
+    IO.effect { l: Long =>
+      {
+        IO.succeedLazy(c.labels(label.labels: _*).inc(l.toDouble))
+      }
     }
   }
 
@@ -37,8 +38,8 @@ class PrometheusMetrics extends Metrics[Task[?], Summary.Timer] {
     IO.effect(
       (op: Option[A]) =>
         IO.succeedLazy(f(op) match {
-          case l: Long   => g.inc(l.toDouble)
-          case d: Double => g.inc(d)
+          case l: Long   => g.labels(label.labels: _*).inc(l.toDouble)
+          case d: Double => g.labels(label.labels: _*).inc(d)
           case _         => ()
         })
     )
@@ -54,7 +55,7 @@ class PrometheusMetrics extends Metrics[Task[?], Summary.Timer] {
       .labelNames(label.labels: _*)
       .help(s"$name histogram")
       .register()
-    IO.effect((a: A) => IO.effect(h.observe(num.toDouble(a))))
+    IO.effect((a: A) => IO.effect(h.labels(label.labels: _*).observe(num.toDouble(a))))
   }
 
   def processConfig(config: Option[Config], values: Tuple3[String, String, String]): Tuple3[Double, Double, Int] =
@@ -130,7 +131,7 @@ class PrometheusMetrics extends Metrics[Task[?], Summary.Timer] {
         .help(s"$name timer")
         .register()
     )
-    val r = iot.map(s => new IOTimer(s.startTimer()))
+    val r = iot.map(s => new IOTimer(s.labels(label.labels: _*).startTimer()))
     r
   }
 
@@ -144,7 +145,7 @@ class PrometheusMetrics extends Metrics[Task[?], Summary.Timer] {
         .help(s"$name timer")
         .register()
     )
-    IO.effect((d: Double) => iot.map(s => s.observe(d)))
+    IO.effect((d: Double) => iot.map(s => s.labels(label.labels: _*).observe(d)))
   }
 
 }

@@ -45,58 +45,58 @@ object DropwizardMetricsSpec extends App {
     println(
       dropwizardMetrics.registry
         .getCounters()
-        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "counter"):_*))
+        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "counter"): _*))
         .getCount
     )
     println(
       dropwizardMetrics.registry
         .getGauges()
-        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "gauge"):_*))
+        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "gauge"): _*))
         .getValue
     )
     println(
       dropwizardMetrics.registry
         .getTimers()
-        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "timer"):_*))
+        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "timer"): _*))
         .getCount
     )
     println(
       dropwizardMetrics.registry
         .getTimers()
-        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "timer"):_*))
+        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "timer"): _*))
         .getMeanRate
     )
     println(
       dropwizardMetrics.registry
         .getHistograms()
-        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "histogram"):_*))
+        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "histogram"): _*))
         .getSnapshot
         .get75thPercentile
     )
     println(
       dropwizardMetrics.registry
         .getHistograms()
-        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "histogram"):_*))
+        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "histogram"): _*))
         .getSnapshot
         .get99thPercentile
     )
     println(
       dropwizardMetrics.registry
         .getHistograms()
-        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "histogram"):_*))
+        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "histogram"): _*))
         .getSnapshot
         .getMean
     )
     println(
       dropwizardMetrics.registry
         .getMeters()
-        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "meter"):_*))
+        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "meter"): _*))
         .getMeanRate
     )
     println(
       dropwizardMetrics.registry
         .getMeters()
-        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "meter"):_*))
+        .get(MetricRegistry.name(DropwizardMetricsSpec.getClass().getName(), Array("test", "meter"): _*))
         .getCount
     )
   }
