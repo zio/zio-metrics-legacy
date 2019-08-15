@@ -1,20 +1,23 @@
 import Build._
 
-addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
-addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
-
-/*pgpPublicRing := file("/tmp/public.asc")
-pgpSecretRing := file("/tmp/secret.asc")
-releaseEarlyWith := SonatypePublisher*/
-scmInfo := Some(
-  ScmInfo(url("https://github.com/zio/zio-metrics/"), "scm:git:git@github.com:zio/zio-metrics.git")
+inThisBuild(
+  List(
+    organization := "dev.zio",
+    licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+    developers := List(
+      Developer("jdegoes", "John De Goes", "john@degoes.net", url("http://degoes.net")),
+      Developer("toxicafunk", "Eric Noam", "toxicafunk@gmail.com", url("https://github.com/toxicafunk"))
+    ),
+    pgpPublicRing := file("/tmp/public.asc"),
+    pgpSecretRing := file("/tmp/secret.asc"),
+    releaseEarlyWith := SonatypePublisher,
+    scmInfo := Some(
+      ScmInfo(url("https://github.com/zio/zio-metrics/"), "scm:git:git@github.com:zio/zio-metrics.git")
+    )
+  )
 )
 
-organization in ThisBuild := "dev.zio"
-
-version in ThisBuild := "0.1.0-SNAPSHOT"
-
-val http4sVersion  = "0.20.0-M5"
+val http4sVersion = "0.20.0-M5"
 //val zioVersion     = "1.0.0-RC10-1"
 val zioVersion     = "1.0.0-RC9"
 val interopVersion = "1.0.0-RC8-10"
@@ -46,11 +49,11 @@ lazy val root =
     )
 
 libraryDependencies ++= Seq(
-  "dev.zio" %% "zio"                  % zioVersion,
-  "dev.zio" %% "zio-interop-cats"     % interopVersion,
-  "dev.zio" %% "zio-interop-scalaz7x" % interopVersion,
-  "org.scalaz" %% "testz-core"                  % "0.0.5",
-  "org.scalaz" %% "testz-stdlib"                % "0.0.5"
+  "dev.zio"    %% "zio"                  % zioVersion,
+  "dev.zio"    %% "zio-interop-cats"     % interopVersion,
+  "dev.zio"    %% "zio-interop-scalaz7x" % interopVersion,
+  "org.scalaz" % "testz-core_2.12"       % "0.0.5",
+  "org.scalaz" % "testz-stdlib_2.12"     % "0.0.5"
 )
 
 libraryDependencies ++= Seq(

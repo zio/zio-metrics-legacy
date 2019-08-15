@@ -34,15 +34,12 @@ object DropwizardMetricsSpec extends App {
       _ <- IO.foreach(1 to 5)(_ => IO.succeed(m(1)))
     } yield { println(s"time $l ns"); () }
 
-  def run(args: List[String]) = {
-
-
+  def run(args: List[String]) =
     performTests.either
       .map(ei => {
         printMetrics()
         ei.fold(_ => 1, _ => 0)
       })
-  }
 
   def printMetrics(): Unit = {
     println(
