@@ -61,11 +61,6 @@ libraryDependencies ++= Seq(
   "io.argonaut" %% "argonaut-scalaz" % "6.2.2"
 )
 
-resolvers += Resolver.sonatypeRepo("snapshots")
-
-resolvers += Resolver.sonatypeRepo("releases")
-
-//scalacOptions ++= Seq("-Ypartial-unification", "-Ywarn-value-discard", "-target:jvm-1.8")
 scalacOptions ++= (CrossVersion.partialVersion(scalaBinaryVersion.value) match {
   case Some((2, 11)) => Seq("-Ypartial-unification", "-Ywarn-value-discard", "-target:jvm-1.8")
   case _             => Seq("-Ypartial-unification", "-Ywarn-value-discard")

@@ -68,7 +68,7 @@ compile: &compile
     - <<: *load_cache
     - run:
         name: Compile code
-        command: ./sbt ++${SCALA_VERSION}! compile
+        command: ./sbt ++${SCALA_VERSION}! test:compile
     - <<: *save_cache
 
 lint: &lint
@@ -275,26 +275,6 @@ workflows:
           requires:
             - test_211_jdk8_jvm
             - test_211_jdk11_jvm
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
-      - documentation:
-          context: Sonatype
-          requires:
-            - release_211
-            - release_212
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
-      - microsite:
-          context: Website
-          requires:
-            - release_211
-            - release_212
           filters:
             branches:
               ignore: /.*/
