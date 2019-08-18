@@ -33,13 +33,6 @@ publishTo in ThisBuild := {
 
 dynverSonatypeSnapshots in ThisBuild := true
 
-lazy val sonataCredentials = for {
-  username <- sys.env.get("SONATYPE_USERNAME")
-  password <- sys.env.get("SONATYPE_PASSWORD")
-} yield Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", username, password)
-
-credentials in ThisBuild ++= sonataCredentials.toSeq
-
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
@@ -82,7 +75,7 @@ resolvers += Resolver.sonatypeRepo("snapshots")
 
 resolvers += Resolver.sonatypeRepo("releases")
 
-scalacOptions ++= Seq("-Ypartial-unification", "-Ywarn-value-discard")
+scalacOptions ++= Seq("-Ypartial-unification", "-Ywarn-value-discard", "-target:jvm-1.8")
 
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7")
 
