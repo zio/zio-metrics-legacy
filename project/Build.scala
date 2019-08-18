@@ -49,7 +49,7 @@ object Build {
     }
 
   def stdSettings(prjName: String) = Seq(
-    name := s"scalaz-$prjName",
+    name := s"zio-$prjName",
     scalacOptions := stdOptions,
     crossScalaVersions := Seq("2.12.8", "2.11.12"),
     scalaVersion in ThisBuild := crossScalaVersions.value.head,
