@@ -23,16 +23,6 @@ val http4sVersion = "0.20.0-M5"
 val zioVersion     = "1.0.0-RC9"
 val interopVersion = "1.0.0-RC8-10"
 
-publishTo in ThisBuild := {
-  val nexus = "https://oss.sonatype.org/"
-  if (isSnapshot.value)
-    Some("snapshots".at(nexus + "content/repositories/snapshots"))
-  else
-    Some("releases".at(nexus + "service/local/staging/deploy/maven2"))
-}
-
-dynverSonatypeSnapshots in ThisBuild := true
-
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
@@ -75,7 +65,11 @@ resolvers += Resolver.sonatypeRepo("snapshots")
 
 resolvers += Resolver.sonatypeRepo("releases")
 
-scalacOptions ++= Seq("-Ypartial-unification", "-Ywarn-value-discard", "-target:jvm-1.8")
+//scalacOptions ++= Seq("-Ypartial-unification", "-Ywarn-value-discard", "-target:jvm-1.8")
+scalacOptions ++= (CrossVersion.partialVersion(scalaBinaryVersion.value) match {
+  case Some((2, 11)) => Seq("-Ypartial-unification", "-Ywarn-value-discard", "-target:jvm-1.8")
+  case _             => Seq("-Ypartial-unification", "-Ywarn-value-discard")
+})
 
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7")
 
