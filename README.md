@@ -1,4 +1,4 @@
-# scalaz-metrics
+# ZIO metrics
 
 [![Gitter](https://badges.gitter.im/scalaz/scalaz-metrics.svg)](https://gitter.im/scalaz/scalaz-metrics?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
@@ -6,7 +6,7 @@
 A high-performance, purely-functional library for adding instrumentation to any application, with a simple web client and JMX support.
 
 ## Introduction and Highlights
-Scalaz Metric is a principled functional programming library to measure the behavior of your application. It focuses on provideing metrics and health checks in a performant purely functional manner.
+ZIO Metrics is a principled functional programming library to measure the behavior of your application. It focuses on provideing metrics and health checks in a performant purely functional manner.
 
 * Comprehensive and consistent
 * Type safe, purely-functional
