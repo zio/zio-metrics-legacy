@@ -7,7 +7,7 @@ import org.http4s.dsl.io._
 import org.http4s.{ HttpRoutes, Response }
 import zio.metrics._
 import zio.interop.catz._
-import zio.{ Task, TaskR, ZIO }
+import zio.{ RIO, Task, ZIO }
 import Server._
 
 import scala.math.Numeric.IntIsIntegral
@@ -50,6 +50,6 @@ object TestMetricsService {
             t => jSingleObject("error", jString(s"failure encountered $t")),
             s => jSingleObject("time", jString(s))
           )
-          m.flatMap(j => TaskR(Response[HttpTask](Ok).withEntity(j)))
+          m.flatMap(j => RIO(Response[HttpTask](Ok).withEntity(j)))
       }
 }

@@ -18,9 +18,8 @@ inThisBuild(
   )
 )
 
-val http4sVersion = "0.20.0-M5"
-//val zioVersion     = "1.0.0-RC10-1"
-val zioVersion     = "1.0.0-RC9"
+val http4sVersion  = "0.20.0-M5"
+val zioVersion     = "1.0.0-RC11-1"
 val interopVersion = "1.0.0-RC8-10"
 
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")

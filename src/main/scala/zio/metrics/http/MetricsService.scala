@@ -8,7 +8,7 @@ import org.http4s.dsl.io._
 import org.http4s.{ HttpRoutes, Response }
 import zio.metrics.Metrics
 import scalaz.std.list.listInstance
-import zio.{ Task, TaskR }
+import zio.{ RIO, Task }
 import zio.interop.catz._
 import zio.metrics.ReportPrinter
 import zio.metrics.http.Server._
@@ -30,7 +30,7 @@ object MetricsService {
           case GET -> Root / filter => {
             val optFilter = if (filter == "ALL") None else Some(filter)
             val m: Json   = ReportPrinter[Context, DropwizardMetrics].report(metrics, optFilter)(jSingleObject)
-            TaskR(Response[HttpTask](Ok).withEntity(m))
+            RIO(Response[HttpTask](Ok).withEntity(m))
           }
         }
   }
@@ -48,7 +48,7 @@ object MetricsService {
             val optFilter = if (filter == "ALL") None else Some(filter)
             val m: Json   = ReportPrinter[Summary.Timer, PrometheusMetrics].report(metrics, optFilter)(jSingleObject)
             println(m)
-            TaskR(Response[HttpTask](Ok).withEntity(m))
+            RIO(Response[HttpTask](Ok).withEntity(m))
         }
   }
 
