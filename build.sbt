@@ -3,6 +3,7 @@ import Build._
 inThisBuild(
   List(
     organization := "dev.zio",
+    homepage := Some(url("https://github.com/zio/zio-metrics/")),
     licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
     developers := List(
       Developer("jdegoes", "John De Goes", "john@degoes.net", url("http://degoes.net")),

@@ -273,7 +273,8 @@ workflows:
       - release_212:
           context: Sonatype
           requires:
-            - release_211
+            - test_211_jdk8_jvm
+            - test_211_jdk11_jvm
           filters:
             branches:
               ignore: /.*/
