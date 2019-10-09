@@ -14,7 +14,7 @@ class DropwizardMetrics extends Metrics[Task[?], Context] {
     val name = MetricRegistry.name(Show[A].show(label.name), label.labels: _*)
     ZIO.effect(
       (l: Long) => {
-        ZIO.succeedLazy(registry.counter(name).inc(l))
+        ZIO.effectTotal(registry.counter(name).inc(l))
       }
     )
   }
@@ -25,7 +25,7 @@ class DropwizardMetrics extends Metrics[Task[?], Context] {
     val name = MetricRegistry.name(Show[S].show(label.name), label.labels: _*)
     ZIO.effect(
       (op: Option[A]) =>
-        ZIO.succeedLazy({
+        ZIO.effectTotal({
           registry.register(name, new Gauge[B]() {
             override def getValue: B = f(op)
           })

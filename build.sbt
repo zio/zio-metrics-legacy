@@ -19,8 +19,8 @@ inThisBuild(
 )
 
 val http4sVersion  = "0.20.0-M5"
-val zioVersion     = "1.0.0-RC11-1"
-val interopVersion = "1.0.0-RC8-10"
+val zioVersion     = "1.0.0-RC14"
+val interopVersion = "2.0.0.0-RC5"
 
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
@@ -34,7 +34,6 @@ lazy val root =
 libraryDependencies ++= Seq(
   "dev.zio"    %% "zio"                  % zioVersion,
   "dev.zio"    %% "zio-interop-cats"     % interopVersion,
-  "dev.zio"    %% "zio-interop-scalaz7x" % interopVersion,
   "org.scalaz" % "testz-core_2.12"       % "0.0.5",
   "org.scalaz" % "testz-stdlib_2.12"     % "0.0.5"
 )
@@ -52,7 +51,8 @@ libraryDependencies ++= Seq(
   //"org.http4s" %% "http4s-circe" % http4sVersion,
   "org.http4s" %% "http4s-argonaut"     % http4sVersion,
   "org.http4s" %% "http4s-blaze-server" % http4sVersion,
-  "org.http4s" %% "http4s-dsl"          % http4sVersion
+  "org.http4s" %% "http4s-dsl"          % http4sVersion,
+  "org.typelevel" %% "cats-effect"          % "2.0.0" % Optional,
 )
 
 libraryDependencies ++= Seq(

@@ -20,7 +20,7 @@ class PrometheusMetrics extends Metrics[Task[?], Summary.Timer] {
       .register()
     IO.effect { l: Long =>
       {
-        IO.succeedLazy(c.labels(label.labels: _*).inc(l.toDouble))
+        IO.effectTotal(c.labels(label.labels: _*).inc(l.toDouble))
       }
     }
   }
@@ -37,7 +37,7 @@ class PrometheusMetrics extends Metrics[Task[?], Summary.Timer] {
       .register()
     IO.effect(
       (op: Option[A]) =>
-        IO.succeedLazy(f(op) match {
+        IO.effectTotal(f(op) match {
           case l: Long   => g.labels(label.labels: _*).inc(l.toDouble)
           case d: Double => g.labels(label.labels: _*).inc(d)
           case _         => ()
