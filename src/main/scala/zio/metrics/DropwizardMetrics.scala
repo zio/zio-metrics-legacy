@@ -1,9 +1,9 @@
 package zio.metrics
 
-import com.codahale.metrics.MetricRegistry.MetricSupplier
+import com.codahale.metrics.MetricRegistry
 import com.codahale.metrics.Timer.Context
-import com.codahale.metrics.{ Reservoir => DWReservoir, _ }
-import zio.metrics.Reservoir._
+import com.codahale.metrics._
+//import zio.metrics.Reservoir._
 import zio.{ Task, UIO, ZIO }
 
 class DropwizardMetrics extends Metrics[Task[?], Context] {
@@ -34,7 +34,7 @@ class DropwizardMetrics extends Metrics[Task[?], Context] {
     )
   }
 
-  class IOTimer(val ctx: Context) extends Timer[Task[?], Context] {
+  /*class IOTimer(val ctx: Context) extends Timer[Task[?], Context] {
     override val a: Context           = ctx
     override def start: Task[Context] = ZIO.succeed(a)
     override def stop(io: Task[Context]): Task[Double] =
@@ -66,7 +66,7 @@ class DropwizardMetrics extends Metrics[Task[?], Context] {
     }
 
     ZIO.effect((a: A) => ZIO.effect(registry.histogram(name, supplier).update(num.toLong(a))))
-  }
+  }*/
 
   override def meter[A: Show](label: Label[A]): Task[Double => Task[Unit]] = {
     val name = MetricRegistry.name(Show[A].show(label.name), label.labels: _*)

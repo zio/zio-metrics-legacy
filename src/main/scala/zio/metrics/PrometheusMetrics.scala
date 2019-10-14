@@ -1,9 +1,7 @@
 package zio.metrics
 
-import java.io.IOException
-
-import io.prometheus.client._
-import zio.metrics.Reservoir.{ Bounded, Config, ExponentiallyDecaying, Uniform }
+import io.prometheus.client.{Counter => PCounter, _}
+//import zio.metrics.Reservoir.{ Bounded, Config, ExponentiallyDecaying, Uniform }
 import zio.{ IO, Task, UIO }
 
 class PrometheusMetrics extends Metrics[Task[?], Summary.Timer] {
@@ -12,7 +10,7 @@ class PrometheusMetrics extends Metrics[Task[?], Summary.Timer] {
 
   override def counter[A: Show](label: Label[A]): Task[Long => UIO[Unit]] = {
     val name = Show[A].show(label.name)
-    val c = Counter
+    val c = PCounter
       .build()
       .name(name)
       .labelNames(label.labels: _*)
@@ -45,7 +43,7 @@ class PrometheusMetrics extends Metrics[Task[?], Summary.Timer] {
     )
   }
 
-  override def histogram[A: scala.Numeric, L: Show](label: Label[L], res: Reservoir[A])(
+  /*override def histogram[A: scala.Numeric, L: Show](label: Label[L], res: Reservoir[A])(
     implicit num: scala.Numeric[A]
   ): Task[A => Task[Unit]] = {
     val name = Show[L].show(label.name)
@@ -133,7 +131,7 @@ class PrometheusMetrics extends Metrics[Task[?], Summary.Timer] {
     )
     val r = iot.map(s => new IOTimer(s.labels(label.labels: _*).startTimer()))
     r
-  }
+  }*/
 
   override def meter[L: Show](label: Label[L]): Task[Double => Task[Unit]] = {
     val name = Show[L].show(label.name)
