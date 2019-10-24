@@ -6,11 +6,11 @@ import com.codahale.metrics.{ MetricRegistry, Counter => DWCounter }
 
 trait DropWizardCounter extends Counter {
 
-  val counter = new Counter.Service[MetricRegistry, DWCounter] {
+  val counter = new Counter.Service[DWCounter, MetricRegistry, DWCounter] {
 
-    override def register[A: Show](registry: MetricRegistry, label: Label[A]): Task[DWCounter] = {
+    override def register[A: Show](registry: MetricRegistry, label: Label[A]): Task[(MetricRegistry, DWCounter)] = {
       val name = Show[A].show(label.name)
-      Task(registry.counter(name))
+      Task((registry, registry.counter(name)))
     }
 
     override def inc(dwCounter: DWCounter): Task[Unit] =

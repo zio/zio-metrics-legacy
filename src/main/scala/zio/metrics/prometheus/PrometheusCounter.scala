@@ -7,17 +7,19 @@ import io.prometheus.client.CollectorRegistry
 
 trait PrometheusCounter extends Counter {
 
-  val counter = new Counter.Service[CollectorRegistry, PCounter] {
+  val counter = new Counter.Service[PCounter, CollectorRegistry, PCounter] {
 
-    override def register[A: Show](registry: CollectorRegistry, label: Label[A]): Task[PCounter] = {
+    override def register[A: Show](registry: CollectorRegistry, label: Label[A]): Task[(CollectorRegistry, PCounter)] = {
       val name = Show[A].show(label.name)
       Task.effect(
-        PCounter
+        (
+          registry, PCounter
           .build()
           .name(name)
           .labelNames(label.labels: _*)
           .help(s"$name counter")
           .register()
+        )
       )
     }
 
