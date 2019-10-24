@@ -1,18 +1,18 @@
 package zio.metrics
 
-import zio.RIO
+import zio.Task
 
 trait Counter {
-  val counter: Counter.Service[_]
+  val counter: Counter.Service[_, _]
 }
 
 object Counter {
-  trait Service[R <: Registry] {
-    def register[A: Show](label: Label[A]): RIO[R, Unit]
+  trait Service[R, C] {
+    def register[A: Show](registry: R, label: Label[A]): Task[C]
 
-    def inc(): RIO[R, Unit]
+    def inc(counter: C): Task[Unit]
 
-    def inc(amount: Long): RIO[R, Unit]
+    def inc(counter: C, amount: Double): Task[Unit]
   }
 }
 

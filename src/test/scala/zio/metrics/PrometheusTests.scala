@@ -1,62 +1,33 @@
 package zio.metrics
 
-import java.util
+//import java.util
 
-import zio.{ DefaultRuntime, IO, Task }
-import testz.{ assert, Harness, PureHarness, Result }
+import zio.DefaultRuntime //, RIO, Task }
+//import testz.{ assert, Harness, PureHarness, Result }
 
 object PrometheusTests extends DefaultRuntime {
 
-  val prometheusMetrics = new PrometheusMetrics
+  /*object counter extends Registry with Counter {
+    def register[A: Show](label: Label[A]): RIO[PrometheusRegistry with PrometheusCounter, Counter.Service[PrometheusRegistry]] =
+      RIO.accessM(_.counter.register(label))
+
+    def inc(): RIO[PrometheusRegistry with PrometheusCounter, Unit] = RIO.accessM(_.counter.inc())
+
+    def inc(amount: Long): RIO[PrometheusRegistry with PrometheusCounter, Unit] = RIO.accessM(_.counter.inc(amount))
+  }
 
   val testCounter: Task[Unit] = for {
-    f <- prometheusMetrics.counter(Label("simple_counter", Array("test", "prod")))
+    f <- counter(Label("simple_counter", Array("test", "prod")))
     _ <- f(1)
     b <- f(2)
   } yield b
 
-  val testGauge: (Option[Double] => Double) => Task[Unit] = (f: Option[Double] => Double) =>
+  /*val testGauge: (Option[Double] => Double) => Task[Unit] = (f: Option[Double] => Double) =>
     for {
       g <- prometheusMetrics.gauge(Label("simple_gauge", Array.empty[String]))(f)
       _ <- g(5.0.some)
       b <- g((-3.0).some)
-    } yield b
-
-  val testTimer: Task[List[Double]] = for {
-    t  <- prometheusMetrics.timer(Label("simple_timer", Array.empty[String]))
-    t1 = t.start
-    l <- IO.foreach(
-          List(
-            Thread.sleep(1000L),
-            Thread.sleep(1400L),
-            Thread.sleep(1200L)
-          )
-        )(_ => t.stop(t1))
-  } yield l
-
-  val testHistogram: Task[Unit] = {
-    import scala.math.Numeric.IntIsIntegral
-    for {
-      h <- prometheusMetrics.histogram(Label("simple_histogram", Array.empty[String]))
-      _ <- IO.foreach(List(h(10), h(25), h(50), h(57), h(19)))(_.unit)
-    } yield ()
-  }
-
-  val testHistogramTimer: Task[Unit] = {
-    import scala.math.Numeric.IntIsIntegral
-    for {
-      h <- prometheusMetrics.histogramTimer(Label("simple_histogram_timer", Array.empty[String]))
-      _ <- IO.foreach(List(h(), h(), h(), h(), h()))(io => {
-            Thread.sleep(500)
-            io.unit
-          })
-    } yield ()
-  }
-
-  val testMeter: Task[Unit] = for {
-    m <- prometheusMetrics.meter(Label("simple_meter", Array.empty[String]))
-    _ <- IO.foreach(1 to 5)(_ => m(2))
-  } yield ()
+    } yield b*/
 
   def tests[T](harness: Harness[T]): T = {
     import harness._
@@ -73,7 +44,7 @@ object PrometheusTests extends DefaultRuntime {
           .value
         assert(counter == 3.0)
       },
-      test("gauge returns latest value") { () =>
+      /*test("gauge returns latest value") { () =>
         val tester: Option[Double] => Double = (op: Option[Double]) => op.getOrElse(0.0)
         unsafeRun(testGauge(tester))
         val set: util.Set[String] = new util.HashSet[String]()
@@ -86,51 +57,7 @@ object PrometheusTests extends DefaultRuntime {
           .value
 
         assert(a1 == 2.0)
-      },
-      test("Timer called 3 times") { () =>
-        unsafeRun(testTimer)
-        val set: util.Set[String] = new util.HashSet[String]()
-        set.add("simple_timer_count")
-        set.add("simple_timer_sum")
-        val count = prometheusMetrics.registry
-          .filteredMetricFamilySamples(set)
-          .nextElement()
-          .samples
-          .get(0)
-          .value
-        val sum = prometheusMetrics.registry.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
-
-        Result.combine(assert(count == 3.0), assert(sum >= 3.6))
-      },
-      test("Histogram sum is 161 and count is 5") { () =>
-        unsafeRun(testHistogram)
-        val set: util.Set[String] = new util.HashSet[String]()
-        set.add("simple_histogram_count")
-        set.add("simple_histogram_sum")
-
-        val count = prometheusMetrics.registry.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
-        val sum   = prometheusMetrics.registry.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
-        Result.combine(assert(count == 5.0), assert(sum == 161.0))
-      },
-      test("Histogram timer") { () =>
-        unsafeRun(testHistogramTimer)
-        val set: util.Set[String] = new util.HashSet[String]()
-        set.add("simple_histogram_timer_count")
-        set.add("simple_histogram_timer_sum")
-        val count = prometheusMetrics.registry.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
-
-        val sum = prometheusMetrics.registry.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
-        Result.combine(assert(count == 5.0), assert(sum > 2.5))
-      },
-      test("Meter invoked 5 times") { () =>
-        unsafeRun(testMeter)
-        val set: util.Set[String] = new util.HashSet[String]()
-        set.add("simple_meter_count")
-        set.add("simple_meter_sum")
-        val count = prometheusMetrics.registry.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
-        val sum   = prometheusMetrics.registry.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
-        Result.combine(assert(count == 5.0), assert(sum >= 10.0))
-      }
+      }*/
     )
   }
 
@@ -140,5 +67,5 @@ object PrometheusTests extends DefaultRuntime {
     })
 
   def main(args: Array[String]): Unit =
-    tests(harness)((), Nil).print()
+    tests(harness)((), Nil).print()*/
 }
