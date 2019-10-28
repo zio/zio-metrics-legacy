@@ -3,21 +3,21 @@ package zio.metrics
 import zio.RIO
 
 trait Gauge {
-  val gauge: Gauge.Service[_]
+  val gauge: Gauge.Service[_, _]
 }
 
 object Gauge {
-  trait Service[R <: Registry] {
-    def register[A: Show](label: Label[A]): RIO[R, Unit]
+  trait Service[R, G] {
+    def register[L: Show, A, B](registry: R, label: Label[L], f: A => B): RIO[R, (R, A => G)]
 
-    def inc(): RIO[R, Unit]
+    def inc[A, B](g: A => G, a: A): RIO[R, B]
 
-    def dec(): RIO[R, Unit]
+    /*def dec(gauge: I): Task[Unit]
 
-    def inc(amount: Double): RIO[R, Unit]
+    def inc(gauge: I, amount: Double): Task[Unit]
 
-    def dec(amount: Double): RIO[R, Unit]
+    def dec(gauge: I, amount: Double): Task[Unit]
 
-    def set(amount: Double): RIO[R, Unit]
+    def set(gauge: I, amount: Double): Task[Unit]*/
   }
 }

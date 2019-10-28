@@ -11,20 +11,18 @@ trait PrometheusCounter extends Counter {
 
     override def register[A: Show](registry: CollectorRegistry, label: Label[A]): Task[(CollectorRegistry, PCounter)] = {
       val name = Show[A].show(label.name)
-      Task.effect(
-        (
-          registry, PCounter
+      val c = PCounter
           .build()
           .name(name)
           .labelNames(label.labels: _*)
           .help(s"$name counter")
-          .register()
-        )
-      )
+          .register(registry)
+      Task((registry, c))
     }
 
-    override def inc(pCounter: PCounter): Task[Unit] =
+    override def inc(pCounter: PCounter): Task[Unit] = {
       Task(pCounter.inc())
+    }
 
     override def inc(pCounter: PCounter, amount: Double): Task[Unit] =
       Task(pCounter.inc(amount))

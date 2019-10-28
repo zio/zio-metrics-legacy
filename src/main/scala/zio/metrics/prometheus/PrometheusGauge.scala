@@ -1,11 +1,12 @@
 package zio.metrics.prometheus
 
-import zio.RIO
+/*import zio.RIO
 import zio.metrics._
 import io.prometheus.client.{Gauge => PGauge}
+*/
 
-trait PrometheusGauge extends Gauge {
-  val gauge = new Gauge.Service[PrometheusRegistry] {
+trait PrometheusGauge { //extends Gauge {
+  /*val gauge = new Gauge.Service[PrometheusRegistry] {
 
     var pGauge: RIO[PrometheusRegistry, Option[PGauge]] = RIO.effect(None)
 
@@ -39,5 +40,5 @@ trait PrometheusGauge extends Gauge {
 
     override def set(amount: Double): zio.RIO[PrometheusRegistry,Unit] =
       pGauge.fold(_ => println("Error"), c => c.fold(println("No gauge"))(_.set(amount)))
-  }
+  }*/
 }
