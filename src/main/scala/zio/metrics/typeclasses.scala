@@ -1,7 +1,9 @@
-package zio.metrics
+package zio.metrics.typeclasses
 
 import scala.math.Numeric
 import scala.math.Numeric.Implicits._
+
+case class Label[A: Show](name: A, labels: Array[String])
 
 trait Show[A] {
   def show(value: A): String

@@ -1,35 +1,20 @@
 package zio.metrics
 
-import zio.Task
-import io.prometheus.client.CollectorRegistry
-import com.codahale.metrics.MetricRegistry
+import zio.{ Task, UIO }
+import zio.metrics.typeclasses._
 
 trait Registry {
-  val registry: Registry.Service[Any]
+  val registry: Registry.Service[_, _]
 }
 
 object Registry {
-  trait Service[+R] {
-    def build(): Task[R]
+  trait Service[M, R] {
+    def getCurrent(): UIO[R]
+    def registerCounter[A: Show](label: Label[A]): Task[M]
+    def registerGauge[L: Show, A, B](label: Label[L], f: A => B, a: A): Task[M]
+    /*def registerHistogram[A: Show](label: Label[A]): Task[M]
+    def registerSummary[A: Show](label: Label[A]): Task[M]
+    def registerTimer[A: Show](label: Label[A]): Task[M]
+    def registerMeter[A: Show](label: Label[A]): Task[M]*/
   }
 }
-
-trait PrometheusRegistry extends Registry {
-  val registry = new Registry.Service[CollectorRegistry] {
-    override def build(): Task[CollectorRegistry] = {
-      Task(CollectorRegistry.defaultRegistry)
-    }
-  }
-}
-
-object PrometheusRegistry extends PrometheusRegistry
-
-trait DropWizardRegistry extends Registry {
-  val registry = new Registry.Service[MetricRegistry] {
-    def build(): Task[MetricRegistry] = {
-      Task(new MetricRegistry())
-    }
-  }
-}
-
-object DropWizardRegistry extends DropWizardRegistry

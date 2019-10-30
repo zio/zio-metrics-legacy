@@ -1,7 +1,8 @@
 package zio.metrics.dropwizard
 
 import zio.Task
-import zio.metrics._
+import zio.metrics.Gauge
+import zio.metrics.typeclasses._
 import com.codahale.metrics.{ MetricRegistry, Gauge => DWGauge }
 import com.codahale.metrics.MetricFilter
 

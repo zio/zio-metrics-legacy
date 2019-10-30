@@ -6,6 +6,7 @@ import zio.{ RIO, Runtime }
 import testz.{ assert, Harness, PureHarness }
 import io.prometheus.client.{ CollectorRegistry, Counter => PCounter }
 import zio.internal.PlatformLive
+import zio.metrics.typeclasses._
 import zio.metrics.prometheus._
 
 import java.io.StringWriter
@@ -14,12 +15,6 @@ import io.prometheus.client.exporter.common.TextFormat
 object PrometheusTests {
 
   object counter {
-    def register[A: Show](
-      registry: CollectorRegistry,
-      label: Label[A]
-    ): RIO[PrometheusCounter, (CollectorRegistry, PCounter)] =
-      RIO.accessM(_.counter.register(registry, label))
-
     def inc(pCounter: PCounter): RIO[PrometheusCounter, Unit] = RIO.accessM(_.counter.inc(pCounter))
 
     def inc(pCounter: PCounter, amount: Double): RIO[PrometheusCounter, Unit] =
@@ -39,12 +34,11 @@ object PrometheusTests {
 
   val testCounter: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
-    pc <- RIO.environment[PrometheusCounter]
-    r  <- pr.registry.build()
-    c  <- pc.counter.register(r, Label("simple_counter", Array.empty[String]))
-    _  <- pc.counter.inc(c._2)
-    _  <- pc.counter.inc(c._2, 2.0)
-  } yield c._1
+    c  <- pr.registry.registerCounter(Label("simple_counter", Array.empty[String]))
+    _  <- counter.inc(c)
+    _  <- counter.inc(c, 2.0)
+    r  <- pr.registry.getCurrent()
+  } yield r
 
   /*val testGauge: (Option[Double] => Double) => Task[Unit] = (f: Option[Double] => Double) =>
     for {

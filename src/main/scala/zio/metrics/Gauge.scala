@@ -1,5 +1,6 @@
 package zio.metrics
 
+import zio.metrics.typeclasses._
 import zio.RIO
 
 trait Gauge {

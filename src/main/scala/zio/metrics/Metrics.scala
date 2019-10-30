@@ -1,8 +1,7 @@
 package zio.metrics
 
 //import javax.management.openmbean.OpenType
-
-case class Label[A: Show](name: A, labels: Array[String])
+import zio.metrics.typeclasses._
 
 trait Metrics[F[_], Ctx] {
 
