@@ -1,21 +1,19 @@
 package zio.metrics
 
-import zio.metrics.typeclasses._
-import zio.RIO
+import zio.Task
 
 trait Gauge {
-  val gauge: Gauge.Service[_, _]
+  val gauge: Gauge.Service[_]
 }
 
 object Gauge {
-  trait Service[R, G] {
-    def register[L: Show, A, B](registry: R, label: Label[L], f: A => B): RIO[R, (R, A => G)]
+  trait Service[G] {
 
-    def inc[A, B](g: A => G, a: A): RIO[R, B]
+    def inc[A](g: G): Task[Either[Unit,A]]
 
-    /*def dec(gauge: I): Task[Unit]
+    /*def dec[A](g: A => G, a: A): Task[Unit]
 
-    def inc(gauge: I, amount: Double): Task[Unit]
+   def inc(gauge: I, amount: Double): Task[Unit]
 
     def dec(gauge: I, amount: Double): Task[Unit]
 

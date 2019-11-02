@@ -17,16 +17,12 @@ object DropwizardTests {
   }
 
   object gauge {
-    type RegistryGaugeT[B] = (MetricRegistry, B)
-    def register[L: Show, A, B](
-      registry: MetricRegistry,
-      label: Label[L],
-      f: A => B
-    ): RIO[DropWizardGauge, (MetricRegistry, A => DWGauge[B])] =
-      RIO.accessM(_.gauge.register(registry, label, f))
-
-    def inc[A, B](g: A => DWGauge[B], a: A): RIO[DropWizardGauge, B] =
-      RIO.accessM(_.gauge.inc(g, a))
+    def inc(g: DWGauge[Long]): RIO[DropWizardGauge, Long] = {
+      RIO.accessM(r => for {
+        e <- r.gauge.inc[Long](g)
+      } yield e.fold(_ => -1L, l => l)
+      )
+    }
   }
 
   val rt = Runtime(
@@ -34,7 +30,7 @@ object DropwizardTests {
     PlatformLive.Default
   )
 
-  val tester = (_: Long) => System.nanoTime()
+  val tester = () => System.nanoTime()
 
   val testCounter: RIO[DropWizardRegistry with DropWizardCounter, MetricRegistry] = for {
     dwr <- RIO.environment[DropWizardRegistry]
@@ -44,12 +40,12 @@ object DropwizardTests {
     r   <- dwr.registry.getCurrent()
   } yield r
 
-  /*val testGauge: RIO[DropWizardRegistry with DropWizardGauge, MetricRegistry] = for {
+  val testGauge: RIO[DropWizardRegistry with DropWizardGauge, MetricRegistry] = for {
     dwr <- RIO.environment[DropWizardRegistry]
-    r   <- dwr.registry.build()
-    g   <- gauge.register(r, Label(DropwizardTests.getClass(), Array("test", "gauge")), tester)
-    _   <- gauge.inc[Long, Long](g._2, 3)
-  } yield g._1*/
+    g   <- dwr.registry.registerGauge(Label("DropWizardGauge", Array("test", "gauge")), tester)
+    _   <- gauge.inc(g)
+    r   <- dwr.registry.getCurrent()
+  } yield r
 
   def tests[T](harness: Harness[T]): T = {
     import harness._
@@ -63,15 +59,15 @@ object DropwizardTests {
           assert(c == 3d)
         }
       },
-      /*test("gauge increases in time") { () =>
+      test("gauge increases in time") { () =>
         {
-          val name = MetricRegistry.name(DropwizardTests.getClass().getName(), Array.empty[String]: _*)
+          val name = MetricRegistry.name("DropWizardGauge", Array.empty[String]: _*)
           val r    = rt.unsafeRun(testGauge)
           val gs   = r.getGauges()
-          val g    = if (gs.get(name) == null) 0 else gs.get(name).getValue().asInstanceOf[Long]
-          assert(g < tester(0L))
+          val g    = if (gs.get(name) == null) Long.MaxValue else gs.get(name).getValue().asInstanceOf[Long]
+          assert(g < tester())
         }
-      }*/
+      }
     )
   }
 

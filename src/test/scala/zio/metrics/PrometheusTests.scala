@@ -4,7 +4,7 @@ import java.util
 
 import zio.{ RIO, Runtime }
 import testz.{ assert, Harness, PureHarness }
-import io.prometheus.client.{ CollectorRegistry, Counter => PCounter }
+import io.prometheus.client.{ CollectorRegistry, Counter => PCounter, Gauge => PGauge }
 import zio.internal.PlatformLive
 import zio.metrics.typeclasses._
 import zio.metrics.prometheus._
@@ -21,8 +21,18 @@ object PrometheusTests {
       RIO.accessM(_.counter.inc(pCounter, amount))
   }
 
+  object gauge {
+    def inc(g: PGauge): RIO[PrometheusGauge, Unit] =
+      RIO.accessM(
+        r =>
+          for {
+            _ <- r.gauge.inc[Unit](g)
+          } yield ()
+      )
+  }
+
   val rt = Runtime(
-    new PrometheusRegistry with PrometheusCounter,
+    new PrometheusRegistry with PrometheusCounter with PrometheusGauge,
     PlatformLive.Default
   )
 
@@ -32,6 +42,8 @@ object PrometheusTests {
     writer.toString
   }
 
+  val tester = () => System.nanoTime()
+
   val testCounter: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
     c  <- pr.registry.registerCounter(Label("simple_counter", Array.empty[String]))
@@ -40,12 +52,13 @@ object PrometheusTests {
     r  <- pr.registry.getCurrent()
   } yield r
 
-  /*val testGauge: (Option[Double] => Double) => Task[Unit] = (f: Option[Double] => Double) =>
-    for {
-      g <- prometheusMetrics.gauge(Label("simple_gauge", Array.empty[String]))(f)
-      _ <- g(5.0.some)
-      b <- g((-3.0).some)
-    } yield b*/
+  val testGauge: RIO[PrometheusRegistry with PrometheusGauge, CollectorRegistry] = for {
+    pr <- RIO.environment[PrometheusRegistry]
+    g  <- pr.registry.registerGauge(Label("simple_gauge", Array.empty[String]), tester)
+    _  <- gauge.inc(g)
+    _  <- gauge.inc(g)
+    r   <- pr.registry.getCurrent()
+  } yield r
 
   def tests[T](harness: Harness[T]): T = {
     import harness._
@@ -62,13 +75,13 @@ object PrometheusTests {
           .get(0)
           .value
         assert(counter == 3.0)
-      }
-      /*test("gauge returns latest value") { () =>
-        val tester: Option[Double] => Double = (op: Option[Double]) => op.getOrElse(0.0)
-        unsafeRun(testGauge(tester))
+      },
+      test("gauge returns latest value") { () =>
         val set: util.Set[String] = new util.HashSet[String]()
         set.add("simple_gauge")
-        val a1 = prometheusMetrics.registry
+        val r = rt.unsafeRun(testGauge)
+        println(s"registry: ${write004(r)}")
+        val a1 = r
           .filteredMetricFamilySamples(set)
           .nextElement()
           .samples
@@ -76,7 +89,7 @@ object PrometheusTests {
           .value
 
         assert(a1 == 2.0)
-      }*/
+      }
     )
   }
 

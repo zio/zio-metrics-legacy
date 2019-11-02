@@ -27,7 +27,7 @@ trait PrometheusRegistry extends Registry {
         (c, r)
       }))
 
-    override def registerGauge[L: Show, A, B](label: Label[L], f: A => B, a: A): Task[PGauge] =
+    override def registerGauge[L: Show, A](label: Label[L], f: () => A): Task[PGauge] =
       registryRef >>= (_.modify(r => {
         val name = Show[L].show(label.name)
         val g = PGauge
@@ -36,7 +36,7 @@ trait PrometheusRegistry extends Registry {
           .labelNames(label.labels: _*)
           .help(s"$name gauge")
           .register(r)
-        val init = f(a)
+        val init = f()
         g.set(if (init.isInstanceOf[Double]) init.asInstanceOf[Double] else 0D)
         (g, r)
       }))

@@ -11,7 +11,7 @@ object Registry {
   trait Service[M, R] {
     def getCurrent(): UIO[R]
     def registerCounter[A: Show](label: Label[A]): Task[M]
-    def registerGauge[L: Show, A, B](label: Label[L], f: A => B, a: A): Task[M]
+    def registerGauge[L: Show, A](label: Label[L], f: () => A): Task[M]
     /*def registerHistogram[A: Show](label: Label[A]): Task[M]
     def registerSummary[A: Show](label: Label[A]): Task[M]
     def registerTimer[A: Show](label: Label[A]): Task[M]
