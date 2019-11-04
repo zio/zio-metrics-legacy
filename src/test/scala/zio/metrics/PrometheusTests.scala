@@ -22,12 +22,12 @@ object PrometheusTests {
   }
 
   object gauge {
-    def inc(g: PGauge): RIO[PrometheusGauge, Unit] =
+    def getValue(g: PGauge): RIO[PrometheusGauge, Double] =
       RIO.accessM(
         r =>
           for {
-            _ <- r.gauge.inc[Unit](g)
-          } yield ()
+            d <- r.gauge.getValue[Double](g)
+          } yield d
       )
   }
 
@@ -52,13 +52,13 @@ object PrometheusTests {
     r  <- pr.registry.getCurrent()
   } yield r
 
-  val testGauge: RIO[PrometheusRegistry with PrometheusGauge, CollectorRegistry] = for {
+  val testGauge: RIO[PrometheusRegistry with PrometheusGauge, (CollectorRegistry, Double)] = for {
     pr <- RIO.environment[PrometheusRegistry]
     g  <- pr.registry.registerGauge(Label("simple_gauge", Array.empty[String]), tester)
-    _  <- gauge.inc(g)
-    _  <- gauge.inc(g)
-    r   <- pr.registry.getCurrent()
-  } yield r
+    _  <- RIO({g.inc(); g.inc(2.0)})
+    d  <- gauge.getValue(g)
+    r  <- pr.registry.getCurrent()
+  } yield (r, d)
 
   def tests[T](harness: Harness[T]): T = {
     import harness._
@@ -80,15 +80,16 @@ object PrometheusTests {
         val set: util.Set[String] = new util.HashSet[String]()
         set.add("simple_gauge")
         val r = rt.unsafeRun(testGauge)
-        println(s"registry: ${write004(r)}")
-        val a1 = r
+        println(s"registry: ${write004(r._1)}")
+        val a1 = r._1
           .filteredMetricFamilySamples(set)
           .nextElement()
           .samples
           .get(0)
           .value
 
-        assert(a1 == 2.0)
+        assert(a1 == r._2)
+        assert(a1 == 3.0)
       }
     )
   }

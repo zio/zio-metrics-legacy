@@ -9,14 +9,7 @@ trait Gauge {
 object Gauge {
   trait Service[G] {
 
-    def inc[A](g: G): Task[Either[Unit,A]]
+    def getValue[A](g: G): Task[A]
 
-    /*def dec[A](g: A => G, a: A): Task[Unit]
-
-   def inc(gauge: I, amount: Double): Task[Unit]
-
-    def dec(gauge: I, amount: Double): Task[Unit]
-
-    def set(gauge: I, amount: Double): Task[Unit]*/
   }
 }

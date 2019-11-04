@@ -7,8 +7,9 @@ import com.codahale.metrics.{ Gauge => DWGauge }
 trait DropWizardGauge extends Gauge {
   val gauge = new Gauge.Service[DWGauge[_]] {
 
-    override def inc[A](g: DWGauge[_]): Task[Either[Unit, A]] =
-      Task(Right(g.getValue().asInstanceOf[A]))
+    override def getValue[A](g: DWGauge[_]): Task[A] =
+      Task(g.getValue().asInstanceOf[A])
+
   }
 }
 

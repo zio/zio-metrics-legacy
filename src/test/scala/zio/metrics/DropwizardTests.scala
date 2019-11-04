@@ -17,11 +17,10 @@ object DropwizardTests {
   }
 
   object gauge {
-    def inc(g: DWGauge[Long]): RIO[DropWizardGauge, Long] = {
+    def getValue(g: DWGauge[Long]): RIO[DropWizardGauge, Long] = {
       RIO.accessM(r => for {
-        e <- r.gauge.inc[Long](g)
-      } yield e.fold(_ => -1L, l => l)
-      )
+        l <- r.gauge.getValue[Long](g)
+      } yield l)
     }
   }
 
@@ -43,7 +42,7 @@ object DropwizardTests {
   val testGauge: RIO[DropWizardRegistry with DropWizardGauge, MetricRegistry] = for {
     dwr <- RIO.environment[DropWizardRegistry]
     g   <- dwr.registry.registerGauge(Label("DropWizardGauge", Array("test", "gauge")), tester)
-    _   <- gauge.inc(g)
+    _   <- gauge.getValue(g)
     r   <- dwr.registry.getCurrent()
   } yield r
 

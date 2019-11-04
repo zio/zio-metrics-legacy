@@ -2,25 +2,31 @@ package zio.metrics.prometheus
 
 import zio.Task
 import zio.metrics._
-import io.prometheus.client.{Gauge => PGauge}
+import io.prometheus.client.{ Gauge => PGauge }
 
 trait PrometheusGauge extends Gauge {
 
   val gauge = new Gauge.Service[PGauge] {
 
-    override def inc[A](g: PGauge): Task[Either[Unit,A]] =
-      Task(Left(g.inc()))
+    override def getValue[A](g: PGauge): Task[A] =
+      Task(g.get().asInstanceOf[A])
 
-   /* override def dec(): zio.Task[Unit] =
-      pGauge.fold(_ => println("Error"), c => c.fold(println("No gauge"))(_.dec))
+  }
 
-    override def inc(amount: Double): zio.Task[Unit] =
-      pGauge.fold(_ => println("Error"), c => c.fold(println("No gauge"))(_.inc(amount)))
+  object Service {
+    def inc(g: PGauge): Task[Unit] =
+      Task(g.inc())
 
-    override def dec(amount: Double): zio.Task[Unit] =
-      pGauge.fold(_ => println("Error"), c => c.fold(println("No gauge"))(_.dec(amount)))
+    def dec(g: PGauge): Task[Unit] =
+      Task(g.dec())
 
-    override def set(amount: Double): zio.Task[Unit] =
-      pGauge.fold(_ => println("Error"), c => c.fold(println("No gauge"))(_.set(amount)))*/
+    def inc(g: PGauge, amount: Double): Task[Unit] =
+      Task(g.inc(amount))
+
+    def dec(g: PGauge, amount: Double): Task[Unit] =
+      Task(g.dec(amount))
+
+    def set[A](g: PGauge, amount: Double): Task[Unit] =
+      Task(g.set(amount))
   }
 }
