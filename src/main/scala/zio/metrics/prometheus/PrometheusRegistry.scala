@@ -2,11 +2,11 @@ package zio.metrics.prometheus
 
 import io.prometheus.client.{ Counter => PCounter }
 import io.prometheus.client.{ Gauge => PGauge }
+import io.prometheus.client.{ Histogram => PHistogram }
 import io.prometheus.client.{ Collector, CollectorRegistry }
 
-import zio.metrics.Registry
-import zio.metrics.typeclasses._
-import zio.{Ref, Task, UIO}
+import zio.metrics.{ Show,  Label, Registry }
+import zio.{ Ref, Task, UIO }
 
 trait PrometheusRegistry extends Registry {
 
@@ -37,8 +37,20 @@ trait PrometheusRegistry extends Registry {
           .help(s"$name gauge")
           .register(r)
         val init = f()
-        g.set(if (init.isInstanceOf[Double]) init.asInstanceOf[Double] else 0D)
+        g.set(if (init.isInstanceOf[Double]) init.asInstanceOf[Double] else 0d)
         (g, r)
+      }))
+
+    override def registerHistogram[L: Show](label: Label[L]): Task[PHistogram] =
+      registryRef >>= (_.modify(r => {
+        val name = Show[L].show(label.name)
+        val h = PHistogram
+          .build()
+          .name(name)
+          .labelNames(label.labels: _*)
+          .help(s"$name histogram")
+          .register(r)
+        (h, r)
       }))
   }
 }

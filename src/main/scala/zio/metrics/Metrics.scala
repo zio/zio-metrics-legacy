@@ -1,7 +1,6 @@
 package zio.metrics
 
 //import javax.management.openmbean.OpenType
-import zio.metrics.typeclasses._
 
 trait Metrics[F[_], Ctx] {
 

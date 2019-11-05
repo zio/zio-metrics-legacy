@@ -7,13 +7,11 @@ import io.prometheus.client.{ Counter => PCounter }
 trait PrometheusCounter extends Counter {
 
   val counter = new Counter.Service[PCounter] {
-    override def inc(pCounter: PCounter): Task[Unit] = {
+    override def inc(pCounter: PCounter): Task[Unit] =
       Task(pCounter.inc())
-    }
 
     override def inc(pCounter: PCounter, amount: Double): Task[Unit] =
       Task(pCounter.inc(amount))
-
   }
 }
 

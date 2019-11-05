@@ -1,4 +1,4 @@
-package zio.metrics.typeclasses
+package zio.metrics
 
 import scala.math.Numeric
 import scala.math.Numeric.Implicits._

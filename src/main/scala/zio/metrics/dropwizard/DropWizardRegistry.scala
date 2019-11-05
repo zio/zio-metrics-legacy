@@ -2,9 +2,11 @@ package zio.metrics.dropwizard
 
 import com.codahale.metrics.{ Metric, MetricFilter, MetricRegistry }
 import com.codahale.metrics.{ Counter => DWCounter, Gauge => DWGauge }
+import com.codahale.metrics.{ Histogram => DWHistogram }
+import com.codahale.metrics.MetricRegistry.MetricSupplier
+import com.codahale.metrics.UniformReservoir
 
-import zio.metrics.Registry
-import zio.metrics.typeclasses._
+import zio.metrics.{ Label, Registry, Show }
 import zio.{ Ref, Task, UIO }
 
 trait DropWizardRegistry extends Registry {
@@ -14,9 +16,9 @@ trait DropWizardRegistry extends Registry {
 
     override def getCurrent(): UIO[MetricRegistry] = registryRef >>= (_.get)
 
-    override def registerCounter[A: Show](label: Label[A]): Task[DWCounter] =
+    override def registerCounter[L: Show](label: Label[L]): Task[DWCounter] =
       registryRef >>= (_.modify(r => {
-        val name = Show[A].show(label.name)
+        val name = Show[L].show(label.name)
         (r.counter(name), r)
       }))
 
@@ -31,6 +33,16 @@ trait DropWizardRegistry extends Registry {
             gw.asInstanceOf[DWGauge[A]]
           } else gauges.get(gauges.firstKey()).asInstanceOf[DWGauge[A]]
         (r.register(name, dwgauge), r)
+      }))
+
+
+    override def registerHistogram[L: Show](label: Label[L]): Task[DWHistogram] =
+      registryRef >>= (_.modify(r => {
+        val name = Show[L].show(label.name)
+        val suppplier = new MetricSupplier[DWHistogram] {
+          override def newMetric(): DWHistogram = new DWHistogram(new UniformReservoir)
+        }
+        (r.histogram(name, suppplier), r)
       }))
   }
 }

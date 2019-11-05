@@ -4,28 +4,35 @@ import zio.{ RIO, Runtime }
 import zio.internal.PlatformLive
 import testz.{ assert, Harness, PureHarness }
 import com.codahale.metrics.{ MetricRegistry, Counter => DWCounter, Gauge => DWGauge }
-import zio.metrics.typeclasses._
+import com.codahale.metrics.{ Histogram => DWHistogram }
 import zio.metrics.dropwizard._
 
 object DropwizardTests {
 
   object counter {
-    def inc(dwCounter: DWCounter): RIO[DropWizardCounter, Unit] = RIO.accessM(_.counter.inc(dwCounter))
+    def inc(c: DWCounter): RIO[DropWizardCounter, Unit] = RIO.accessM(_.counter.inc(c))
 
-    def inc(dwCounter: DWCounter, amount: Double): RIO[DropWizardCounter, Unit] =
-      RIO.accessM(_.counter.inc(dwCounter, amount))
+    def inc(c: DWCounter, amount: Double): RIO[DropWizardCounter, Unit] =
+      RIO.accessM(_.counter.inc(c, amount))
   }
 
   object gauge {
-    def getValue(g: DWGauge[Long]): RIO[DropWizardGauge, Long] = {
-      RIO.accessM(r => for {
-        l <- r.gauge.getValue[Long](g)
-      } yield l)
-    }
+    def getValue(g: DWGauge[Long]): RIO[DropWizardGauge, Long] =
+      RIO.accessM(
+        r =>
+          for {
+            l <- r.gauge.getValue[Long](g)
+          } yield l
+      )
+  }
+
+  object histogram {
+    def update(h: DWHistogram, amount: Double): RIO[DropWizardHistogram, Unit] =
+      RIO.accessM(_.histogram.update(h, amount))
   }
 
   val rt = Runtime(
-    new DropWizardRegistry with DropWizardCounter with DropWizardGauge,
+    new DropWizardRegistry with DropWizardCounter with DropWizardGauge with DropWizardHistogram,
     PlatformLive.Default
   )
 
@@ -46,26 +53,40 @@ object DropwizardTests {
     r   <- dwr.registry.getCurrent()
   } yield r
 
+  val testHistogram: RIO[DropWizardRegistry with DropWizardHistogram, MetricRegistry] = for {
+    dwr <- RIO.environment[DropWizardRegistry]
+    h   <- dwr.registry.registerHistogram(Label("DropWizardHistogram", Array("test", "histogram")))
+    _   <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.update(h, _))
+    r   <- dwr.registry.getCurrent()
+  } yield r
+
   def tests[T](harness: Harness[T]): T = {
     import harness._
     section(
       test("counter increases by `inc` amount") { () =>
-        {
-          val name = MetricRegistry.name(DropwizardTests.getClass().getName(), Array.empty[String]: _*)
-          val r    = rt.unsafeRun(testCounter)
-          val cs   = r.getCounters()
-          val c    = if (cs.get(name) == null) 0 else cs.get(name).getCount
-          assert(c == 3d)
-        }
+        val name = MetricRegistry.name(DropwizardTests.getClass().getName(), Array.empty[String]: _*)
+        val r    = rt.unsafeRun(testCounter)
+        val cs   = r.getCounters()
+        val c    = if (cs.get(name) == null) 0 else cs.get(name).getCount
+        assert(c == 3d)
       },
       test("gauge increases in time") { () =>
-        {
-          val name = MetricRegistry.name("DropWizardGauge", Array.empty[String]: _*)
-          val r    = rt.unsafeRun(testGauge)
-          val gs   = r.getGauges()
-          val g    = if (gs.get(name) == null) Long.MaxValue else gs.get(name).getValue().asInstanceOf[Long]
-          assert(g < tester())
-        }
+        val name = MetricRegistry.name("DropWizardGauge", Array.empty[String]: _*)
+        val r    = rt.unsafeRun(testGauge)
+        val gs   = r.getGauges()
+        val g    = if (gs.get(name) == null) Long.MaxValue else gs.get(name).getValue().asInstanceOf[Long]
+        assert(g < tester())
+      },
+      test("histogram increases in time") { () =>
+        val name = MetricRegistry.name("DropWizardHistogram", Array.empty[String]: _*)
+        val r    = rt.unsafeRun(testHistogram)
+        val perc75th = r
+          .getHistograms()
+          .get(MetricRegistry.name(name))
+          .getSnapshot
+          .get75thPercentile
+
+        assert(perc75th == 53.5)
       }
     )
   }
