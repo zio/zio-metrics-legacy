@@ -7,7 +7,7 @@ import com.codahale.metrics.{ MetricRegistry, Counter => DWCounter, Gauge => DWG
 import com.codahale.metrics.{ Histogram => DWHistogram }
 import zio.metrics.dropwizard._
 
-object DropwizardTests {
+object DropWizardTests {
 
   object counter {
     def inc(c: DWCounter): RIO[DropWizardCounter, Unit] = RIO.accessM(_.counter.inc(c))
@@ -40,7 +40,7 @@ object DropwizardTests {
 
   val testCounter: RIO[DropWizardRegistry with DropWizardCounter, MetricRegistry] = for {
     dwr <- RIO.environment[DropWizardRegistry]
-    c   <- dwr.registry.registerCounter(Label(DropwizardTests.getClass(), Array("test", "counter")))
+    c   <- dwr.registry.registerCounter(Label(DropWizardTests.getClass(), Array("test", "counter")))
     _   <- counter.inc(c)
     _   <- counter.inc(c, 2.0)
     r   <- dwr.registry.getCurrent()
@@ -64,7 +64,7 @@ object DropwizardTests {
     import harness._
     section(
       test("counter increases by `inc` amount") { () =>
-        val name = MetricRegistry.name(DropwizardTests.getClass().getName(), Array.empty[String]: _*)
+        val name = MetricRegistry.name(DropWizardTests.getClass().getName(), Array.empty[String]: _*)
         val r    = rt.unsafeRun(testCounter)
         val cs   = r.getCounters()
         val c    = if (cs.get(name) == null) 0 else cs.get(name).getCount

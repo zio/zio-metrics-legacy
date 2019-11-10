@@ -7,6 +7,7 @@ import io.prometheus.client.{ Collector, CollectorRegistry }
 
 import zio.metrics.{ Show,  Label, Registry }
 import zio.{ Ref, Task, UIO }
+import io.prometheus.client.Summary
 
 trait PrometheusRegistry extends Registry {
 
@@ -52,6 +53,21 @@ trait PrometheusRegistry extends Registry {
           .register(r)
         (h, r)
       }))
+
+    type PTimer = Summary.Timer
+
+    override def registerSummary[L: Show](label: Label[L]): Task[Summary] =
+      registryRef >>= (_.modify(r => {
+        val name = Show[L].show(label.name)
+        val s = Summary
+          .build()
+          .name(name)
+          .labelNames(label.labels: _*)
+          .help(s"$name timer")
+          .register(r)
+        (s, r)
+      }))
+
   }
 }
 

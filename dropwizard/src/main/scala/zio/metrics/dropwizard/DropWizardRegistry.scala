@@ -2,12 +2,13 @@ package zio.metrics.dropwizard
 
 import com.codahale.metrics.{ Metric, MetricFilter, MetricRegistry }
 import com.codahale.metrics.{ Counter => DWCounter, Gauge => DWGauge }
-import com.codahale.metrics.{ Histogram => DWHistogram }
+import com.codahale.metrics.{ Histogram => DWHistogram, Timer }
 import com.codahale.metrics.MetricRegistry.MetricSupplier
 import com.codahale.metrics.UniformReservoir
 
 import zio.metrics.{ Label, Registry, Show }
 import zio.{ Ref, Task, UIO }
+import com.codahale.metrics.Meter
 
 trait DropWizardRegistry extends Registry {
 
@@ -43,6 +44,18 @@ trait DropWizardRegistry extends Registry {
           override def newMetric(): DWHistogram = new DWHistogram(new UniformReservoir)
         }
         (r.histogram(name, suppplier), r)
+      }))
+
+    override def registerTimer[L: Show](label: Label[L]): Task[Timer] =
+      registryRef >>= (_.modify(r => {
+        val name = Show[L].show(label.name)
+        (r.timer(name), r)
+      }))
+
+    override def registerMeter[L: Show](label: Label[L]): Task[Meter] =
+      registryRef >>= (_.modify(r => {
+        val name  = Show[L].show(label.name)
+        (r.meter(name), r)
       }))
   }
 }
