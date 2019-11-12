@@ -4,7 +4,7 @@ import zio.{ RIO, Runtime }
 import zio.internal.PlatformLive
 import testz.{ assert, Harness, PureHarness }
 import com.codahale.metrics.{ MetricRegistry, Counter => DWCounter, Gauge => DWGauge }
-import com.codahale.metrics.{ Histogram => DWHistogram }
+import com.codahale.metrics.{ Histogram => DWHistogram, Meter => DWMeter }
 import zio.metrics.dropwizard._
 
 object DropWizardTests {
@@ -31,8 +31,14 @@ object DropWizardTests {
       RIO.accessM(_.histogram.update(h, amount))
   }
 
+  object meter {
+    def mark(m: DWMeter, amount: Long): RIO[DropWizardMeter, Unit] =
+      RIO.accessM(_.meter.mark(m, amount))
+  }
+
   val rt = Runtime(
-    new DropWizardRegistry with DropWizardCounter with DropWizardGauge with DropWizardHistogram,
+    new DropWizardRegistry with DropWizardCounter with DropWizardGauge with DropWizardHistogram
+      with DropWizardMeter,
     PlatformLive.Default
   )
 
@@ -57,6 +63,13 @@ object DropWizardTests {
     dwr <- RIO.environment[DropWizardRegistry]
     h   <- dwr.registry.registerHistogram(Label("DropWizardHistogram", Array("test", "histogram")))
     _   <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.update(h, _))
+    r   <- dwr.registry.getCurrent()
+  } yield r
+
+  val testMeter: RIO[DropWizardRegistry with DropWizardMeter, MetricRegistry] = for {
+    dwr <- RIO.environment[DropWizardRegistry]
+    m   <- dwr.registry.registerMeter(Label("DropWizardMeter", Array("test", "meter")))
+    _   <- RIO.foreach(Seq(1L, 2L, 3L, 4L, 5L))(meter.mark(m, _))
     r   <- dwr.registry.getCurrent()
   } yield r
 
@@ -87,6 +100,21 @@ object DropWizardTests {
           .get75thPercentile
 
         assert(perc75th == 53.5)
+      },
+      test("Meter count and mean rate are within bounds") { () =>
+        val name = MetricRegistry.name("DropWizardMeter", Array.empty[String]: _*)
+        val r   = rt.unsafeRun(testMeter)
+        val count = r
+          .getMeters()
+          .get(MetricRegistry.name(name))
+          .getCount
+
+        val meanRate = r
+          .getMeters()
+          .get(MetricRegistry.name(name))
+          .getMeanRate
+
+        assert(count == 15 && meanRate > 600 && meanRate < 2000)
       }
     )
   }
