@@ -3,42 +3,14 @@ package zio.metrics
 import zio.{ RIO, Runtime }
 import zio.internal.PlatformLive
 import testz.{ assert, Harness, PureHarness }
-import com.codahale.metrics.{ MetricRegistry, Counter => DWCounter, Gauge => DWGauge }
-import com.codahale.metrics.{ Histogram => DWHistogram, Meter => DWMeter }
+import com.codahale.metrics.{ MetricRegistry}
 import zio.metrics.dropwizard._
 
 object DropWizardTests {
 
-  object counter {
-    def inc(c: DWCounter): RIO[DropWizardCounter, Unit] = RIO.accessM(_.counter.inc(c))
-
-    def inc(c: DWCounter, amount: Double): RIO[DropWizardCounter, Unit] =
-      RIO.accessM(_.counter.inc(c, amount))
-  }
-
-  object gauge {
-    def getValue(g: DWGauge[Long]): RIO[DropWizardGauge, Long] =
-      RIO.accessM(
-        r =>
-          for {
-            l <- r.gauge.getValue[Long](g)
-          } yield l
-      )
-  }
-
-  object histogram {
-    def update(h: DWHistogram, amount: Double): RIO[DropWizardHistogram, Unit] =
-      RIO.accessM(_.histogram.update(h, amount))
-  }
-
-  object meter {
-    def mark(m: DWMeter, amount: Long): RIO[DropWizardMeter, Unit] =
-      RIO.accessM(_.meter.mark(m, amount))
-  }
-
   val rt = Runtime(
     new DropWizardRegistry with DropWizardCounter with DropWizardGauge with DropWizardHistogram
-      with DropWizardMeter,
+      with DropWizardMeter with DropWizardTimer,
     PlatformLive.Default
   )
 
@@ -72,6 +44,20 @@ object DropWizardTests {
     _   <- RIO.foreach(Seq(1L, 2L, 3L, 4L, 5L))(meter.mark(m, _))
     r   <- dwr.registry.getCurrent()
   } yield r
+
+  val testTimer: RIO[DropWizardRegistry with DropWizardTimer, (MetricRegistry, List[Long])] = for {
+    dwr <- RIO.environment[DropWizardRegistry]
+    r   <- dwr.registry.getCurrent()
+    t   <- dwr.registry.registerTimer(Label("DropWizardTimer", Array("test", "timer")))
+    ctx <- timer.start(t)
+    l <- RIO.foreach(
+          List(
+            Thread.sleep(1000L),
+            Thread.sleep(1400L),
+            Thread.sleep(1200L)
+          )
+        )(_ => timer.stop(ctx))
+ } yield (r, l)
 
   def tests[T](harness: Harness[T]): T = {
     import harness._
@@ -115,7 +101,29 @@ object DropWizardTests {
           .getMeanRate
 
         assert(count == 15 && meanRate > 600 && meanRate < 2000)
-      }
+      },
+      test("Timer called 3 times") { () =>
+        val name = MetricRegistry.name("DropWizardTimer", Array.empty[String]: _*)
+        val r   = rt.unsafeRun(testTimer)
+        val count = r._1
+          .getTimers()
+          .get(MetricRegistry.name(name))
+          .getCount
+
+        println(r._2)
+
+        assert(count == r._2.size && count == 3)
+      },
+      test("Timer mean rate for 6 calls within bounds") { () =>
+        val name = MetricRegistry.name("DropWizardTimer", Array.empty[String]: _*)
+        val r   = rt.unsafeRun(testTimer)
+        val meanRate = r._1
+          .getTimers()
+          .get(MetricRegistry.name(name))
+          .getMeanRate
+
+        assert(meanRate > 0.78 && meanRate < 0.84)
+      },
     )
   }
 
