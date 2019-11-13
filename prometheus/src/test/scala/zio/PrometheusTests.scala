@@ -4,8 +4,7 @@ import java.util
 
 import zio.{ RIO, Runtime }
 import testz.{ assert, Harness, PureHarness, Result }
-import io.prometheus.client.{ CollectorRegistry, Counter => PCounter}
-import io.prometheus.client.{ Histogram => PHistogram }
+import io.prometheus.client.{ CollectorRegistry }
 import zio.internal.PlatformLive
 import zio.metrics.prometheus._
 
@@ -14,23 +13,9 @@ import io.prometheus.client.exporter.common.TextFormat
 
 object PrometheusTests {
 
-  object counter {
-    def inc(pCounter: PCounter): RIO[PrometheusCounter, Unit] = RIO.accessM(_.counter.inc(pCounter))
-
-    def inc(pCounter: PCounter, amount: Double): RIO[PrometheusCounter, Unit] =
-      RIO.accessM(_.counter.inc(pCounter, amount))
-  }
-
-  object histogram {
-    def update(h: PHistogram, amount: Double): RIO[PrometheusHistogram, Unit] =
-      RIO.accessM(_.histogram.observe(h, amount))
-
-    def time(h: PHistogram, f: () => Unit): RIO[PrometheusHistogram, Double] =
-      RIO.accessM(_.histogram.time(h, f))
-  }
-
   val rt = Runtime(
-    new PrometheusRegistry with PrometheusCounter with PrometheusGauge with PrometheusHistogram,
+    new PrometheusRegistry with PrometheusCounter with PrometheusGauge
+        with PrometheusHistogram with PrometheusSummary,
     PlatformLive.Default
   )
 
@@ -52,18 +37,17 @@ object PrometheusTests {
 
   val testGauge: RIO[PrometheusRegistry with PrometheusGauge, (CollectorRegistry, Double)] = for {
     pr    <- RIO.environment[PrometheusRegistry]
-    gauge <- RIO.environment[PrometheusGauge]
     r     <- pr.registry.getCurrent()
     g     <- pr.registry.registerGauge(Label("simple_gauge", Array.empty[String]), tester)
-    _     <- gauge.gauge.inc(g)
-    _     <- gauge.gauge.inc(g, 2.0)
-    d     <- gauge.gauge.getValue(g)
+    _     <- gauge.inc(g)
+    _     <- gauge.inc(g, 2.0)
+    d     <- gauge.getValue(g)
   } yield (r, d)
 
   val testHistogram: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
     h  <- pr.registry.registerHistogram(Label("simple_histogram", Array.empty[String]))
-    _  <-  RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.update(h, _))
+    _  <-  RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.observe(h, _))
     r  <- pr.registry.getCurrent()
   } yield r
 
@@ -71,6 +55,13 @@ object PrometheusTests {
     pr <- RIO.environment[PrometheusRegistry]
     h  <- pr.registry.registerHistogram(Label("simple_histogram_timer", Array.empty[String]))
     _  <- histogram.time(h, () => Thread.sleep(2000))
+    r  <- pr.registry.getCurrent()
+  } yield r
+
+  val testSummary: RIO[PrometheusRegistry with PrometheusSummary, CollectorRegistry] = for {
+    pr <- RIO.environment[PrometheusRegistry]
+    s  <- pr.registry.registerSummary(Label("simple_summary", Array.empty[String]), List.empty[(Double, Double)])
+    _  <-  RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(summary.observe(s, _))
     r  <- pr.registry.getCurrent()
   } yield r
 
@@ -103,7 +94,7 @@ object PrometheusTests {
         assert(a1 == r._2)
         assert(a1 == 3.0)
       },
-      test("histogram returns latest value") { () =>
+      test("histogram count and sum are as expected") { () =>
         val set: util.Set[String] = new util.HashSet[String]()
         set.add("simple_histogram_count")
         set.add("simple_histogram_sum")
@@ -124,6 +115,16 @@ object PrometheusTests {
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
         Result.combine(assert(count == 1.0), assert(sum >= 2.0 && sum <= 3.0))
+      },
+      test("summary count and sum are as expected") { () =>
+        val set: util.Set[String] = new util.HashSet[String]()
+        set.add("simple_summary_count")
+        set.add("simple_summary_sum")
+
+        val r = rt.unsafeRun(testSummary)
+        val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
+        val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
+        Result.combine(assert(count == 5.0), assert(sum == 163.3))
       }
     )
   }

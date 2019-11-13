@@ -55,16 +55,19 @@ trait PrometheusRegistry extends Registry {
       }))
 
     type PTimer = Summary.Timer
+    type Percentile = Double
+    type Tolerance = Double
 
-    override def registerSummary[L: Show](label: Label[L]): Task[Summary] =
+    override def registerSummary[L: Show](label: Label[L], quantiles: List[(Percentile, Tolerance)]): Task[Summary] =
       registryRef >>= (_.modify(r => {
         val name = Show[L].show(label.name)
-        val s = Summary
+        val sb = Summary
           .build()
           .name(name)
           .labelNames(label.labels: _*)
           .help(s"$name timer")
-          .register(r)
+
+        val s = quantiles.foldLeft(sb)((acc, c) => acc.quantile(c._1, c._2)).register(r)
         (s, r)
       }))
 
