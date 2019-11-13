@@ -43,7 +43,7 @@ lazy val common = project
 lazy val dropwizard = project
   .settings(
     name := "dropwizard",
-    settings,
+    stdSettings("metrics-dropwizard") ++ settings,
     libraryDependencies ++= commonDependencies ++ Seq(
       "io.dropwizard.metrics" % "metrics-core"         % "4.0.1",
       "io.dropwizard.metrics" % "metrics-healthchecks" % "4.0.1",
@@ -55,7 +55,7 @@ lazy val dropwizard = project
 lazy val prometheus = project
   .settings(
     name := "prometheus",
-    settings,
+    stdSettings("metrics-prometheus") ++ settings,
     libraryDependencies ++= commonDependencies ++ Seq(
       "io.prometheus" % "simpleclient"         % "0.7.0",
       "io.prometheus" % "simpleclient_hotspot" % "0.7.0",
@@ -71,7 +71,7 @@ lazy val commonDependencies = Seq(
   "org.scalaz" % "testz-stdlib_2.12" % "0.0.5"
 )
 
-lazy val settings = stdSettings("metrics") ++ Seq(
+lazy val settings = Seq(
   scalacOptions ++= (CrossVersion.partialVersion(scalaBinaryVersion.value) match {
     case Some((2, 11)) => Seq("-Ypartial-unification", "-Ywarn-value-discard", "-target:jvm-1.8")
     case _             => Seq("-Ypartial-unification", "-Ywarn-value-discard")
