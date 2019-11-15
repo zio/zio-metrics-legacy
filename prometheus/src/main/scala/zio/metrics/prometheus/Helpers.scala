@@ -70,28 +70,46 @@ object gauge {
 
 object histogram {
   def observe(h: PHistogram, amount: Double): RIO[PrometheusHistogram, Unit] =
-    RIO.accessM(_.histogram.observe(h, amount))
+    RIO.accessM(_.histogram.observe(h, amount, Array.empty[String]))
 
   def startTimer(h: PHistogram): RIO[PrometheusHistogram, PHistogram.Timer] =
-    RIO.accessM(_.histogram.startTimer(h))
+    RIO.accessM(_.histogram.startTimer(h, Array.empty[String]))
 
   def observeDuration(timer: PHistogram.Timer): RIO[PrometheusHistogram, Double] =
     RIO.accessM(_.histogram.observeDuration(timer))
 
   def time(h: PHistogram, f: () => Unit): RIO[PrometheusHistogram, Double] =
-    RIO.accessM(_.histogram.time(h, f))
+    RIO.accessM(_.histogram.time(h, f, Array.empty[String]))
+
+  def observe(h: PHistogram, amount: Double, labelNames: Array[String]): RIO[PrometheusHistogram, Unit] =
+    RIO.accessM(_.histogram.observe(h, amount, labelNames))
+
+  def startTimer(h: PHistogram, labelNames: Array[String]): RIO[PrometheusHistogram, PHistogram.Timer] =
+    RIO.accessM(_.histogram.startTimer(h, labelNames))
+
+  def time(h: PHistogram, f: () => Unit, labelNames: Array[String]): RIO[PrometheusHistogram, Double] =
+    RIO.accessM(_.histogram.time(h, f, labelNames))
 }
 
 object summary {
   def observe(s: PSummary, amount: Double): RIO[PrometheusSummary, Unit] =
-    RIO.accessM(_.summary.observe(s, amount))
+    RIO.accessM(_.summary.observe(s, amount, Array.empty[String]))
 
   def startTimer(s: PSummary): RIO[PrometheusSummary, PSummary.Timer] =
-    RIO.accessM(_.summary.startTimer(s))
+    RIO.accessM(_.summary.startTimer(s, Array.empty[String]))
 
   def observeDuration(timer: PSummary.Timer): RIO[PrometheusSummary, Double] =
     RIO.accessM(_.summary.observeDuration(timer))
 
   def time(s: PSummary, f: () => Unit): RIO[PrometheusSummary, Double] =
-    RIO.accessM(_.summary.time(s, f))
+    RIO.accessM(_.summary.time(s, f, Array.empty[String]))
+
+  def observe(s: PSummary, amount: Double, labelNames: Array[String]): RIO[PrometheusSummary, Unit] =
+    RIO.accessM(_.summary.observe(s, amount, labelNames))
+
+  def startTimer(s: PSummary, labelNames: Array[String]): RIO[PrometheusSummary, PSummary.Timer] =
+    RIO.accessM(_.summary.startTimer(s, labelNames))
+
+  def time(s: PSummary, f: () => Unit, labelNames: Array[String]): RIO[PrometheusSummary, Double] =
+    RIO.accessM(_.summary.time(s, f, labelNames))
 }

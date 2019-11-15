@@ -46,22 +46,22 @@ object PrometheusLabelsTests {
 
   val testHistogram: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
-    h  <- pr.registry.registerHistogram(Label("simple_histogram", Array.empty[String]))
-    _  <-  RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.observe(h, _))
+    h  <- pr.registry.registerHistogram(Label("simple_histogram", Array("method")))
+    _  <-  RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.observe(h, _, Array("get")))
     r  <- pr.registry.getCurrent()
   } yield r
 
   val testHistogramTimer: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
-    h  <- pr.registry.registerHistogram(Label("simple_histogram_timer", Array.empty[String]))
-    _  <- histogram.time(h, () => Thread.sleep(2000))
+    h  <- pr.registry.registerHistogram(Label("simple_histogram_timer", Array("method")))
+    _  <- histogram.time(h, () => Thread.sleep(2000), Array("post"))
     r  <- pr.registry.getCurrent()
   } yield r
 
   val testSummary: RIO[PrometheusRegistry with PrometheusSummary, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
-    s  <- pr.registry.registerSummary(Label("simple_summary", Array.empty[String]), List.empty[(Double, Double)])
-    _  <-  RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(summary.observe(s, _))
+    s  <- pr.registry.registerSummary(Label("simple_summary", Array("method")), List((0.5, 0.05), (0.9, 0.01)))
+    _  <-  RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(summary.observe(s, _, Array("put")))
     r  <- pr.registry.getCurrent()
   } yield r
 
@@ -110,8 +110,6 @@ object PrometheusLabelsTests {
         set.add("simple_histogram_timer_sum")
 
         val r = rt.unsafeRun(testHistogramTimer)
-        println(s"registry: ${write004(r)}")
-
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
         Result.combine(assert(count == 1.0), assert(sum >= 2.0 && sum <= 3.0))
@@ -122,6 +120,8 @@ object PrometheusLabelsTests {
         set.add("simple_summary_sum")
 
         val r = rt.unsafeRun(testSummary)
+        println(s"registry: ${write004(r)}")
+
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
         Result.combine(assert(count == 5.0), assert(sum == 163.3))

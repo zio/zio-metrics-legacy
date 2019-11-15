@@ -8,12 +8,12 @@ trait Summary {
 
 object Summary {
   trait Service[-R,T] {
-    def observe(s: R, amount: Double): Task[Unit]
+    def observe(s: R, amount: Double, labelNames: Array[String]): Task[Unit]
 
-    def startTimer(s: R): Task[T]
+    def startTimer(s: R, labelNames: Array[String]): Task[T]
 
     def observeDuration(timer: T): Task[Double]
 
-    def time(s: R, f: () => Unit): Task[Double]
+    def time(s: R, f: () => Unit, labelNames: Array[String]): Task[Double]
   }
 }
