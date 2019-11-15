@@ -8,9 +8,9 @@ trait Counter {
 
 object Counter {
   trait Service[-C] {
-    def inc(counter: C): Task[Unit]
+    def inc(counter: C, labelNames: Array[String]): Task[Unit]
 
-    def inc(counter: C, amount: Double): Task[Unit]
+    def inc(counter: C, amount: Double, labelNames: Array[String]): Task[Unit]
   }
 }
 

@@ -38,7 +38,7 @@ object PrometheusTests {
   val testGauge: RIO[PrometheusRegistry with PrometheusGauge, (CollectorRegistry, Double)] = for {
     pr    <- RIO.environment[PrometheusRegistry]
     r     <- pr.registry.getCurrent()
-    g     <- pr.registry.registerGauge(Label("simple_gauge", Array.empty[String]), tester)
+    g     <- pr.registry.registerGauge(Label("simple_gauge", Array.empty[String]))
     _     <- gauge.inc(g)
     _     <- gauge.inc(g, 2.0)
     d     <- gauge.getValue(g)
