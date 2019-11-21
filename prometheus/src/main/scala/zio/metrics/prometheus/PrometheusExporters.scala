@@ -33,7 +33,7 @@ trait PrometheusExporters extends Exporters {
       user: Option[String],
       password: Option[String],
       httpConnectionFactory: Option[HttpConnectionFactory]
-    ): Task[Unit] = {
+    ): Task[Unit] =
       Task {
         val pg = new PushGateway(s"$host:$port")
 
@@ -49,7 +49,6 @@ trait PrometheusExporters extends Exporters {
 
         pg.pushAdd(r, jobName)
       }
-    }
 
     override def write004(r: CollectorRegistry): Task[String] =
       Task {

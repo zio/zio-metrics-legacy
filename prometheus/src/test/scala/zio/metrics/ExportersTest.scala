@@ -8,10 +8,10 @@ import io.prometheus.client.CollectorRegistry
 object ExportersTest {
 
   val rt = Runtime(
-        new PrometheusRegistry with PrometheusCounter with PrometheusGauge with PrometheusHistogram
-            with PrometheusSummary with PrometheusExporters,
-        PlatformLive.Default
-      )
+    new PrometheusRegistry with PrometheusCounter with PrometheusGauge with PrometheusHistogram with PrometheusSummary
+    with PrometheusExporters,
+    PlatformLive.Default
+  )
 
   val tests: RIO[
     PrometheusRegistry with PrometheusCounter with PrometheusHistogram with PrometheusExporters,
