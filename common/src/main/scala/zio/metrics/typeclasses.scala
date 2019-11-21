@@ -24,7 +24,7 @@ object Show {
   }
 
   implicit def showClass[A]: Show[Class[A]] = new Show[Class[A]] {
-    override def show(f: Class[A]): String = f.getName()
+    override def show(f: Class[A]): String = f.getName().replaceAll("\\.","_").replace("$","")
   }
 }
 

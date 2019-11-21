@@ -16,7 +16,7 @@ trait PrometheusExporters extends Exporters {
   val exporters = new Exporters.Service[CollectorRegistry] {
     override def http(r: CollectorRegistry, port: Int): zio.Task[HTTPServer] =
       Task {
-        new HTTPServer(new InetSocketAddress(1234), r)
+        new HTTPServer(new InetSocketAddress(port), r)
       }
 
     override def graphite(r: CollectorRegistry, host: String, port: Int, intervalSeconds: Int): Task[Thread] =

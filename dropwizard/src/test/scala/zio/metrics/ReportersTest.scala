@@ -28,7 +28,7 @@ object ReportersTests extends App {
   )
 
   val tests: RIO[
-    DropWizardRegistry with DropWizardCounter with DropWizardGauge with DropWizardHistogram with DropWizardMeter with DropWizardTimer with DropWizardReporters,
+    DropWizardRegistry with DropWizardCounter with DropWizardTimer with DropWizardReporters,
     DropWizardRegistry
   ] =
     for {
