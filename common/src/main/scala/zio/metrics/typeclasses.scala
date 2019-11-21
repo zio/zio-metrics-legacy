@@ -15,6 +15,9 @@ object Show {
 
   def show[A: Show](a: A): String = Show[A].show(a)
 
+  def fixClassName[A](c: Class[A]): String =
+    c.getName().replaceAll("\\.","_").replace("$","")
+
   implicit class ShowSyntax[A: Show](a: A) {
     def show() = Show[A].show(a)
   }
@@ -24,7 +27,7 @@ object Show {
   }
 
   implicit def showClass[A]: Show[Class[A]] = new Show[Class[A]] {
-    override def show(f: Class[A]): String = f.getName().replaceAll("\\.","_").replace("$","")
+    override def show(f: Class[A]): String = fixClassName(f)
   }
 }
 

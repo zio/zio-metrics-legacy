@@ -64,7 +64,7 @@ object DropWizardTests {
 
     section(
       test("counter increases by `inc` amount") { () =>
-        val name = MetricRegistry.name(DropWizardTests.getClass().getName(), Array.empty[String]: _*)
+        val name = MetricRegistry.name(Show.fixClassName(DropWizardTests.getClass()), Array.empty[String]: _*)
         val r    = rt.unsafeRun(testCounter)
         val cs   = r.getCounters()
         val c    = if (cs.get(name) == null) 0 else cs.get(name).getCount
