@@ -90,7 +90,7 @@ lazy val http4s = Seq(
   "org.http4s"    %% "http4s-argonaut"     % http4sVersion,
   "org.http4s"    %% "http4s-blaze-server" % http4sVersion,
   "org.http4s"    %% "http4s-dsl"          % http4sVersion,
-  "org.typelevel" %% "cats-effect"         % "2.0.0" % Optional,
+  "org.typelevel" %% "cats-effect"         % "2.0.0", // % Optional,
   "io.argonaut"   %% "argonaut"            % "6.2.2",
   "io.argonaut"   %% "argonaut-cats"       % "6.2.2"
 )
