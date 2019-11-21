@@ -60,4 +60,14 @@ trait DropWizardRegistry extends Registry {
   }
 }
 
-object DropWizardRegistry extends DropWizardRegistry
+object DropWizardRegistry extends DropWizardRegistry {
+  def makeFilter(filter: Option[String]): MetricFilter = filter match {
+    case Some(s) =>
+      s.charAt(0) match {
+        case '+' => MetricFilter.startsWith(s.substring(1))
+        case '-' => MetricFilter.endsWith(s.substring(1))
+        case _   => MetricFilter.contains(s)
+      }
+    case _ => MetricFilter.ALL
+  }
+}

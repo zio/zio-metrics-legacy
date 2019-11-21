@@ -19,11 +19,11 @@ object Show {
     def show() = Show[A].show(a)
   }
 
-  implicit val showString = new Show[String] {
+  implicit val showString: Show[String] = new Show[String] {
     def show(value: String): String = value
   }
 
-  implicit def showClass[A] = new Show[Class[A]] {
+  implicit def showClass[A]: Show[Class[A]] = new Show[Class[A]] {
     override def show(f: Class[A]): String = f.getName()
   }
 }
@@ -43,11 +43,11 @@ object Semigroup {
     def |+|(y: A): A     = self.combine(y)
   }
 
-  implicit def numericAddSG[N: Numeric[?]] = new Semigroup[N] {
+  implicit def numericAddSG[N: Numeric[?]]: Semigroup[N] = new Semigroup[N] {
     def combine(x: N, y: N): N = x + y
   }
 
-  implicit val strConcatSG = new Semigroup[String] {
+  implicit val strConcatSG: Semigroup[String] = new Semigroup[String] {
     def combine(x: String, y: String): String = x + y
   }
 }

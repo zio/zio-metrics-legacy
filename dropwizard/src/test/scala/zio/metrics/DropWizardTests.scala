@@ -61,6 +61,7 @@ object DropWizardTests {
 
   def tests[T](harness: Harness[T]): T = {
     import harness._
+
     section(
       test("counter increases by `inc` amount") { () =>
         val name = MetricRegistry.name(DropWizardTests.getClass().getName(), Array.empty[String]: _*)
@@ -100,7 +101,8 @@ object DropWizardTests {
           .get(MetricRegistry.name(name))
           .getMeanRate
 
-        assert(count == 15 && meanRate > 600 && meanRate < 2000)
+        println(s"count: $count, meanRate: $meanRate")
+        assert(count == 15 && meanRate > 300 && meanRate < 2000)
       },
       test("Timer called 3 times") { () =>
         val name = MetricRegistry.name("DropWizardTimer", Array.empty[String]: _*)
@@ -123,7 +125,7 @@ object DropWizardTests {
           .getMeanRate
 
         assert(meanRate > 0.78 && meanRate < 0.84)
-      },
+      }
     )
   }
 

@@ -4,6 +4,8 @@ import zio.RIO
 import com.codahale.metrics.{ Counter => DWCounter, Gauge => DWGauge }
 import com.codahale.metrics.{ Histogram => DWHistogram, Meter => DWMeter }
 import com.codahale.metrics.{ Timer => DWTimer }
+import com.codahale.metrics.MetricRegistry
+import _root_.java.util.concurrent.TimeUnit
 
 object counter {
   def inc(c: DWCounter): RIO[DropWizardCounter, Unit] = RIO.accessM(_.counter.inc(c))
@@ -38,4 +40,21 @@ object timer {
 
   def stop(ctx: DWTimer.Context): RIO[DropWizardTimer, Long] =
     RIO.accessM(_.timer.stop(ctx))
+}
+
+object reporters {
+  def jmx(r: MetricRegistry): RIO[DropWizardReporters, Unit] =
+    RIO.accessM(
+      dwr =>
+        for {
+          cr <- dwr.reporter.jmx(r)
+        } yield cr.start()
+    )
+
+  def console(r: MetricRegistry, duration: Long, unit: TimeUnit): RIO[DropWizardReporters, Unit] =
+    RIO.accessM(
+      dwr => for {
+        cr <- dwr.reporter.console(r)
+      } yield cr.start(duration, unit)
+    )
 }
