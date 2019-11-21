@@ -8,22 +8,13 @@ import io.prometheus.client.{ CollectorRegistry }
 import zio.internal.PlatformLive
 import zio.metrics.prometheus._
 
-import java.io.StringWriter
-import io.prometheus.client.exporter.common.TextFormat
-
 object PrometheusTests {
 
   val rt = Runtime(
-    new PrometheusRegistry with PrometheusCounter with PrometheusGauge
-        with PrometheusHistogram with PrometheusSummary,
+    new PrometheusRegistry with PrometheusCounter with PrometheusGauge with PrometheusHistogram
+        with PrometheusSummary with PrometheusExporters,
     PlatformLive.Default
   )
-
-  def write004(r: CollectorRegistry): String = {
-    val writer = new StringWriter
-    TextFormat.write004(writer, r.metricFamilySamples)
-    writer.toString
-  }
 
   val tester = () => System.nanoTime()
 
@@ -36,18 +27,18 @@ object PrometheusTests {
   } yield r
 
   val testGauge: RIO[PrometheusRegistry with PrometheusGauge, (CollectorRegistry, Double)] = for {
-    pr    <- RIO.environment[PrometheusRegistry]
-    r     <- pr.registry.getCurrent()
-    g     <- pr.registry.registerGauge(Label("simple_gauge", Array.empty[String]))
-    _     <- gauge.inc(g)
-    _     <- gauge.inc(g, 2.0)
-    d     <- gauge.getValue(g)
+    pr <- RIO.environment[PrometheusRegistry]
+    r  <- pr.registry.getCurrent()
+    g  <- pr.registry.registerGauge(Label("simple_gauge", Array.empty[String]))
+    _  <- gauge.inc(g)
+    _  <- gauge.inc(g, 2.0)
+    d  <- gauge.getValue(g)
   } yield (r, d)
 
   val testHistogram: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
     h  <- pr.registry.registerHistogram(Label("simple_histogram", Array.empty[String]))
-    _  <-  RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.observe(h, _))
+    _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.observe(h, _))
     r  <- pr.registry.getCurrent()
   } yield r
 
@@ -61,7 +52,7 @@ object PrometheusTests {
   val testSummary: RIO[PrometheusRegistry with PrometheusSummary, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
     s  <- pr.registry.registerSummary(Label("simple_summary", Array.empty[String]), List.empty[(Double, Double)])
-    _  <-  RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(summary.observe(s, _))
+    _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(summary.observe(s, _))
     r  <- pr.registry.getCurrent()
   } yield r
 
@@ -99,7 +90,7 @@ object PrometheusTests {
         set.add("simple_histogram_count")
         set.add("simple_histogram_sum")
 
-        val r = rt.unsafeRun(testHistogram)
+        val r     = rt.unsafeRun(testHistogram)
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
         Result.combine(assert(count == 5.0), assert(sum == 163.3))
@@ -109,8 +100,7 @@ object PrometheusTests {
         set.add("simple_histogram_timer_count")
         set.add("simple_histogram_timer_sum")
 
-        val r = rt.unsafeRun(testHistogramTimer)
-        println(s"registry: ${write004(r)}")
+        val r = rt.unsafeRun(testHistogramTimer.tap(r => exporters.write004(r).map(println)))
 
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
@@ -121,7 +111,7 @@ object PrometheusTests {
         set.add("simple_summary_count")
         set.add("simple_summary_sum")
 
-        val r = rt.unsafeRun(testSummary)
+        val r     = rt.unsafeRun(testSummary)
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
         Result.combine(assert(count == 5.0), assert(sum == 163.3))

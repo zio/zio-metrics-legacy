@@ -7,7 +7,7 @@ trait Histogram {
 }
 
 object Histogram {
-  trait Service[-R,T] {
+  trait Service[-R, T] {
     def observe(h: R, amount: Double, labelNames: Array[String]): Task[Unit]
 
     def startTimer(h: R, labelNames: Array[String]): Task[T]

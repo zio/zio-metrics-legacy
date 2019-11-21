@@ -2,7 +2,7 @@ package zio.metrics.dropwizard
 
 import zio.Task
 import zio.metrics.Timer
-import com.codahale.metrics.{Timer => DWTimer}
+import com.codahale.metrics.{ Timer => DWTimer }
 
 trait DropWizardTimer extends Timer {
 

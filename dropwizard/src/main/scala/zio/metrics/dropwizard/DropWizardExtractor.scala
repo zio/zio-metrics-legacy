@@ -18,10 +18,11 @@ object DropWizardExtractor {
             val metricFilter = DropWizardRegistry.makeFilter(filter)
             for {
               r <- registry.registry.getCurrent()
-            } yield r.getCounters(metricFilter)
-              .asScala
-              .map(entry => jSingleObject(entry._1, jNumber(entry._2.getCount)))
-              .toList
+            } yield
+              r.getCounters(metricFilter)
+                .asScala
+                .map(entry => jSingleObject(entry._1, jNumber(entry._2.getCount)))
+                .toList
           }
 
       override val extractGauges: DropWizardRegistry => Filter => Task[List[Json]] =
@@ -30,10 +31,11 @@ object DropWizardExtractor {
             val metricFilter = DropWizardRegistry.makeFilter(filter)
             for {
               r <- registry.registry.getCurrent()
-            } yield r.getGauges(metricFilter)
-              .asScala
-              .map(entry => jSingleObject(entry._1, jString(entry._2.getValue.toString)))
-              .toList
+            } yield
+              r.getGauges(metricFilter)
+                .asScala
+                .map(entry => jSingleObject(entry._1, jString(entry._2.getValue.toString)))
+                .toList
           }
 
       def extractSnapshot(name: String, snapshot: Snapshot): Json =
@@ -56,18 +58,19 @@ object DropWizardExtractor {
             val metricFilter = DropWizardRegistry.makeFilter(filter)
             for {
               r <- registry.registry.getCurrent()
-            } yield r.getTimers(metricFilter)
-              .asScala
-              .map(entry => {
-                Json(
-                  s"${entry._1}_count"          -> jNumber(entry._2.getCount),
-                  s"${entry._1}_meanRate"       -> jNumber(entry._2.getMeanRate),
-                  s"${entry._1}_oneMinRate"     -> jNumber(entry._2.getOneMinuteRate),
-                  s"${entry._1}_fiveMinRate"    -> jNumber(entry._2.getFiveMinuteRate),
-                  s"${entry._1}_fifteenMinRate" -> jNumber(entry._2.getFifteenMinuteRate)
-                ).deepmerge(extractSnapshot(entry._1, entry._2.getSnapshot))
-              })
-              .toList
+            } yield
+              r.getTimers(metricFilter)
+                .asScala
+                .map(entry => {
+                  Json(
+                    s"${entry._1}_count"          -> jNumber(entry._2.getCount),
+                    s"${entry._1}_meanRate"       -> jNumber(entry._2.getMeanRate),
+                    s"${entry._1}_oneMinRate"     -> jNumber(entry._2.getOneMinuteRate),
+                    s"${entry._1}_fiveMinRate"    -> jNumber(entry._2.getFiveMinuteRate),
+                    s"${entry._1}_fifteenMinRate" -> jNumber(entry._2.getFifteenMinuteRate)
+                  ).deepmerge(extractSnapshot(entry._1, entry._2.getSnapshot))
+                })
+                .toList
           }
 
       override val extractHistograms: DropWizardRegistry => Filter => Task[List[Json]] =
@@ -76,12 +79,13 @@ object DropWizardExtractor {
             val metricFilter = DropWizardRegistry.makeFilter(filter)
             for {
               r <- registry.registry.getCurrent()
-            } yield r.getHistograms(metricFilter)
-              .asScala
-              .map(entry => {
-                (s"${entry._1}_count" -> jNumber(entry._2.getCount)) ->:
-                  extractSnapshot(entry._1, entry._2.getSnapshot)
-              })
+            } yield
+              r.getHistograms(metricFilter)
+                .asScala
+                .map(entry => {
+                  (s"${entry._1}_count" -> jNumber(entry._2.getCount)) ->:
+                    extractSnapshot(entry._1, entry._2.getSnapshot)
+                })
                 .toList
           }
 
@@ -91,18 +95,19 @@ object DropWizardExtractor {
             val metricFilter = DropWizardRegistry.makeFilter(filter)
             for {
               r <- registry.registry.getCurrent()
-            } yield r.getMeters(metricFilter)
-              .asScala
-              .map(entry => {
-                Json(
-                  s"${entry._1}_count"          -> jNumber(entry._2.getCount),
-                  s"${entry._1}_meanRate"       -> jNumber(entry._2.getMeanRate),
-                  s"${entry._1}_oneMinRate"     -> jNumber(entry._2.getOneMinuteRate),
-                  s"${entry._1}_fiveMinRate"    -> jNumber(entry._2.getFiveMinuteRate),
-                  s"${entry._1}_fifteenMinRate" -> jNumber(entry._2.getFifteenMinuteRate)
-                )
-              })
-              .toList
+            } yield
+              r.getMeters(metricFilter)
+                .asScala
+                .map(entry => {
+                  Json(
+                    s"${entry._1}_count"          -> jNumber(entry._2.getCount),
+                    s"${entry._1}_meanRate"       -> jNumber(entry._2.getMeanRate),
+                    s"${entry._1}_oneMinRate"     -> jNumber(entry._2.getOneMinuteRate),
+                    s"${entry._1}_fiveMinRate"    -> jNumber(entry._2.getFiveMinuteRate),
+                    s"${entry._1}_fifteenMinRate" -> jNumber(entry._2.getFifteenMinuteRate)
+                  )
+                })
+                .toList
           }
     }
 }

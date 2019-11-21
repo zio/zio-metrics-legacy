@@ -64,6 +64,7 @@ lazy val prometheus = project
       "io.prometheus" % "simpleclient_hotspot" % prometheusVersion,
       "io.prometheus" % "simpleclient_common"  % prometheusVersion,
       "io.prometheus" % "simpleclient_httpserver" % prometheusVersion,
+      "io.prometheus" % "simpleclient_pushgateway" % prometheusVersion,
       "io.prometheus" % "simpleclient_graphite_bridge" % prometheusVersion
     )
   )

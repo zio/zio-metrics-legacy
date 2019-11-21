@@ -28,14 +28,13 @@ trait DropWizardRegistry extends Registry {
         val name   = Show[L].show(label.name)
         val gauges = r.getGauges(MetricFilter.startsWith(name))
         val dwgauge = if (gauges.isEmpty()) {
-            val gw = new DWGauge[A]() {
-              override def getValue(): A = f()
-            }
-            gw.asInstanceOf[DWGauge[A]]
-          } else gauges.get(gauges.firstKey()).asInstanceOf[DWGauge[A]]
+          val gw = new DWGauge[A]() {
+            override def getValue(): A = f()
+          }
+          gw.asInstanceOf[DWGauge[A]]
+        } else gauges.get(gauges.firstKey()).asInstanceOf[DWGauge[A]]
         (r.register(name, dwgauge), r)
       }))
-
 
     override def registerHistogram[L: Show](label: Label[L]): Task[DWHistogram] =
       registryRef >>= (_.modify(r => {
@@ -54,7 +53,7 @@ trait DropWizardRegistry extends Registry {
 
     override def registerMeter[L: Show](label: Label[L]): Task[Meter] =
       registryRef >>= (_.modify(r => {
-        val name  = Show[L].show(label.name)
+        val name = Show[L].show(label.name)
         (r.meter(name), r)
       }))
   }

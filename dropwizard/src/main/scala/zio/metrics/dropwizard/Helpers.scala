@@ -53,8 +53,9 @@ object reporters {
 
   def console(r: MetricRegistry, duration: Long, unit: TimeUnit): RIO[DropWizardReporters, Unit] =
     RIO.accessM(
-      dwr => for {
-        cr <- dwr.reporter.console(r)
-      } yield cr.start(duration, unit)
+      dwr =>
+        for {
+          cr <- dwr.reporter.console(r)
+        } yield cr.start(duration, unit)
     )
 }

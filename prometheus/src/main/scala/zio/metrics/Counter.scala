@@ -13,4 +13,3 @@ object Counter {
     def inc(counter: C, amount: Double, labelNames: Array[String]): Task[Unit]
   }
 }
-

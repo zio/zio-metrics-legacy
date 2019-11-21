@@ -7,7 +7,7 @@ import zio.Task
 
 trait Extractor[R <: Registry, F[_], A] {
 
-  type Filter    = Option[String]
+  type Filter = Option[String]
 
   def extractCounters: R => Filter => Task[F[A]]
   def extractGauges: R => Filter => Task[F[A]]
@@ -30,10 +30,12 @@ object RegistryPrinter {
       ("meters", E.extractMeters)
     )
 
-    fs.foldLeft(Task(M.empty))((accT, f) => for {
-      acc <- accT
-      m  <- f._2(r)(filter)
-    } yield acc |+| L.foldMap(m)(a => cons(f._1, a))
+    fs.foldLeft(Task(M.empty))(
+      (accT, f) =>
+        for {
+          acc <- accT
+          m   <- f._2(r)(filter)
+        } yield acc |+| L.foldMap(m)(a => cons(f._1, a))
     )
   }
 }

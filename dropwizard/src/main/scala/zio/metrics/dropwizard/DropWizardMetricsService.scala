@@ -17,15 +17,14 @@ import zio.metrics.dropwizard.DropWizardExtractor._
 
 trait DropWizardMetricsService extends MetricsService {
   val service = new MetricsService.Service[DropWizardRegistry] {
-    override def serveMetrics: DropWizardRegistry => HttpRoutes[Server.HttpTask] = {
-     registry =>
-        HttpRoutes.of[Server.HttpTask] {
-          case GET -> Root / filter => {
-            val optFilter = if (filter == "ALL") None else Some(filter)
-            RegistryPrinter.report[DropWizardRegistry, List, Json](registry, optFilter)(jSingleObject) >>=
-              (m => RIO(Response[Server.HttpTask](Ok).withEntity(m)))
-          }
+    override def serveMetrics: DropWizardRegistry => HttpRoutes[Server.HttpTask] = { registry =>
+      HttpRoutes.of[Server.HttpTask] {
+        case GET -> Root / filter => {
+          val optFilter = if (filter == "ALL") None else Some(filter)
+          RegistryPrinter.report[DropWizardRegistry, List, Json](registry, optFilter)(jSingleObject) >>=
+            (m => RIO(Response[Server.HttpTask](Ok).withEntity(m)))
         }
+      }
     }
   }
 }

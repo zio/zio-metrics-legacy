@@ -22,14 +22,13 @@ object ReportersTests extends App {
   println(s"Starting server on port $port")
 
   val rt = Runtime(
-    new DropWizardRegistry with DropWizardCounter with DropWizardGauge with DropWizardHistogram
-    with DropWizardMeter with DropWizardTimer with DropWizardReporters ,
+    new DropWizardRegistry with DropWizardCounter with DropWizardGauge with DropWizardHistogram with DropWizardMeter
+    with DropWizardTimer with DropWizardReporters,
     PlatformLive.Default
   )
 
   val tests: RIO[
-    DropWizardRegistry with DropWizardCounter with DropWizardGauge with DropWizardHistogram with DropWizardMeter
-        with DropWizardTimer with DropWizardReporters,
+    DropWizardRegistry with DropWizardCounter with DropWizardGauge with DropWizardHistogram with DropWizardMeter with DropWizardTimer with DropWizardReporters,
     DropWizardRegistry
   ] =
     for {

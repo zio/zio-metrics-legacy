@@ -3,14 +3,14 @@ package zio.metrics
 import zio.{ RIO, Runtime }
 import zio.internal.PlatformLive
 import testz.{ assert, Harness, PureHarness }
-import com.codahale.metrics.{ MetricRegistry}
+import com.codahale.metrics.{ MetricRegistry }
 import zio.metrics.dropwizard._
 
 object DropWizardTests {
 
   val rt = Runtime(
-    new DropWizardRegistry with DropWizardCounter with DropWizardGauge with DropWizardHistogram
-      with DropWizardMeter with DropWizardTimer,
+    new DropWizardRegistry with DropWizardCounter with DropWizardGauge with DropWizardHistogram with DropWizardMeter
+    with DropWizardTimer,
     PlatformLive.Default
   )
 
@@ -57,7 +57,7 @@ object DropWizardTests {
             Thread.sleep(1200L)
           )
         )(_ => timer.stop(ctx))
- } yield (r, l)
+  } yield (r, l)
 
   def tests[T](harness: Harness[T]): T = {
     import harness._
@@ -90,7 +90,7 @@ object DropWizardTests {
       },
       test("Meter count and mean rate are within bounds") { () =>
         val name = MetricRegistry.name("DropWizardMeter", Array.empty[String]: _*)
-        val r   = rt.unsafeRun(testMeter)
+        val r    = rt.unsafeRun(testMeter)
         val count = r
           .getMeters()
           .get(MetricRegistry.name(name))
@@ -106,7 +106,7 @@ object DropWizardTests {
       },
       test("Timer called 3 times") { () =>
         val name = MetricRegistry.name("DropWizardTimer", Array.empty[String]: _*)
-        val r   = rt.unsafeRun(testTimer)
+        val r    = rt.unsafeRun(testTimer)
         val count = r._1
           .getTimers()
           .get(MetricRegistry.name(name))
@@ -118,7 +118,7 @@ object DropWizardTests {
       },
       test("Timer mean rate for 6 calls within bounds") { () =>
         val name = MetricRegistry.name("DropWizardTimer", Array.empty[String]: _*)
-        val r   = rt.unsafeRun(testTimer)
+        val r    = rt.unsafeRun(testTimer)
         val meanRate = r._1
           .getTimers()
           .get(MetricRegistry.name(name))

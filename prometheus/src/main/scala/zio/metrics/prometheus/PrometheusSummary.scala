@@ -10,16 +10,16 @@ trait PrometheusSummary extends Summary {
 
   val summary = new Summary.Service[PSummary, SummaryTimer] {
     override def observe(s: PSummary, amount: Double, labelNames: Array[String]): Task[Unit] =
-      Task( if (labelNames.isEmpty) s.observe(amount) else s.labels(labelNames: _*).observe(amount) )
+      Task(if (labelNames.isEmpty) s.observe(amount) else s.labels(labelNames: _*).observe(amount))
 
     override def startTimer(s: PSummary, labelNames: Array[String]): Task[SummaryTimer] =
-      Task( if (labelNames.isEmpty) s.startTimer() else s.labels(labelNames: _*).startTimer )
+      Task(if (labelNames.isEmpty) s.startTimer() else s.labels(labelNames: _*).startTimer)
 
     override def observeDuration(timer: SummaryTimer): Task[Double] =
       Task(timer.observeDuration())
 
     override def time(s: PSummary, f: () => Unit, labelNames: Array[String]): Task[Double] =
-      Task{
+      Task {
         val t = if (labelNames.isEmpty) s.startTimer() else s.labels(labelNames: _*).startTimer()
         f()
         t.observeDuration()

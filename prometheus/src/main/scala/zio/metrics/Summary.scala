@@ -7,7 +7,7 @@ trait Summary {
 }
 
 object Summary {
-  trait Service[-R,T] {
+  trait Service[-R, T] {
     def observe(s: R, amount: Double, labelNames: Array[String]): Task[Unit]
 
     def startTimer(s: R, labelNames: Array[String]): Task[T]

@@ -4,6 +4,9 @@ import zio.RIO
 
 import io.prometheus.client.{ Counter => PCounter, Gauge => PGauge }
 import io.prometheus.client.{ Histogram => PHistogram, Summary => PSummary }
+import io.prometheus.client.CollectorRegistry
+import io.prometheus.client.exporter.HTTPServer
+import io.prometheus.client.exporter.HttpConnectionFactory
 
 object counter {
   def inc(pCounter: PCounter): RIO[PrometheusCounter, Unit] = RIO.accessM(_.counter.inc(pCounter, Array.empty[String]))
@@ -65,7 +68,7 @@ object gauge {
     RIO.accessM(_.gauge.setToCurrentTime(g, labelNames))
 
   def setToTime(g: PGauge, labelNames: Array[String]): RIO[PrometheusGauge, Unit] =
-   RIO.accessM(_.gauge.setToTime(g, () => Thread.sleep(1000), labelNames))
+    RIO.accessM(_.gauge.setToTime(g, () => Thread.sleep(1000), labelNames))
 }
 
 object histogram {
@@ -112,4 +115,48 @@ object summary {
 
   def time(s: PSummary, f: () => Unit, labelNames: Array[String]): RIO[PrometheusSummary, Double] =
     RIO.accessM(_.summary.time(s, f, labelNames))
+}
+
+object exporters {
+  def http(r: CollectorRegistry, port: Int): RIO[PrometheusExporters, HTTPServer] =
+    RIO.accessM(_.exporters.http(r, port))
+
+  def graphite(r: CollectorRegistry, host: String, port: Int, intervalSeconds: Int): RIO[PrometheusExporters, Thread] =
+    RIO.accessM(_.exporters.graphite(r, host, port, intervalSeconds))
+
+  def pushGateway(r: CollectorRegistry, host: String, port: Int, jobName: String): RIO[PrometheusExporters, Unit] =
+    pushGateway(r, host, port, jobName, None, None, None)
+
+  def pushGateway(
+    r: CollectorRegistry,
+    host: String,
+    port: Int,
+    jobName: String,
+    user: String,
+    password: String
+  ): RIO[PrometheusExporters, Unit] =
+    pushGateway(r, host, port, jobName, Some(user), Some(password), None)
+
+  def pushGateway(
+    r: CollectorRegistry,
+    host: String,
+    port: Int,
+    jobName: String,
+    httpConnectionFactory: HttpConnectionFactory
+  ): RIO[PrometheusExporters, Unit] =
+    pushGateway(r, host, port, jobName, None, None, Some(httpConnectionFactory))
+
+  def pushGateway(
+    r: CollectorRegistry,
+    host: String,
+    port: Int,
+    jobName: String,
+    user: Option[String],
+    password: Option[String],
+    httpConnectionFactory: Option[HttpConnectionFactory]
+  ): RIO[PrometheusExporters, Unit] =
+    RIO.accessM(_.exporters.pushGateway(r, host, port, jobName, user, password, httpConnectionFactory))
+
+  def write004(r: CollectorRegistry): RIO[PrometheusExporters, String] =
+    RIO.accessM(_.exporters.write004(r))
 }

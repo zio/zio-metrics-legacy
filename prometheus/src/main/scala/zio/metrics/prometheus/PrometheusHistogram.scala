@@ -10,16 +10,16 @@ trait PrometheusHistogram extends Histogram {
 
   val histogram = new Histogram.Service[PHistogram, HistogramTimer] {
     override def observe(h: PHistogram, amount: Double, labelNames: Array[String]): Task[Unit] =
-      Task( if (labelNames.isEmpty) h.observe(amount) else h.labels(labelNames: _*).observe(amount) )
+      Task(if (labelNames.isEmpty) h.observe(amount) else h.labels(labelNames: _*).observe(amount))
 
     override def startTimer(h: PHistogram, labelNames: Array[String]): Task[HistogramTimer] =
-      Task( if (labelNames.isEmpty) h.startTimer() else h.labels(labelNames: _*).startTimer() )
+      Task(if (labelNames.isEmpty) h.startTimer() else h.labels(labelNames: _*).startTimer())
 
     override def observeDuration(timer: HistogramTimer): Task[Double] =
       Task(timer.observeDuration())
 
     override def time(h: PHistogram, f: () => Unit, labelNames: Array[String]): Task[Double] =
-      Task{
+      Task {
         val t = if (labelNames.isEmpty) h.startTimer() else h.labels(labelNames: _*).startTimer()
         f()
         t.observeDuration()

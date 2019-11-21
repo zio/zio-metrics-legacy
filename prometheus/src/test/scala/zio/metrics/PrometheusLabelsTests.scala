@@ -14,8 +14,7 @@ import io.prometheus.client.exporter.common.TextFormat
 object PrometheusLabelsTests {
 
   val rt = Runtime(
-    new PrometheusRegistry with PrometheusCounter with PrometheusGauge
-        with PrometheusHistogram with PrometheusSummary,
+    new PrometheusRegistry with PrometheusCounter with PrometheusGauge with PrometheusHistogram with PrometheusSummary,
     PlatformLive.Default
   )
 
@@ -36,18 +35,18 @@ object PrometheusLabelsTests {
   } yield r
 
   val testGauge: RIO[PrometheusRegistry with PrometheusGauge, (CollectorRegistry, Double)] = for {
-    pr    <- RIO.environment[PrometheusRegistry]
-    r     <- pr.registry.getCurrent()
-    g     <- pr.registry.registerGauge(Label("simple_gauge", Array("method")))
-    _     <- gauge.inc(g, Array("get"))
-    _     <- gauge.inc(g, 2.0, Array("get"))
-    d     <- gauge.getValue(g, Array("get"))
+    pr <- RIO.environment[PrometheusRegistry]
+    r  <- pr.registry.getCurrent()
+    g  <- pr.registry.registerGauge(Label("simple_gauge", Array("method")))
+    _  <- gauge.inc(g, Array("get"))
+    _  <- gauge.inc(g, 2.0, Array("get"))
+    d  <- gauge.getValue(g, Array("get"))
   } yield (r, d)
 
   val testHistogram: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
     h  <- pr.registry.registerHistogram(Label("simple_histogram", Array("method")))
-    _  <-  RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.observe(h, _, Array("get")))
+    _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.observe(h, _, Array("get")))
     r  <- pr.registry.getCurrent()
   } yield r
 
@@ -61,7 +60,7 @@ object PrometheusLabelsTests {
   val testSummary: RIO[PrometheusRegistry with PrometheusSummary, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
     s  <- pr.registry.registerSummary(Label("simple_summary", Array("method")), List((0.5, 0.05), (0.9, 0.01)))
-    _  <-  RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(summary.observe(s, _, Array("put")))
+    _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(summary.observe(s, _, Array("put")))
     r  <- pr.registry.getCurrent()
   } yield r
 
@@ -99,7 +98,7 @@ object PrometheusLabelsTests {
         set.add("simple_histogram_count")
         set.add("simple_histogram_sum")
 
-        val r = rt.unsafeRun(testHistogram)
+        val r     = rt.unsafeRun(testHistogram)
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
         Result.combine(assert(count == 5.0), assert(sum == 163.3))
@@ -109,7 +108,7 @@ object PrometheusLabelsTests {
         set.add("simple_histogram_timer_count")
         set.add("simple_histogram_timer_sum")
 
-        val r = rt.unsafeRun(testHistogramTimer)
+        val r     = rt.unsafeRun(testHistogramTimer)
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
         Result.combine(assert(count == 1.0), assert(sum >= 2.0 && sum <= 3.0))
