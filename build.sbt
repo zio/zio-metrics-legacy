@@ -18,7 +18,7 @@ inThisBuild(
   )
 )
 
-val http4sVersion     = "0.20.13"
+val http4sVersion     = "0.21.0-M5"
 val zioVersion        = "1.0.0-RC16"
 val interopVersion    = "2.0.0.0-RC7"
 val prometheusVersion = "0.7.0"
