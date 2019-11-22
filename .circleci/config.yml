@@ -253,7 +253,6 @@ workflows:
           requires:
             - test_212_jdk8_jvm
             - test_212_jdk11_jvm
-            - release_211
           filters:
             branches:
               ignore: /.*/
