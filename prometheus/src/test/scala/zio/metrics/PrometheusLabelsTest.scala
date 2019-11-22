@@ -11,8 +11,8 @@ import zio.metrics.prometheus._
 object PrometheusLabelsTest {
 
   val rt = Runtime(
-    new PrometheusRegistry with PrometheusCounter with PrometheusGauge with PrometheusHistogram
-        with PrometheusSummary with PrometheusExporters,
+    new PrometheusRegistry with PrometheusCounter with PrometheusGauge with PrometheusHistogram with PrometheusSummary
+    with PrometheusExporters,
     PlatformLive.Default
   )
 
