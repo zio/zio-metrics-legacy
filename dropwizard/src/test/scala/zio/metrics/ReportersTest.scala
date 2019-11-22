@@ -16,7 +16,7 @@ import zio.interop.catz._
 import org.http4s.implicits._
 import org.http4s.server.Router
 
-object ReportersTests extends App {
+object ReportersTest extends App {
 
   val port: Int = envOrNone("HTTP_PORT").fold(9090)(_.toInt)
   println(s"Starting server on port $port")

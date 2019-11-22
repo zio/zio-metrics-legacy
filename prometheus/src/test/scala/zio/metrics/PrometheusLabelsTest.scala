@@ -8,21 +8,13 @@ import io.prometheus.client.{ CollectorRegistry }
 import zio.internal.PlatformLive
 import zio.metrics.prometheus._
 
-import java.io.StringWriter
-import io.prometheus.client.exporter.common.TextFormat
-
-object PrometheusLabelsTests {
+object PrometheusLabelsTest {
 
   val rt = Runtime(
-    new PrometheusRegistry with PrometheusCounter with PrometheusGauge with PrometheusHistogram with PrometheusSummary,
+    new PrometheusRegistry with PrometheusCounter with PrometheusGauge with PrometheusHistogram
+        with PrometheusSummary with PrometheusExporters,
     PlatformLive.Default
   )
-
-  def write004(r: CollectorRegistry): String = {
-    val writer = new StringWriter
-    TextFormat.write004(writer, r.metricFamilySamples)
-    writer.toString
-  }
 
   val tester = () => System.nanoTime()
 
@@ -118,8 +110,7 @@ object PrometheusLabelsTests {
         set.add("simple_summary_count")
         set.add("simple_summary_sum")
 
-        val r = rt.unsafeRun(testSummary)
-        println(s"registry: ${write004(r)}")
+        val r = rt.unsafeRun(testSummary.tap(r => exporters.write004(r).map(println)))
 
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value

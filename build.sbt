@@ -20,7 +20,7 @@ inThisBuild(
 
 val http4sVersion     = "0.21.0-M5"
 val zioVersion        = "1.0.0-RC16"
-val interopVersion    = "2.0.0.0-RC7"
+val interopVersion    = "2.0.0.0-RC7" // "1.3.1.0-RC3"
 val prometheusVersion = "0.7.0"
 val dropwizardVersion = "4.0.1"
 
@@ -31,16 +31,13 @@ lazy val root =
   (project in file("."))
     .aggregate(common, dropwizard, prometheus)
     .settings(settings)
-//.disablePlugins(AssemblyPlugin)
 
 lazy val common = project
   .settings(
     name := "common",
-    //settings,
     stdSettings("metrics"),
     libraryDependencies ++= commonDependencies
   )
-//.disablePlugins(AssemblyPlugin)
 
 lazy val dropwizard = project
   .settings(
@@ -85,12 +82,10 @@ lazy val settings = Seq(
 )
 
 lazy val http4s = Seq(
-  //"org.http4s" %% "http4s-blaze-client" % http4sVersion,
-  //"org.http4s" %% "http4s-circe" % http4sVersion,
   "org.http4s"    %% "http4s-argonaut"     % http4sVersion,
   "org.http4s"    %% "http4s-blaze-server" % http4sVersion,
   "org.http4s"    %% "http4s-dsl"          % http4sVersion,
-  "org.typelevel" %% "cats-effect"         % "2.0.0", // % Optional,
+  "org.typelevel" %% "cats-effect"         % "2.0.0", //"1.4.0", // % Optional,
   "io.argonaut"   %% "argonaut"            % "6.2.2",
   "io.argonaut"   %% "argonaut-cats"       % "6.2.2"
 )
