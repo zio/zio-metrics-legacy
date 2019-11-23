@@ -9,18 +9,20 @@ inThisBuild(
       Developer("jdegoes", "John De Goes", "john@degoes.net", url("http://degoes.net")),
       Developer("toxicafunk", "Eric Noam", "toxicafunk@gmail.com", url("https://github.com/toxicafunk"))
     ),
+    pgpPassphrase := sys.env.get("PGP_PASSWORD").map(_.toArray),
     pgpPublicRing := file("/tmp/public.asc"),
     pgpSecretRing := file("/tmp/secret.asc"),
-    releaseEarlyWith := SonatypePublisher,
     scmInfo := Some(
       ScmInfo(url("https://github.com/zio/zio-metrics/"), "scm:git:git@github.com:zio/zio-metrics.git")
     )
   )
 )
 
-val http4sVersion  = "0.20.13"
-val zioVersion     = "1.0.0-RC16"
-val interopVersion = "2.0.0.0-RC7"
+ThisBuild / publishTo := sonatypePublishToBundle.value
+
+val http4sVersion     = "0.21.0-M5"
+val zioVersion        = "1.0.0-RC16"
+val interopVersion    = "2.0.0.0-RC7" // "1.3.1.0-RC3"
 val prometheusVersion = "0.7.0"
 val dropwizardVersion = "4.0.1"
 
@@ -31,16 +33,13 @@ lazy val root =
   (project in file("."))
     .aggregate(common, dropwizard, prometheus)
     .settings(settings)
-//.disablePlugins(AssemblyPlugin)
 
 lazy val common = project
   .settings(
     name := "common",
-    //settings,
     stdSettings("metrics"),
     libraryDependencies ++= commonDependencies
   )
-//.disablePlugins(AssemblyPlugin)
 
 lazy val dropwizard = project
   .settings(
@@ -60,11 +59,11 @@ lazy val prometheus = project
     name := "prometheus",
     stdSettings("metrics-prometheus") ++ settings,
     libraryDependencies ++= commonDependencies ++ Seq(
-      "io.prometheus" % "simpleclient"         % prometheusVersion,
-      "io.prometheus" % "simpleclient_hotspot" % prometheusVersion,
-      "io.prometheus" % "simpleclient_common"  % prometheusVersion,
-      "io.prometheus" % "simpleclient_httpserver" % prometheusVersion,
-      "io.prometheus" % "simpleclient_pushgateway" % prometheusVersion,
+      "io.prometheus" % "simpleclient"                 % prometheusVersion,
+      "io.prometheus" % "simpleclient_hotspot"         % prometheusVersion,
+      "io.prometheus" % "simpleclient_common"          % prometheusVersion,
+      "io.prometheus" % "simpleclient_httpserver"      % prometheusVersion,
+      "io.prometheus" % "simpleclient_pushgateway"     % prometheusVersion,
       "io.prometheus" % "simpleclient_graphite_bridge" % prometheusVersion
     )
   )
@@ -85,14 +84,12 @@ lazy val settings = Seq(
 )
 
 lazy val http4s = Seq(
-  //"org.http4s" %% "http4s-blaze-client" % http4sVersion,
-  //"org.http4s" %% "http4s-circe" % http4sVersion,
   "org.http4s"    %% "http4s-argonaut"     % http4sVersion,
   "org.http4s"    %% "http4s-blaze-server" % http4sVersion,
   "org.http4s"    %% "http4s-dsl"          % http4sVersion,
-  "org.typelevel" %% "cats-effect"         % "2.0.0" % Optional,
-  "io.argonaut" %% "argonaut"        % "6.2.2",
-  "io.argonaut" %% "argonaut-cats" % "6.2.2"
+  "org.typelevel" %% "cats-effect"         % "2.0.0", //"1.4.0", // % Optional,
+  "io.argonaut"   %% "argonaut"            % "6.2.2",
+  "io.argonaut"   %% "argonaut-cats"       % "6.2.2"
 )
 
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7")
