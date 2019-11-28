@@ -3,8 +3,9 @@ package zio.metrics
 import java.util
 
 import zio.{ RIO, Runtime }
+import zio.console.{ Console, putStrLn }
 import testz.{ assert, Harness, PureHarness, Result }
-import io.prometheus.client.{ CollectorRegistry }
+import io.prometheus.client.CollectorRegistry
 import zio.internal.PlatformLive
 import zio.metrics.prometheus._
 
@@ -12,7 +13,7 @@ object PrometheusTest {
 
   val rt = Runtime(
     new PrometheusRegistry with PrometheusCounter with PrometheusGauge with PrometheusHistogram with PrometheusSummary
-    with PrometheusExporters,
+        with PrometheusExporters with Console.Live,
     PlatformLive.Default
   )
 
@@ -20,7 +21,7 @@ object PrometheusTest {
 
   val testCounter: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
-    c  <- pr.registry.registerCounter(Label("simple_counter", Array.empty[String]))
+    c  <- pr.registry.registerCounter(Label(PrometheusTest.getClass(), Array.empty[String]))
     _  <- counter.inc(c)
     _  <- counter.inc(c, 2.0)
     r  <- pr.registry.getCurrent()
@@ -61,7 +62,7 @@ object PrometheusTest {
     section(
       test("counter increases by `inc` amount") { () =>
         val set: util.Set[String] = new util.HashSet[String]()
-        set.add("simple_counter")
+        set.add(Show.fixClassName(PrometheusTest.getClass()))
         val r = rt.unsafeRun(testCounter)
         val counter = r
           .filteredMetricFamilySamples(set)
@@ -121,7 +122,7 @@ object PrometheusTest {
 
   val harness: Harness[PureHarness.Uses[Unit]] =
     PureHarness.makeFromPrinter((result, name) => {
-      println(s"${name.reverse.mkString("[\"", "\"->\"", "\"]:")} $result")
+      rt.unsafeRun(putStrLn(s"${name.reverse.mkString("[\"", "\"->\"", "\"]:")} $result"))
     })
 
   def main(args: Array[String]): Unit =

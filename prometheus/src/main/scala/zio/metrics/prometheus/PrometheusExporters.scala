@@ -8,6 +8,7 @@ import io.prometheus.client.bridge.Graphite
 import io.prometheus.client.exporter.common.TextFormat
 import io.prometheus.client.exporter.HttpConnectionFactory
 import io.prometheus.client.exporter.BasicAuthHttpConnectionFactory
+import io.prometheus.client.hotspot.DefaultExports
 
 import java.net.InetSocketAddress
 import java.io.StringWriter
@@ -56,5 +57,13 @@ trait PrometheusExporters extends Exporters {
         TextFormat.write004(writer, r.metricFamilySamples)
         writer.toString
       }
+
+    override def initializeDefaultExports(r: CollectorRegistry): Task[Unit] =
+      Task(DefaultExports.initialize())
   }
+}
+
+object PrometheusExporters extends PrometheusExporters {
+  def stopHttp(server: HTTPServer): Task[Unit] =
+    Task(server.stop())
 }

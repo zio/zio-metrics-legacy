@@ -45,12 +45,7 @@ lazy val dropwizard = project
   .settings(
     name := "dropwizard",
     stdSettings("metrics-dropwizard") ++ settings,
-    libraryDependencies ++= commonDependencies ++ http4s ++ Seq(
-      "io.dropwizard.metrics" % "metrics-core"         % dropwizardVersion,
-      "io.dropwizard.metrics" % "metrics-healthchecks" % dropwizardVersion,
-      "io.dropwizard.metrics" % "metrics-jmx"          % dropwizardVersion,
-      "io.dropwizard.metrics" % "metrics-graphite"     % dropwizardVersion
-    )
+    libraryDependencies ++= commonDependencies ++ http4s ++ dropwizardDependencies
   )
   .dependsOn(common)
 
@@ -58,14 +53,7 @@ lazy val prometheus = project
   .settings(
     name := "prometheus",
     stdSettings("metrics-prometheus") ++ settings,
-    libraryDependencies ++= commonDependencies ++ Seq(
-      "io.prometheus" % "simpleclient"                 % prometheusVersion,
-      "io.prometheus" % "simpleclient_hotspot"         % prometheusVersion,
-      "io.prometheus" % "simpleclient_common"          % prometheusVersion,
-      "io.prometheus" % "simpleclient_httpserver"      % prometheusVersion,
-      "io.prometheus" % "simpleclient_pushgateway"     % prometheusVersion,
-      "io.prometheus" % "simpleclient_graphite_bridge" % prometheusVersion
-    )
+    libraryDependencies ++= commonDependencies ++ prometheusDependencies
   )
   .dependsOn(common)
 
@@ -75,6 +63,34 @@ lazy val commonDependencies = Seq(
   "org.scalaz" % "testz-core_2.12"   % "0.0.5",
   "org.scalaz" % "testz-stdlib_2.12" % "0.0.5"
 )
+
+lazy val prometheusDependencies = Seq(
+      "io.prometheus" % "simpleclient"                 % prometheusVersion,
+      "io.prometheus" % "simpleclient_hotspot"         % prometheusVersion,
+      "io.prometheus" % "simpleclient_common"          % prometheusVersion,
+      "io.prometheus" % "simpleclient_httpserver"      % prometheusVersion,
+      "io.prometheus" % "simpleclient_pushgateway"     % prometheusVersion,
+      "io.prometheus" % "simpleclient_graphite_bridge" % prometheusVersion
+    )
+
+lazy val dropwizardDependencies = Seq(
+      "io.dropwizard.metrics" % "metrics-core"         % dropwizardVersion,
+      "io.dropwizard.metrics" % "metrics-healthchecks" % dropwizardVersion,
+      "io.dropwizard.metrics" % "metrics-jmx"          % dropwizardVersion,
+      "io.dropwizard.metrics" % "metrics-graphite"     % dropwizardVersion
+    )
+
+lazy val docs = project
+  .in(file("zio-metrics-docs"))
+  .settings(
+    skip.in(publish) := true,
+    moduleName := "zio-metrics-docs",
+    scalacOptions -= "-Yno-imports",
+    scalacOptions -= "-Xfatal-warnings",
+    libraryDependencies ++= commonDependencies ++ prometheusDependencies
+  )
+  .dependsOn(common, prometheus)
+  .enablePlugins(MdocPlugin, DocusaurusPlugin)
 
 lazy val settings = Seq(
   scalacOptions ++= (CrossVersion.partialVersion(scalaBinaryVersion.value) match {
@@ -87,7 +103,7 @@ lazy val http4s = Seq(
   "org.http4s"    %% "http4s-argonaut"     % http4sVersion,
   "org.http4s"    %% "http4s-blaze-server" % http4sVersion,
   "org.http4s"    %% "http4s-dsl"          % http4sVersion,
-  "org.typelevel" %% "cats-effect"         % "2.0.0", //"1.4.0", // % Optional,
+  "org.typelevel" %% "cats-effect"         % "2.0.0" % Optional,
   "io.argonaut"   %% "argonaut"            % "6.2.2",
   "io.argonaut"   %% "argonaut-cats"       % "6.2.2"
 )

@@ -24,5 +24,7 @@ object Exporters {
     ): Task[Unit]
 
     def write004(r: R): Task[String]
+
+    def initializeDefaultExports(r: R): Task[Unit]
   }
 }

@@ -20,9 +20,9 @@ object PrometheusLabelsTest {
 
   val testCounter: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
-    c  <- pr.registry.registerCounter(Label("simple_counter", Array("method")))
-    _  <- counter.inc(c, Array("get"))
-    _  <- counter.inc(c, 2.0, Array("get"))
+    c  <- pr.registry.registerCounter(Label("simple_counter", Array("method", "resource")))
+    _  <- counter.inc(c, Array("get", "users"))
+    _  <- counter.inc(c, 2.0, Array("get", "users"))
     r  <- pr.registry.getCurrent()
   } yield r
 
@@ -45,7 +45,7 @@ object PrometheusLabelsTest {
   val testHistogramTimer: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
     h  <- pr.registry.registerHistogram(Label("simple_histogram_timer", Array("method")))
-    _  <- histogram.time(h, () => Thread.sleep(2000), Array("post"))
+    _  <- histogram.time(h, () => Thread.sleep(2000), Array("post").reverse )
     r  <- pr.registry.getCurrent()
   } yield r
 

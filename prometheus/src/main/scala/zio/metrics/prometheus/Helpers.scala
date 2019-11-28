@@ -159,4 +159,10 @@ object exporters {
 
   def write004(r: CollectorRegistry): RIO[PrometheusExporters, String] =
     RIO.accessM(_.exporters.write004(r))
+
+  def initializeDefaultExports(r: CollectorRegistry): RIO[PrometheusExporters, Unit] =
+    RIO.accessM(_.exporters.initializeDefaultExports(r))
+
+  def stopHttp(s: HTTPServer): RIO[PrometheusExporters, Unit] =
+    PrometheusExporters.stopHttp(s)
 }
