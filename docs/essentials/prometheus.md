@@ -221,3 +221,51 @@ Histogram has 3 modes we can use:
 2. We can `observe` arbitrary `Double` values.
 3. We can start an arbitrary `timer` and `observe` its duration.
 
+Using a histogram to `time` a function is pretty much what was shown on the
+`Exporters` example above, where `() => Thread.sleep(2000)` is the function we
+want to time:
+
+```scala mdoc:silent
+  val testHistogramTimer: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
+    pr <- RIO.environment[PrometheusRegistry]
+    h  <- pr.registry.registerHistogram(Label("simple_histogram_timer", Array("method")))
+    _  <- histogram.time(h, () => Thread.sleep(2000), Array("post").reverse )
+    r  <- pr.registry.getCurrent()
+  } yield r
+```
+
+You can, of course, verify the usual way:
+```scala mdoc:silent
+  val set: util.Set[String] = new util.HashSet[String]()
+  set.add("simple_histogram_timer_count")
+  set.add("simple_histogram_timer_sum")
+
+  val r     = rt.unsafeRun(testHistogramTimer)
+  val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
+  val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
+```
+
+or simpler using our `exporters` helper:
+```scala mdoc:silent
+  val r = rt.unsafeRun(testHistogramTimer)
+  exporters.write004(r)
+```
+
+If, instead, we want to measure arbitrary values:
+```scala mdoc:silent
+  val testHistogram: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
+    pr <- RIO.environment[PrometheusRegistry]
+    h  <- pr.registry.registerHistogram(Label("simple_histogram", Array("method")))
+    _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.observe(h, _, Array("get")))
+    r  <- pr.registry.getCurrent()
+  } yield r
+
+```
+
+`RIO.foreach` will take each value of the list `List(10.5, 25.0, 50.7, 57.3,
+19.8)` and apply the function `histogram.observe(h, _, Array("get"))` to each
+value in a synchronous manner, where `h` is the histogram we registered as
+`simple_histogram` with a `method` label, `_` refers to the value (10.5, 25.0,
+etc.) and `Array("get")` is the specif label for the current observation.
+
+Finally, to use an arbitrary timer works exactly the same as 

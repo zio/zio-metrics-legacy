@@ -7,16 +7,16 @@ import testz.{ assert, Harness, PureHarness, Result }
 import io.prometheus.client.{ CollectorRegistry }
 import zio.internal.PlatformLive
 import zio.metrics.prometheus._
+import zio.console.putStrLn
+import zio.console.Console
 
 object PrometheusLabelsTest {
 
   val rt = Runtime(
-    new PrometheusRegistry with PrometheusCounter with PrometheusGauge with PrometheusHistogram with PrometheusSummary
-    with PrometheusExporters,
+    new PrometheusRegistry with PrometheusCounter with PrometheusGauge with PrometheusHistogram
+        with PrometheusSummary with PrometheusExporters with Console.Live,
     PlatformLive.Default
   )
-
-  val tester = () => System.nanoTime()
 
   val testCounter: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
@@ -45,7 +45,21 @@ object PrometheusLabelsTest {
   val testHistogramTimer: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
     h  <- pr.registry.registerHistogram(Label("simple_histogram_timer", Array("method")))
-    _  <- histogram.time(h, () => Thread.sleep(2000), Array("post").reverse )
+    _  <- histogram.time(h, () => Thread.sleep(2000), Array("post"))
+    r  <- pr.registry.getCurrent()
+  } yield r
+
+  val f = (n: Long) => Thread.sleep(n)
+
+  val testHistogramDuration: RIO[PrometheusRegistry with PrometheusHistogram with Console, CollectorRegistry] = for {
+    pr <- RIO.environment[PrometheusRegistry]
+    h  <- pr.registry.registerHistogram(Label("duration_histogram", Array("method")))
+    t  <- histogram.startTimer(h, Array("time"))
+    dl <- RIO.foreach(List(75L, 150L, 200L))(n => {
+      f(n)
+      histogram.observeDuration(t)
+    })
+    _  <- RIO.foreach(dl)(d => putStrLn(d.toString()))
     r  <- pr.registry.getCurrent()
   } yield r
 
@@ -103,7 +117,18 @@ object PrometheusLabelsTest {
         val r     = rt.unsafeRun(testHistogramTimer)
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
+
         Result.combine(assert(count == 1.0), assert(sum >= 2.0 && sum <= 3.0))
+      },
+      test("histogram duration count and sum are as expected") { () =>
+        val set: util.Set[String] = new util.HashSet[String]()
+        set.add("duration_histogram_count")
+        set.add("duration_histogram_sum")
+
+        val r     = rt.unsafeRun(testHistogramDuration)
+        val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
+        val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
+        Result.combine(assert(count == 3.0), assert(sum >= 1.3 && sum <= 2.0))
       },
       test("summary count and sum are as expected") { () =>
         val set: util.Set[String] = new util.HashSet[String]()
