@@ -32,8 +32,7 @@ const siteConfig = {
 
   // For no header links in the top nav bar -> headerLinks: [],
   headerLinks: [
-    {doc: 'essentials/essentials_index', label: 'Essentials'},
-    {doc: 'usecases/usecases_index', label: 'Use Cases'},
+    {doc: 'essentials/essentials_index', label: 'Documentation'},
   ],
 
   // If you have users set above, you add it here:

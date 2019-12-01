@@ -10,14 +10,12 @@ import zio.console.Console
 object ExportersTest {
 
   val rt = Runtime(
-    new PrometheusRegistry with PrometheusCounter with PrometheusHistogram
-        with PrometheusExporters with Console.Live,
+    new PrometheusRegistry with PrometheusCounter with PrometheusHistogram with PrometheusExporters with Console.Live,
     PlatformLive.Default
   )
 
   val exporterTest: RIO[
-    PrometheusRegistry with PrometheusCounter with PrometheusHistogram
-        with PrometheusExporters with Console,
+    PrometheusRegistry with PrometheusCounter with PrometheusHistogram with PrometheusExporters with Console,
     HTTPServer
   ] =
     for {

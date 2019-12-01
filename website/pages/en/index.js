@@ -63,9 +63,8 @@ class HomeSplash extends React.Component {
         <div className="inner">
           <ProjectTitle siteConfig={siteConfig} />
           <PromoSection>
-            <Button href={docUrl('essentials/essentials_index')}>Essentials</Button>
-            <Button href={docUrl('usecases/usecases_index')}>Use Cases</Button>
-            <Button href="https://github.com/zio/zio-nio" target="_blank" >GitHub</Button>
+            <Button href={docUrl('essentials/essentials_index')}>Documentation</Button>
+            <Button href="https://github.com/zio/zio-metrics" target="_blank" >GitHub</Button>
           </PromoSection>
         </div>
       </SplashContainer>
@@ -102,20 +101,6 @@ class Index extends React.Component {
 
     const Features = () => (
       <Block layout="fourColumn">
-        {[
-          {
-            content: 'Moving away from blocking streams waiting on input',
-            image: `${baseUrl}img/undraw_tweetstorm.svg`,
-            imageAlign: 'top',
-            title: 'Non-blocking',
-          },
-          {
-            content: 'Contrary to stream-like processing - buffers make it possible to move on received content without external capture',
-            image: `${baseUrl}img/undraw_operating_system.svg`,
-            imageAlign: 'top',
-            title: 'Buffer oriented',
-          },
-        ]}
       </Block>
     );
 

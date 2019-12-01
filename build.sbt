@@ -66,20 +66,20 @@ lazy val commonDependencies = Seq(
 )
 
 lazy val prometheusDependencies = Seq(
-      "io.prometheus" % "simpleclient"                 % prometheusVersion,
-      "io.prometheus" % "simpleclient_hotspot"         % prometheusVersion,
-      "io.prometheus" % "simpleclient_common"          % prometheusVersion,
-      "io.prometheus" % "simpleclient_httpserver"      % prometheusVersion,
-      "io.prometheus" % "simpleclient_pushgateway"     % prometheusVersion,
-      "io.prometheus" % "simpleclient_graphite_bridge" % prometheusVersion
-    )
+  "io.prometheus" % "simpleclient"                 % prometheusVersion,
+  "io.prometheus" % "simpleclient_hotspot"         % prometheusVersion,
+  "io.prometheus" % "simpleclient_common"          % prometheusVersion,
+  "io.prometheus" % "simpleclient_httpserver"      % prometheusVersion,
+  "io.prometheus" % "simpleclient_pushgateway"     % prometheusVersion,
+  "io.prometheus" % "simpleclient_graphite_bridge" % prometheusVersion
+)
 
 lazy val dropwizardDependencies = Seq(
-      "io.dropwizard.metrics" % "metrics-core"         % dropwizardVersion,
-      "io.dropwizard.metrics" % "metrics-healthchecks" % dropwizardVersion,
-      "io.dropwizard.metrics" % "metrics-jmx"          % dropwizardVersion,
-      "io.dropwizard.metrics" % "metrics-graphite"     % dropwizardVersion
-    )
+  "io.dropwizard.metrics" % "metrics-core"         % dropwizardVersion,
+  "io.dropwizard.metrics" % "metrics-healthchecks" % dropwizardVersion,
+  "io.dropwizard.metrics" % "metrics-jmx"          % dropwizardVersion,
+  "io.dropwizard.metrics" % "metrics-graphite"     % dropwizardVersion
+)
 
 lazy val docs = project
   .in(file("zio-metrics-docs"))

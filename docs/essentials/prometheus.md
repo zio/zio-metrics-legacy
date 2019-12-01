@@ -12,7 +12,8 @@ Required imports for presented snippets:
 import zio.{ RIO, Runtime }
 import io.prometheus.client.CollectorRegistry
 import zio.internal.PlatformLive
-import zio.metrics.prometheus._
+import zio.metrics.{ Label => PLabel, _ }
+import zio.metrics.prometheus.{ counter => counterHelper, _}
 
 // also for printing debug messages to the console
 import zio.console.{ Console, putStrLn }
@@ -56,7 +57,7 @@ methods. We'll start using environmental effects until the `Helper` methods are 
 ```scala mdoc:silent
   val testRegistry: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
-    c  <- pr.registry.registerCounter(PLabel("simple_counter", Array("method")))
+    _  <- pr.registry.registerCounter(PLabel("simple_counter", Array("method")))
     r  <- pr.registry.getCurrent()
   } yield r
 ```
@@ -84,7 +85,7 @@ passed as a parameter along with optional labels.
 ```scala mdoc:silent
   val testCounter: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
-    c  <- pr.registry.registerCounter(Label(PrometheusTest.getClass(), Array.empty[String]))
+    c  <- pr.registry.registerCounter(PLabel("simple_counter", Array.empty[String]))
     pc <- RIO.environment[PrometheusCounter]
     _  <- pc.counter.inc(c, Array.empty[String])
     _  <- pc.counter.inc(c, 2.0, Array.empty[String])
@@ -97,7 +98,7 @@ If the counter is registered with labels, then you need to increase the counter
 ```scala mdoc:silent
   val testLabeledCounter: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
-    c  <- pr.registry.registerCounter(Label("simple_counter", Array("method", "resource")))
+    c  <- pr.registry.registerCounter(PLabel("simple_counter", Array("method", "resource")))
     pc <- RIO.environment[PrometheusCounter]
     _  <- pc.counter.inc(c, Array("get", "users"))
     _  <- pc.counter.inc(c, 2.0, Array("get", "users"))
@@ -134,9 +135,9 @@ becomes:
 
 ```scala mdoc:silent
   val testCounterHelper: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
-    c  <- registry.registerCounter(PrometheusTest.getClass())
-    _  <- counter.inc(c)
-    _  <- counter.inc(c, 2.0)
+    c  <- registry.registerCounter("simple_counter")
+    _  <- counterHelper.inc(c)
+    _  <- counterHelper.inc(c, 2.0)
     r  <- registry.getCurrent()
   } yield r
 ```
@@ -146,10 +147,10 @@ helper method creates the `Label` for us as well as the empty array for the
 labels. There are also helper methods that supports an array for labels:
 
 ```scala mdoc:silent
-  val testCounterHelper: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
+  val testCounterHelperLabels: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
     c  <- registry.registerCounter("simple_counter", Array("method", "resource"))
-    _  <- counter.inc(c, Array("get", "users"))
-    _  <- counter.inc(c, 2.0, Array("get", "users"))
+    _  <- counterHelper.inc(c, Array("get", "users"))
+    _  <- counterHelper.inc(c, 2.0, Array("get", "users"))
     r  <- registry.getCurrent()
   } yield r
 ```
@@ -222,6 +223,8 @@ DefaultExports, on the other hand, registers a number of HotSpot collectors to a
 given registry. Let's look at an example of how all this works. 
 
 ```scala mdoc:silent
+  import io.prometheus.client.exporter.HTTPServer
+
   val exporterTest: RIO[
     PrometheusRegistry with PrometheusCounter with PrometheusHistogram 
       with PrometheusExporters with Console,
@@ -231,9 +234,9 @@ given registry. Let's look at an example of how all this works.
       r  <- registry.getCurrent()
       _  <- exporters.initializeDefaultExports(r)
       hs <- exporters.http(r, 9090)
-      c  <- registry.registerCounter(ExportersTest.getClass(), Array("exporter"))
-      _  <- counter.inc(c, Array("counter"))
-      _  <- counter.inc(c, 2.0, Array("counter"))
+      c  <- registry.registerCounter("ExportersTest", Array("exporter"))
+      _  <- counterHelper.inc(c, Array("counter"))
+      _  <- counterHelper.inc(c, 2.0, Array("counter"))
       h  <- registry.registerHistogram("export_histogram", Array("exporter", "method"))
       _  <- histogram.time(h, () => Thread.sleep(2000), Array("histogram", "get"))
       s  <- exporters.write004(r)
@@ -265,7 +268,7 @@ want to time:
 ```scala mdoc:silent
   val testHistogramTimer: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
-    h  <- pr.registry.registerHistogram(Label("simple_histogram_timer", Array("method")))
+    h  <- pr.registry.registerHistogram(PLabel("simple_histogram_timer", Array("method")), DefaultBuckets(Seq.empty[Double]))
     _  <- histogram.time(h, () => Thread.sleep(2000), Array("post").reverse )
     r  <- pr.registry.getCurrent()
   } yield r
@@ -276,8 +279,8 @@ buckets](https://prometheus.github.io/client_java/io/prometheus/client/Histogram
 , for instance, we can use `Linear Buckets` with the function above:
 
 ```scala mdoc:silent
-  val testHistogramTimer: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
-    h  <- registry.registerHistogram("simple_histogram_timer", Array("method"), LinearBuckets(1, 2, 5))
+  val testHistogramTimerHelper: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
+    h  <- registry.registerHistogram("simple_histogram_thelper", Array("method"), LinearBuckets(1, 2, 5))
     _  <- histogram.time(h, () => Thread.sleep(2000), Array("post"))
     r  <- registry.getCurrent()
   } yield r
@@ -285,28 +288,27 @@ buckets](https://prometheus.github.io/client_java/io/prometheus/client/Histogram
 
 You can, of course, verify the usual way:
 ```scala mdoc:silent
-  val set: util.Set[String] = new util.HashSet[String]()
-  set.add("simple_histogram_timer_count")
-  set.add("simple_histogram_timer_sum")
+  val setHT: util.Set[String] = new util.HashSet[String]()
+  setHT.add("simple_histogram_timer_count")
+  setHT.add("simple_histogram_timer_sum")
 
-  val r     = rt.unsafeRun(testHistogramTimer)
-  val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
-  val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
+  val rht     = rt.unsafeRun(testHistogramTimer)
+  val count = rht.filteredMetricFamilySamples(setHT).nextElement().samples.get(0).value
+  val sum   = rht.filteredMetricFamilySamples(setHT).nextElement().samples.get(1).value
 ```
 
 or simpler using our `exporters` helper:
 ```scala mdoc:silent
-  val r = rt.unsafeRun(testHistogramTimer)
-  exporters.write004(r)
+  val rhtE = rt.unsafeRun(testHistogramTimerHelper)
+  exporters.write004(rhtE)
 ```
 
 If, instead, we want to measure arbitrary values:
 ```scala mdoc:silent
   val testHistogram: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
-    pr <- RIO.environment[PrometheusRegistry]
-    h  <- pr.registry.registerHistogram(Label("simple_histogram", Array("method")))
+    h  <- registry.registerHistogram("simple_histogram", Array("method"))
     _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.observe(h, _, Array("get")))
-    r  <- pr.registry.getCurrent()
+    r  <- registry.getCurrent()
   } yield r
 
 ```
@@ -320,7 +322,7 @@ etc.) and `Array("get")` is the specif label for the current observation.
 We can override the `DefaultBuckets` so:
 
 ```scala mdoc:silent
-  val testHistogram: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
+  val testHistogramBuckets: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
     h  <- registry.registerHistogram("simple_histogram", Array("method"), DefaultBuckets(Seq(10,20,30,40,50)))
     _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.observe(h, _, Array("get")))
     r  <- registry.getCurrent()
@@ -340,8 +342,7 @@ when `startTimer` was called and each time we `observeDuration`.
 
   val testHistogramDuration: RIO[PrometheusRegistry with PrometheusHistogram
       with Console with Clock, CollectorRegistry] = for {
-    pr <- RIO.environment[PrometheusRegistry]
-    h  <- pr.registry.registerHistogram(Label("duration_histogram", Array("method")))
+    h  <- registry.registerHistogram("duration_histogram", Array("method"))
     t  <- histogram.startTimer(h, Array("time"))
     dl <- RIO.foreach(List(75L, 150L, 200L))(n => for {
             _ <- f(n)
@@ -349,15 +350,13 @@ when `startTimer` was called and each time we `observeDuration`.
           } yield d
           )
     _  <- RIO.foreach(dl)(d => putStrLn(d.toString()))
-    r  <- pr.registry.getCurrent()
+    r  <- registry.getCurrent()
   } yield r
 ```
 
 We could define `ExponentialBuckets` substituting the following line:
 
-```scala mdoc:silent
-    h  <- registry.registerHistogram("duration_histogram", Array("method"), ExponentialBuckets(0.25,2,5))
-```
+`h  <- registry.registerHistogram("duration_histogram", Array("method"), ExponentialBuckets(0.25,2,5))`
 
 Now lets inspect our values by `tap`ping our `RIO`. Add ` with Clock.Live`
  to the runtime `rt` before executing the following code.
@@ -370,9 +369,9 @@ Please note there's no reason to use `tap` here, its just to demonstrate that we
 are returning `RIO`s which means we have at our disposal all its combinators. We
 might as well just use
 
-```scala mdoc:silent
-  val r = rt.unsafeRun(testHistogramTimer)
-  exporters.write004(r)
+```
+  val rhd = rt.unsafeRun(testHistogramDuration)
+  exporters.write004(rhd)
 ```
 
 instead or any other way we've seen of observing our `CollectoRegistry`.
@@ -390,7 +389,7 @@ documentation for more information.
 ```scala mdoc:silent
   val testSummary: RIO[PrometheusRegistry with PrometheusSummary, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
-    s  <- pr.registry.registerSummary(Label("simple_summary", Array("method")), List((0.5, 0.05), (0.9, 0.01)))
+    s  <- pr.registry.registerSummary(PLabel("simple_summary", Array("method")), List((0.5, 0.05), (0.9, 0.01)))
     _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(summary.observe(s, _, Array("put")))
     r  <- pr.registry.getCurrent()
   } yield r

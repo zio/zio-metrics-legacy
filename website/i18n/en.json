@@ -13,14 +13,10 @@
       },
       "essentials/essentials_files": {
         "title": "Prometheus ZIO Wrapper"
-      },
-      "usecases/usecases_index": {
-        "title": "Overview"
       }
     },
     "links": {
-      "Essentials": "Essentials",
-      "Use Cases": "Use Cases"
+      "Documentation": "Documentation"
     },
     "categories": {
       "Essentials": "Essentials",

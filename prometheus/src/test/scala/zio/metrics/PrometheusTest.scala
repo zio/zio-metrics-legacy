@@ -3,7 +3,7 @@ package zio.metrics
 import java.util
 
 import zio.{ RIO, Runtime }
-import zio.console.{ Console, putStrLn }
+import zio.console.{ putStrLn, Console }
 import testz.{ assert, Harness, PureHarness, Result }
 import io.prometheus.client.CollectorRegistry
 import zio.internal.PlatformLive
@@ -13,7 +13,7 @@ object PrometheusTest {
 
   val rt = Runtime(
     new PrometheusRegistry with PrometheusCounter with PrometheusGauge with PrometheusHistogram with PrometheusSummary
-        with PrometheusExporters with Console.Live,
+    with PrometheusExporters with Console.Live,
     PlatformLive.Default
   )
 
@@ -29,10 +29,10 @@ object PrometheusTest {
   } yield r
 
   val testCounterHelper: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
-    c  <- registry.registerCounter("PrometheusTestHelper")
-    _  <- counter.inc(c)
-    _  <- counter.inc(c, 2.0)
-    r  <- registry.getCurrent()
+    c <- registry.registerCounter("PrometheusTestHelper")
+    _ <- counter.inc(c)
+    _ <- counter.inc(c, 2.0)
+    r <- registry.getCurrent()
   } yield r
 
   val testGauge: RIO[PrometheusRegistry with PrometheusGauge, (CollectorRegistry, Double)] = for {
@@ -45,21 +45,21 @@ object PrometheusTest {
   } yield (r, d)
 
   val testHistogram: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
-    h  <- registry.registerHistogram("simple_histogram")
-    _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.observe(h, _))
-    r  <- registry.getCurrent()
+    h <- registry.registerHistogram("simple_histogram")
+    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.observe(h, _))
+    r <- registry.getCurrent()
   } yield r
 
   val testHistogramTimer: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
-    h  <- registry.registerHistogram("simple_histogram_timer")
-    _  <- histogram.time(h, () => Thread.sleep(2000))
-    r  <- registry.getCurrent()
+    h <- registry.registerHistogram("simple_histogram_timer")
+    _ <- histogram.time(h, () => Thread.sleep(2000))
+    r <- registry.getCurrent()
   } yield r
 
   val testSummary: RIO[PrometheusRegistry with PrometheusSummary, CollectorRegistry] = for {
-    s  <- registry.registerSummary("simple_summary")
-    _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(summary.observe(s, _))
-    r  <- registry.getCurrent()
+    s <- registry.registerSummary("simple_summary")
+    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(summary.observe(s, _))
+    r <- registry.getCurrent()
   } yield r
 
   def tests[T](harness: Harness[T]): T = {

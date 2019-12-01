@@ -12,9 +12,9 @@ import zio.{ Ref, Task, UIO }
 
 trait PrometheusRegistry extends Registry {
 
-    type PTimer     = Summary.Timer
-    type Percentile = Double
-    type Tolerance  = Double
+  type PTimer     = Summary.Timer
+  type Percentile = Double
+  type Tolerance  = Double
 
   val registry = new Registry.Service[Collector, CollectorRegistry] {
     val registryRef: UIO[Ref[CollectorRegistry]] = Ref.make(CollectorRegistry.defaultRegistry)
@@ -54,10 +54,9 @@ trait PrometheusRegistry extends Registry {
           .labelNames(label.labels: _*)
           .help(s"$name histogram")
 
-
         val h = buckets match {
-          case DefaultBuckets(bs) => if (bs.isEmpty) hb else hb.buckets(bs: _*)
-          case LinearBuckets(s, w, c) => hb.linearBuckets(s, w, c)
+          case DefaultBuckets(bs)          => if (bs.isEmpty) hb else hb.buckets(bs: _*)
+          case LinearBuckets(s, w, c)      => hb.linearBuckets(s, w, c)
           case ExponentialBuckets(s, f, c) => hb.exponentialBuckets(s, f, c)
         }
         (h.register(r), r)

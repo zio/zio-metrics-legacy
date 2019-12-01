@@ -8,8 +8,7 @@ import io.prometheus.client.CollectorRegistry
 import io.prometheus.client.exporter.HTTPServer
 import io.prometheus.client.exporter.HttpConnectionFactory
 import zio.metrics.{ Buckets, DefaultBuckets, Label }
-import zio.metrics.prometheus.PrometheusRegistry.{Percentile, Tolerance}
-
+import zio.metrics.prometheus.PrometheusRegistry.{ Percentile, Tolerance }
 
 object registry {
   def getCurrent(): RIO[PrometheusRegistry, CollectorRegistry] =
@@ -48,7 +47,11 @@ object registry {
   def registerSummary(name: String, percentiles: List[(Percentile, Tolerance)]): RIO[PrometheusRegistry, PSummary] =
     RIO.accessM(_.registry.registerSummary(Label(name, Array.empty[String]), percentiles))
 
-  def registerSummary(name: String, labels: Array[String], percentiles: List[(Percentile, Tolerance)]): RIO[PrometheusRegistry, PSummary] =
+  def registerSummary(
+    name: String,
+    labels: Array[String],
+    percentiles: List[(Percentile, Tolerance)]
+  ): RIO[PrometheusRegistry, PSummary] =
     RIO.accessM(_.registry.registerSummary(Label(name, labels), percentiles))
 
   def registerCounter(name: Class[_]): RIO[PrometheusRegistry, PCounter] =
@@ -84,7 +87,11 @@ object registry {
   def registerSummary(name: Class[_], percentiles: List[(Percentile, Tolerance)]): RIO[PrometheusRegistry, PSummary] =
     RIO.accessM(_.registry.registerSummary(Label(name, Array.empty[String]), percentiles))
 
-  def registerSummary(name: Class[_], labels: Array[String], percentiles: List[(Percentile, Tolerance)]): RIO[PrometheusRegistry, PSummary] =
+  def registerSummary(
+    name: Class[_],
+    labels: Array[String],
+    percentiles: List[(Percentile, Tolerance)]
+  ): RIO[PrometheusRegistry, PSummary] =
     RIO.accessM(_.registry.registerSummary(Label(name, labels), percentiles))
 }
 
