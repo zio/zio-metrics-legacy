@@ -7,6 +7,93 @@ import io.prometheus.client.{ Histogram => PHistogram, Summary => PSummary }
 import io.prometheus.client.CollectorRegistry
 import io.prometheus.client.exporter.HTTPServer
 import io.prometheus.client.exporter.HttpConnectionFactory
+import zio.metrics.{ Buckets, DefaultBuckets, Label }
+import zio.metrics.prometheus.PrometheusRegistry.{ Percentile, Tolerance }
+
+object registry {
+  def getCurrent(): RIO[PrometheusRegistry, CollectorRegistry] =
+    RIO.accessM(_.registry.getCurrent())
+
+  def registerCounter(name: String): RIO[PrometheusRegistry, PCounter] =
+    RIO.accessM(_.registry.registerCounter(Label(name, Array.empty[String])))
+
+  def registerCounter(name: String, labels: Array[String]): RIO[PrometheusRegistry, PCounter] =
+    RIO.accessM(_.registry.registerCounter(Label(name, labels)))
+
+  def registerGauge(name: String): RIO[PrometheusRegistry, PGauge] =
+    RIO.accessM(_.registry.registerGauge(Label(name, Array.empty[String])))
+
+  def registerGauge(name: String, labels: Array[String]): RIO[PrometheusRegistry, PGauge] =
+    RIO.accessM(_.registry.registerGauge(Label(name, labels)))
+
+  def registerHistogram(name: String): RIO[PrometheusRegistry, PHistogram] =
+    RIO.accessM(_.registry.registerHistogram(Label(name, Array.empty[String]), DefaultBuckets(Seq.empty[Double])))
+
+  def registerHistogram(name: String, labels: Array[String]): RIO[PrometheusRegistry, PHistogram] =
+    RIO.accessM(_.registry.registerHistogram(Label(name, labels), DefaultBuckets(Seq.empty[Double])))
+
+  def registerHistogram(name: String, buckets: Buckets): RIO[PrometheusRegistry, PHistogram] =
+    RIO.accessM(_.registry.registerHistogram(Label(name, Array.empty[String]), buckets))
+
+  def registerHistogram(name: String, labels: Array[String], buckets: Buckets): RIO[PrometheusRegistry, PHistogram] =
+    RIO.accessM(_.registry.registerHistogram(Label(name, labels), buckets))
+
+  def registerSummary(name: String): RIO[PrometheusRegistry, PSummary] =
+    RIO.accessM(_.registry.registerSummary(Label(name, Array.empty[String]), List.empty[(Double, Double)]))
+
+  def registerSummary(name: String, labels: Array[String]): RIO[PrometheusRegistry, PSummary] =
+    RIO.accessM(_.registry.registerSummary(Label(name, labels), List.empty[(Double, Double)]))
+
+  def registerSummary(name: String, percentiles: List[(Percentile, Tolerance)]): RIO[PrometheusRegistry, PSummary] =
+    RIO.accessM(_.registry.registerSummary(Label(name, Array.empty[String]), percentiles))
+
+  def registerSummary(
+    name: String,
+    labels: Array[String],
+    percentiles: List[(Percentile, Tolerance)]
+  ): RIO[PrometheusRegistry, PSummary] =
+    RIO.accessM(_.registry.registerSummary(Label(name, labels), percentiles))
+
+  def registerCounter(name: Class[_]): RIO[PrometheusRegistry, PCounter] =
+    RIO.accessM(_.registry.registerCounter(Label(name, Array.empty[String])))
+
+  def registerCounter(name: Class[_], labels: Array[String]): RIO[PrometheusRegistry, PCounter] =
+    RIO.accessM(_.registry.registerCounter(Label(name, labels)))
+
+  def registerGauge(name: Class[_]): RIO[PrometheusRegistry, PGauge] =
+    RIO.accessM(_.registry.registerGauge(Label(name, Array.empty[String])))
+
+  def registerGauge(name: Class[_], labels: Array[String]): RIO[PrometheusRegistry, PGauge] =
+    RIO.accessM(_.registry.registerGauge(Label(name, labels)))
+
+  def registerHistogram(name: Class[_]): RIO[PrometheusRegistry, PHistogram] =
+    RIO.accessM(_.registry.registerHistogram(Label(name, Array.empty[String]), DefaultBuckets(Seq.empty[Double])))
+
+  def registerHistogram(name: Class[_], labels: Array[String]): RIO[PrometheusRegistry, PHistogram] =
+    RIO.accessM(_.registry.registerHistogram(Label(name, labels), DefaultBuckets(Seq.empty[Double])))
+
+  def registerHistogram(name: Class[_], buckets: Buckets): RIO[PrometheusRegistry, PHistogram] =
+    RIO.accessM(_.registry.registerHistogram(Label(name, Array.empty[String]), buckets))
+
+  def registerHistogram(name: Class[_], labels: Array[String], buckets: Buckets): RIO[PrometheusRegistry, PHistogram] =
+    RIO.accessM(_.registry.registerHistogram(Label(name, labels), buckets))
+
+  def registerSummary(name: Class[_]): RIO[PrometheusRegistry, PSummary] =
+    RIO.accessM(_.registry.registerSummary(Label(name, Array.empty[String]), List.empty[(Double, Double)]))
+
+  def registerSummary(name: Class[_], labels: Array[String]): RIO[PrometheusRegistry, PSummary] =
+    RIO.accessM(_.registry.registerSummary(Label(name, labels), List.empty[(Double, Double)]))
+
+  def registerSummary(name: Class[_], percentiles: List[(Percentile, Tolerance)]): RIO[PrometheusRegistry, PSummary] =
+    RIO.accessM(_.registry.registerSummary(Label(name, Array.empty[String]), percentiles))
+
+  def registerSummary(
+    name: Class[_],
+    labels: Array[String],
+    percentiles: List[(Percentile, Tolerance)]
+  ): RIO[PrometheusRegistry, PSummary] =
+    RIO.accessM(_.registry.registerSummary(Label(name, labels), percentiles))
+}
 
 object counter {
   def inc(pCounter: PCounter): RIO[PrometheusCounter, Unit] = RIO.accessM(_.counter.inc(pCounter, Array.empty[String]))
@@ -159,4 +246,10 @@ object exporters {
 
   def write004(r: CollectorRegistry): RIO[PrometheusExporters, String] =
     RIO.accessM(_.exporters.write004(r))
+
+  def initializeDefaultExports(r: CollectorRegistry): RIO[PrometheusExporters, Unit] =
+    RIO.accessM(_.exporters.initializeDefaultExports(r))
+
+  def stopHttp(s: HTTPServer): RIO[PrometheusExporters, Unit] =
+    PrometheusExporters.stopHttp(s)
 }

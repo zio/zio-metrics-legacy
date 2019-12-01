@@ -7,23 +7,34 @@ import testz.{ assert, Harness, PureHarness, Result }
 import io.prometheus.client.{ CollectorRegistry }
 import zio.internal.PlatformLive
 import zio.metrics.prometheus._
+import zio.console.putStrLn
+import zio.console.Console
+import zio.duration.Duration
+import scala.concurrent.duration._
+import zio.clock.Clock
 
 object PrometheusLabelsTest {
 
   val rt = Runtime(
     new PrometheusRegistry with PrometheusCounter with PrometheusGauge with PrometheusHistogram with PrometheusSummary
-    with PrometheusExporters,
+    with PrometheusExporters with Console.Live with Clock.Live,
     PlatformLive.Default
   )
 
-  val tester = () => System.nanoTime()
-
   val testCounter: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
-    c  <- pr.registry.registerCounter(Label("simple_counter", Array("method")))
-    _  <- counter.inc(c, Array("get"))
-    _  <- counter.inc(c, 2.0, Array("get"))
+    c  <- pr.registry.registerCounter(Label("simple_counter", Array("method", "resource")))
+    pc <- RIO.environment[PrometheusCounter]
+    _  <- pc.counter.inc(c, Array("get", "users"))
+    _  <- pc.counter.inc(c, 2.0, Array("get", "users"))
     r  <- pr.registry.getCurrent()
+  } yield r
+
+  val testCounterHelper: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
+    c <- registry.registerCounter("PrometheusTestHelper", Array("method", "resource"))
+    _ <- counter.inc(c, Array("get", "users"))
+    _ <- counter.inc(c, 2.0, Array("get", "users"))
+    r <- registry.getCurrent()
   } yield r
 
   val testGauge: RIO[PrometheusRegistry with PrometheusGauge, (CollectorRegistry, Double)] = for {
@@ -36,17 +47,34 @@ object PrometheusLabelsTest {
   } yield (r, d)
 
   val testHistogram: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
-    pr <- RIO.environment[PrometheusRegistry]
-    h  <- pr.registry.registerHistogram(Label("simple_histogram", Array("method")))
-    _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.observe(h, _, Array("get")))
-    r  <- pr.registry.getCurrent()
+    h <- registry.registerHistogram("simple_histogram", Array("method"), DefaultBuckets(Seq(10, 20, 30, 40, 50)))
+    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.observe(h, _, Array("get")))
+    r <- registry.getCurrent()
   } yield r
 
   val testHistogramTimer: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
-    pr <- RIO.environment[PrometheusRegistry]
-    h  <- pr.registry.registerHistogram(Label("simple_histogram_timer", Array("method")))
-    _  <- histogram.time(h, () => Thread.sleep(2000), Array("post"))
-    r  <- pr.registry.getCurrent()
+    h <- registry.registerHistogram("simple_histogram_timer", Array("method"), LinearBuckets(1, 2, 5))
+    _ <- histogram.time(h, () => Thread.sleep(2000), Array("post"))
+    r <- registry.getCurrent()
+  } yield r
+
+  val f = (n: Long) => {
+    RIO.sleep(Duration.fromScala(n.millis)) *> putStrLn(s"n = $n")
+  }
+
+  val testHistogramDuration
+    : RIO[PrometheusRegistry with PrometheusHistogram with Console with Clock, CollectorRegistry] = for {
+    h <- registry.registerHistogram("duration_histogram", Array("method"), ExponentialBuckets(0.25, 2, 5))
+    t <- histogram.startTimer(h, Array("time"))
+    dl <- RIO.foreach(List(75L, 750L, 2000L))(
+           n =>
+             for {
+               _ <- f(n)
+               d <- histogram.observeDuration(t)
+             } yield d
+         )
+    _ <- RIO.foreach(dl)(d => putStrLn(d.toString()))
+    r <- registry.getCurrent()
   } yield r
 
   val testSummary: RIO[PrometheusRegistry with PrometheusSummary, CollectorRegistry] = for {
@@ -63,6 +91,18 @@ object PrometheusLabelsTest {
         val set: util.Set[String] = new util.HashSet[String]()
         set.add("simple_counter")
         val r = rt.unsafeRun(testCounter)
+        val counter = r
+          .filteredMetricFamilySamples(set)
+          .nextElement()
+          .samples
+          .get(0)
+          .value
+        assert(counter == 3.0)
+      },
+      test("counter increases by `inc` amount on helper method") { () =>
+        val set: util.Set[String] = new util.HashSet[String]()
+        set.add("simple_counter")
+        val r = rt.unsafeRun(testCounterHelper)
         val counter = r
           .filteredMetricFamilySamples(set)
           .nextElement()
@@ -103,7 +143,18 @@ object PrometheusLabelsTest {
         val r     = rt.unsafeRun(testHistogramTimer)
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
+
         Result.combine(assert(count == 1.0), assert(sum >= 2.0 && sum <= 3.0))
+      },
+      test("histogram duration count and sum are as expected") { () =>
+        val set: util.Set[String] = new util.HashSet[String]()
+        set.add("duration_histogram_count")
+        set.add("duration_histogram_sum")
+
+        val r     = rt.unsafeRun(testHistogramDuration)
+        val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
+        val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
+        Result.combine(assert(count == 3.0), assert(sum >= 4.1 && sum <= 5.0))
       },
       test("summary count and sum are as expected") { () =>
         val set: util.Set[String] = new util.HashSet[String]()
