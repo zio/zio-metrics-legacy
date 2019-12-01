@@ -11,7 +11,7 @@ import zio.console.putStrLn
 import zio.console.Console
 import zio.duration.Duration
 import scala.concurrent.duration._
-import _root_.zio.clock.Clock
+import zio.clock.Clock
 
 object PrometheusLabelsTest {
 
@@ -132,7 +132,7 @@ object PrometheusLabelsTest {
         val r     = rt.unsafeRun(testHistogramDuration)
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
-        Result.combine(assert(count == 3.0), assert(sum >= 1.1 && sum <= 1.6))
+        Result.combine(assert(count == 3.0), assert(sum >= 1.1 && sum <= 2.0))
       },
       test("summary count and sum are as expected") { () =>
         val set: util.Set[String] = new util.HashSet[String]()

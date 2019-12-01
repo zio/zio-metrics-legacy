@@ -9,24 +9,27 @@ exporters all connected through the `CollectorRegstyr`.
 Required imports for presented snippets:
 
 ```scala mdoc:silent
-import java.util
 import zio.{ RIO, Runtime }
 import io.prometheus.client.CollectorRegistry
 import zio.internal.PlatformLive
-import zio.metrics.{Label => PLabel, Show}
 import zio.metrics.prometheus._
-import zio.metrics.prometheus.{counter => pcounter}
 
-// and for printing debug messages to the console
+// also for printing debug messages to the console
 import zio.console.{ Console, putStrLn }
+// and for sleeping/clocks
+import zio.clock.Clock
+import zio.duration.Duration
+import scala.concurrent.duration._
+// and for inspecting primetheus
+import java.util
 ```
 
 We will also provide our own `Runtime`:
 
 ```scala mdoc:silent
   val rt = Runtime(
-    new PrometheusRegistry with PrometheusCounter with PrometheusGauge with PrometheusHistogram with PrometheusSummary
-        with PrometheusExporters with Console.Live,
+    new PrometheusRegistry with PrometheusCounter with PrometheusGauge with PrometheusHistogram
+        with PrometheusSummary with PrometheusExporters with Console.Live with Clock.Live,
     PlatformLive.Default
   )
 ```
