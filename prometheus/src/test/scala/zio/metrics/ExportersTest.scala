@@ -21,14 +21,13 @@ object ExportersTest {
     (CollectorRegistry, HTTPServer)
   ] =
     for {
-      pr <- RIO.environment[PrometheusRegistry]
-      r  <- pr.registry.getCurrent()
+      r  <- registry.getCurrent()
       _  <- exporters.initializeDefaultExports(r)
       hs <- exporters.http(r, 9090)
-      c  <- pr.registry.registerCounter(Label(ExportersTest.getClass(), Array("exporter")))
+      c  <- registry.registerCounter(ExportersTest.getClass(), Array("exporter"))
       _  <- counter.inc(c, Array("counter"))
       _  <- counter.inc(c, 2.0, Array("counter"))
-      h  <- pr.registry.registerHistogram(Label("export_histogram", Array("exporter", "method")))
+      h  <- registry.registerHistogram("export_histogram", Array("exporter", "method"))
       _  <- histogram.time(h, () => Thread.sleep(2000), Array("histogram", "get"))
       s  <- exporters.write004(r)
       _  <- putStrLn(s)

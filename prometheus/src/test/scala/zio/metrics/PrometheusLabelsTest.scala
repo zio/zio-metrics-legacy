@@ -9,12 +9,15 @@ import zio.internal.PlatformLive
 import zio.metrics.prometheus._
 import zio.console.putStrLn
 import zio.console.Console
+import zio.duration.Duration
+import scala.concurrent.duration._
+import _root_.zio.clock.Clock
 
 object PrometheusLabelsTest {
 
   val rt = Runtime(
     new PrometheusRegistry with PrometheusCounter with PrometheusGauge with PrometheusHistogram
-        with PrometheusSummary with PrometheusExporters with Console.Live,
+        with PrometheusSummary with PrometheusExporters with Console.Live with Clock.Live,
     PlatformLive.Default
   )
 
@@ -36,31 +39,32 @@ object PrometheusLabelsTest {
   } yield (r, d)
 
   val testHistogram: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
-    pr <- RIO.environment[PrometheusRegistry]
-    h  <- pr.registry.registerHistogram(Label("simple_histogram", Array("method")))
+    h  <- registry.registerHistogram("simple_histogram", Array("method"))
     _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.observe(h, _, Array("get")))
-    r  <- pr.registry.getCurrent()
+    r  <- registry.getCurrent()
   } yield r
 
   val testHistogramTimer: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
-    pr <- RIO.environment[PrometheusRegistry]
-    h  <- pr.registry.registerHistogram(Label("simple_histogram_timer", Array("method")))
+    h  <- registry.registerHistogram("simple_histogram_timer", Array("method"))
     _  <- histogram.time(h, () => Thread.sleep(2000), Array("post"))
-    r  <- pr.registry.getCurrent()
+    r  <- registry.getCurrent()
   } yield r
 
-  val f = (n: Long) => Thread.sleep(n)
+  val f = (n: Long) => {
+    RIO.sleep(Duration.fromScala(n.millis)) *> putStrLn(s"n = $n")
+  }
 
-  val testHistogramDuration: RIO[PrometheusRegistry with PrometheusHistogram with Console, CollectorRegistry] = for {
-    pr <- RIO.environment[PrometheusRegistry]
-    h  <- pr.registry.registerHistogram(Label("duration_histogram", Array("method")))
+  val testHistogramDuration: RIO[PrometheusRegistry with PrometheusHistogram
+      with Console with Clock, CollectorRegistry] = for {
+    h  <- registry.registerHistogram("duration_histogram", Array("method"))
     t  <- histogram.startTimer(h, Array("time"))
-    dl <- RIO.foreach(List(75L, 150L, 200L))(n => {
-      f(n)
-      histogram.observeDuration(t)
-    })
+    dl <- RIO.foreach(List(75L, 150L, 200L))(n => for {
+            _ <- f(n)
+            d <- histogram.observeDuration(t)
+          } yield d
+          )
     _  <- RIO.foreach(dl)(d => putStrLn(d.toString()))
-    r  <- pr.registry.getCurrent()
+    r  <- registry.getCurrent()
   } yield r
 
   val testSummary: RIO[PrometheusRegistry with PrometheusSummary, CollectorRegistry] = for {
@@ -128,7 +132,7 @@ object PrometheusLabelsTest {
         val r     = rt.unsafeRun(testHistogramDuration)
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
-        Result.combine(assert(count == 3.0), assert(sum >= 1.3 && sum <= 2.0))
+        Result.combine(assert(count == 3.0), assert(sum >= 1.1 && sum <= 1.6))
       },
       test("summary count and sum are as expected") { () =>
         val set: util.Set[String] = new util.HashSet[String]()

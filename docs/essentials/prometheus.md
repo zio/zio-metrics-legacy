@@ -268,4 +268,66 @@ value in a synchronous manner, where `h` is the histogram we registered as
 `simple_histogram` with a `method` label, `_` refers to the value (10.5, 25.0,
 etc.) and `Array("get")` is the specif label for the current observation.
 
-Finally, to use an arbitrary timer works exactly the same as 
+Finally, to use an arbitrary timer, after registering the histogram, we need to
+start the timer using our recently created `histogram` object with the
+`startTimer` method which returns a `timer` object. We will use this `timer` to
+mark every point we want observed (measure) thus giving us the duration between
+when `startTimer` was called and each time we `observeDuration`. 
+ 
+```scala mdoc:silent
+ val f = (n: Long) => {
+    RIO.sleep(Duration.fromScala(n.millis)) *> putStrLn(s"n = $n")
+  }
+
+  val testHistogramDuration: RIO[PrometheusRegistry with PrometheusHistogram
+      with Console with Clock, CollectorRegistry] = for {
+    pr <- RIO.environment[PrometheusRegistry]
+    h  <- pr.registry.registerHistogram(Label("duration_histogram", Array("method")))
+    t  <- histogram.startTimer(h, Array("time"))
+    dl <- RIO.foreach(List(75L, 150L, 200L))(n => for {
+            _ <- f(n)
+            d <- histogram.observeDuration(t)
+          } yield d
+          )
+    _  <- RIO.foreach(dl)(d => putStrLn(d.toString()))
+    r  <- pr.registry.getCurrent()
+  } yield r
+```
+
+Now lets inspect our values by `tap`ping our `RIO`. Add ` with Clock.Live`
+ to the the runtime `rt` before executing the following code.
+
+```scala mdoc:silent
+  rt.unsafeRun(testHistogramDuration.tap(r => exporters.write004(r).map(println)))
+```
+
+Please note there's no reason to use `tap` here, its just to demonstrate that we
+are returning `RIO`s which means we have at our disposal all its combinators. We
+might as well just use
+
+```scala mdoc:silent
+  val r = rt.unsafeRun(testHistogramTimer)
+  exporters.write004(r)
+```
+
+instead or any other way we've seen of observing our `CollectoRegistry`.
+
+## Summary
+`Sumamry` works exactly as `Histogram` above except a `Summary` also allows to
+pass the list of percentiles we wish to include in our measures: `quantiles:
+List[(Percentile, Tolerance)]` where `Percentile` is a `Double` value between 0
+and 1 that represents the percentile (i.e. 0.5 = median) and `Tolerance` is a
+`Double` value (also between 0 and 1) that represents the tolerated error. Refer
+to the [Prometheus
+Percentile](https://prometheus.io/docs/practices/histograms/#quantiles)
+documentation for more information.
+
+```scala mdoc:silent
+  val testSummary: RIO[PrometheusRegistry with PrometheusSummary, CollectorRegistry] = for {
+    pr <- RIO.environment[PrometheusRegistry]
+    s  <- pr.registry.registerSummary(Label("simple_summary", Array("method")), List((0.5, 0.05), (0.9, 0.01)))
+    _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(summary.observe(s, _, Array("put")))
+    r  <- pr.registry.getCurrent()
+  } yield r
+```
+

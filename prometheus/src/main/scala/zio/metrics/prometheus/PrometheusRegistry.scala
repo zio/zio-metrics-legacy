@@ -5,11 +5,16 @@ import io.prometheus.client.{ Gauge => PGauge }
 import io.prometheus.client.{ Histogram => PHistogram }
 import io.prometheus.client.{ Collector, CollectorRegistry }
 import io.prometheus.client.Summary
+import zio.metrics._
 
 import zio.metrics.{ Label, Registry, Show }
 import zio.{ Ref, Task, UIO }
 
 trait PrometheusRegistry extends Registry {
+
+    type PTimer     = Summary.Timer
+    type Percentile = Double
+    type Tolerance  = Double
 
   val registry = new Registry.Service[Collector, CollectorRegistry] {
     val registryRef: UIO[Ref[CollectorRegistry]] = Ref.make(CollectorRegistry.defaultRegistry)
@@ -40,21 +45,23 @@ trait PrometheusRegistry extends Registry {
         (g, r)
       }))
 
-    override def registerHistogram[L: Show](label: Label[L]): Task[PHistogram] =
+    override def registerHistogram[L: Show](label: Label[L], buckets: Buckets): Task[PHistogram] =
       registryRef >>= (_.modify(r => {
         val name = Show[L].show(label.name)
-        val h = PHistogram
+        val hb = PHistogram
           .build()
           .name(name)
           .labelNames(label.labels: _*)
           .help(s"$name histogram")
-          .register(r)
-        (h, r)
-      }))
 
-    type PTimer     = Summary.Timer
-    type Percentile = Double
-    type Tolerance  = Double
+
+        val h = buckets match {
+          case DefaultBuckets(bs) => if (bs.isEmpty) hb else hb.buckets(bs: _*)
+          case LinearBuckets(s, w, c) => hb.linearBuckets(s, w, c)
+          case ExponentialBuckets(s, f, c) => hb.exponentialBuckets(s, f, c)
+        }
+        (h.register(r), r)
+      }))
 
     override def registerSummary[L: Show](label: Label[L], quantiles: List[(Percentile, Tolerance)]): Task[Summary] =
       registryRef >>= (_.modify(r => {
