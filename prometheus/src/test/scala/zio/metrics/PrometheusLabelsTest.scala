@@ -47,13 +47,13 @@ object PrometheusLabelsTest {
   } yield (r, d)
 
   val testHistogram: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
-    h  <- registry.registerHistogram("simple_histogram", Array("method"))
+    h  <- registry.registerHistogram("simple_histogram", Array("method"), DefaultBuckets(Seq(10,20,30,40,50)))
     _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.observe(h, _, Array("get")))
     r  <- registry.getCurrent()
   } yield r
 
   val testHistogramTimer: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
-    h  <- registry.registerHistogram("simple_histogram_timer", Array("method"))
+    h  <- registry.registerHistogram("simple_histogram_timer", Array("method"), LinearBuckets(1, 2, 5))
     _  <- histogram.time(h, () => Thread.sleep(2000), Array("post"))
     r  <- registry.getCurrent()
   } yield r
@@ -64,9 +64,9 @@ object PrometheusLabelsTest {
 
   val testHistogramDuration: RIO[PrometheusRegistry with PrometheusHistogram
       with Console with Clock, CollectorRegistry] = for {
-    h  <- registry.registerHistogram("duration_histogram", Array("method"))
+    h  <- registry.registerHistogram("duration_histogram", Array("method"), ExponentialBuckets(0.25,2,5))
     t  <- histogram.startTimer(h, Array("time"))
-    dl <- RIO.foreach(List(75L, 150L, 200L))(n => for {
+    dl <- RIO.foreach(List(75L, 750L, 2000L))(n => for {
             _ <- f(n)
             d <- histogram.observeDuration(t)
           } yield d
@@ -152,7 +152,7 @@ object PrometheusLabelsTest {
         val r     = rt.unsafeRun(testHistogramDuration)
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
-        Result.combine(assert(count == 3.0), assert(sum >= 1.1 && sum <= 2.0))
+        Result.combine(assert(count == 3.0), assert(sum >= 4.1 && sum <= 5.0))
       },
       test("summary count and sum are as expected") { () =>
         val set: util.Set[String] = new util.HashSet[String]()

@@ -158,13 +158,12 @@ From here on. we will use environmental efects, helper methods and a mix of both
 
 ## Gauge
 Besides increasing, a gauge may also decrease and has methods to `set` and `get`
-a values as well as to `setToTime` and `setToCurrentTime`. 
+values as well as to `setToTime` and `setToCurrentTime`. 
 
 ```scala mdoc:silent
   val testGauge: RIO[PrometheusRegistry with PrometheusGauge, (CollectorRegistry, Double)] = for {
-    pr <- RIO.environment[PrometheusRegistry]
-    r  <- pr.registry.getCurrent()
-    g  <- pr.registry.registerGauge(PLabel("simple_gauge", Array.empty[String]))
+    r  <- registry.getCurrent()
+    g  <- registry.registerGauge("simple_gauge", Array.empty[String])
     _  <- gauge.inc(g)
     _  <- gauge.inc(g, 2.0)
     d  <- gauge.getValue(g)
@@ -178,9 +177,8 @@ With labels it looks like this:
 
 ```scala mdoc:silent
   val testLabeledGauge: RIO[PrometheusRegistry with PrometheusGauge, (CollectorRegistry, Double)] = for {
-    pr <- RIO.environment[PrometheusRegistry]
-    r  <- pr.registry.getCurrent()
-    g  <- pr.registry.registerGauge(PLabel("simple_gauge", Array("method")))
+    r  <- registry.getCurrent()
+    g  <- registry.registerGauge("simple_gauge", Array("method"))
     _  <- gauge.inc(g, Array("get"))
     _  <- gauge.inc(g, 2.0, Array("get"))
     d  <- gauge.getValue(g, Array("get"))
@@ -273,6 +271,18 @@ want to time:
   } yield r
 ```
 
+You can also configure the [different types of
+buckets](https://prometheus.github.io/client_java/io/prometheus/client/Histogram.Builder.html#buckets-double)
+, for instance, we can use `Linear Buckets` with the function above:
+
+```scala mdoc:silent
+  val testHistogramTimer: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
+    h  <- registry.registerHistogram("simple_histogram_timer", Array("method"), LinearBuckets(1, 2, 5))
+    _  <- histogram.time(h, () => Thread.sleep(2000), Array("post"))
+    r  <- registry.getCurrent()
+  } yield r
+```
+
 You can, of course, verify the usual way:
 ```scala mdoc:silent
   val set: util.Set[String] = new util.HashSet[String]()
@@ -307,6 +317,16 @@ value in a synchronous manner, where `h` is the histogram we registered as
 `simple_histogram` with a `method` label, `_` refers to the value (10.5, 25.0,
 etc.) and `Array("get")` is the specif label for the current observation.
 
+We can override the `DefaultBuckets` so:
+
+```scala mdoc:silent
+  val testHistogram: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
+    h  <- registry.registerHistogram("simple_histogram", Array("method"), DefaultBuckets(Seq(10,20,30,40,50)))
+    _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.observe(h, _, Array("get")))
+    r  <- registry.getCurrent()
+  } yield r
+```
+
 Finally, to use an arbitrary timer, after registering the histogram, we need to
 start the timer using our recently created `histogram` object with the
 `startTimer` method which returns a `timer` object. We will use this `timer` to
@@ -333,8 +353,14 @@ when `startTimer` was called and each time we `observeDuration`.
   } yield r
 ```
 
+We could define `ExponentialBuckets` substituting the following line:
+
+```scala mdoc:silent
+    h  <- registry.registerHistogram("duration_histogram", Array("method"), ExponentialBuckets(0.25,2,5))
+```
+
 Now lets inspect our values by `tap`ping our `RIO`. Add ` with Clock.Live`
- to the the runtime `rt` before executing the following code.
+ to the runtime `rt` before executing the following code.
 
 ```scala mdoc:silent
   rt.unsafeRun(testHistogramDuration.tap(r => exporters.write004(r).map(println)))
