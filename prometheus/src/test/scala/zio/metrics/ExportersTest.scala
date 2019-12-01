@@ -4,7 +4,6 @@ import zio.{ RIO, Runtime }
 import zio.console.putStrLn
 import zio.internal.PlatformLive
 import zio.metrics.prometheus._
-import io.prometheus.client.CollectorRegistry
 import io.prometheus.client.exporter.HTTPServer
 import zio.console.Console
 
@@ -17,8 +16,9 @@ object ExportersTest {
   )
 
   val exporterTest: RIO[
-    PrometheusRegistry with PrometheusCounter with PrometheusHistogram with PrometheusExporters with Console,
-    (CollectorRegistry, HTTPServer)
+    PrometheusRegistry with PrometheusCounter with PrometheusHistogram
+        with PrometheusExporters with Console,
+    HTTPServer
   ] =
     for {
       r  <- registry.getCurrent()
@@ -31,8 +31,8 @@ object ExportersTest {
       _  <- histogram.time(h, () => Thread.sleep(2000), Array("histogram", "get"))
       s  <- exporters.write004(r)
       _  <- putStrLn(s)
-    } yield (r, hs)
+    } yield hs
 
   def main(args: Array[String]): Unit =
-    rt.unsafeRun(exporterTest >>= (tup => putStrLn(s"Server port: ${tup._2.getPort()}")))
+    rt.unsafeRun(exporterTest >>= (server => putStrLn(s"Server port: ${server.getPort()}")))
 }

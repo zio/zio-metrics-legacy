@@ -48,7 +48,10 @@ ZIO-Metrics expose it via [Ref](https://zio.dev/docs/datatypes/datatypes_ref)
 providing methods to register every metric type plus one `getCurrent` method to
 obtain the current `CollectorRegistry`
 
-You can access the registry module using environmental effects:
+You can access the registry module using either environmental effects or
+zio-metrics
+[Helper](https://github.com/zio/zio-metrics/blob/master/prometheus/src/main/scala/zio/metrics/prometheus/Helpers.scala)
+methods. We'll start using environmental effects until the `Helper` methods are introduced:
 
 ```scala mdoc:silent
   val testRegistry: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
@@ -81,9 +84,10 @@ passed as a parameter along with optional labels.
 ```scala mdoc:silent
   val testCounter: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
-    c  <- pr.registry.registerCounter(PLabel("simple_counter", Array.empty[String]))
-    _  <- pcounter.inc(c)
-    _  <- pcounter.inc(c, 2.0)
+    c  <- pr.registry.registerCounter(Label(PrometheusTest.getClass(), Array.empty[String]))
+    pc <- RIO.environment[PrometheusCounter]
+    _  <- pc.counter.inc(c, Array.empty[String])
+    _  <- pc.counter.inc(c, 2.0, Array.empty[String])
     r  <- pr.registry.getCurrent()
   } yield r
 ```
@@ -93,9 +97,10 @@ If the counter is registered with labels, then you need to increase the counter
 ```scala mdoc:silent
   val testLabeledCounter: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
-    c  <- pr.registry.registerCounter(PLabel("simple_counter", Array("method", "resource")))
-    _  <- pcounter.inc(c, Array("get", "users"))
-    _  <- pcounter.inc(c, 2.0, Array("get", "users"))
+    c  <- pr.registry.registerCounter(Label("simple_counter", Array("method", "resource")))
+    pc <- RIO.environment[PrometheusCounter]
+    _  <- pc.counter.inc(c, Array("get", "users"))
+    _  <- pc.counter.inc(c, 2.0, Array("get", "users"))
     r  <- pr.registry.getCurrent()
   } yield r
 ```
@@ -119,6 +124,37 @@ There's an easier way to observe the state of the `CollectorRegistry` using the
 
 Also notice that `counter` here is a [helper method](https://github.com/zio/zio-metrics/blob/master/prometheus/src/main/scala/zio/metrics/prometheus/Helpers.scala) that makes it easier to call
 the actual methods from `Counter`. 
+
+## Helpers
+Environmental effects gives us access direct access to zio-metrics' modules
+which means we have to create `Label` objects for the name, empty arrays when
+we do not use any labels, etc. Helper methods take care of all the boilerplate
+and gives us easy-to-use functions. Using them out `testCounter` example above
+becomes:
+
+```scala mdoc:silent
+  val testCounterHelper: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
+    c  <- registry.registerCounter(PrometheusTest.getClass())
+    _  <- counter.inc(c)
+    _  <- counter.inc(c, 2.0)
+    r  <- registry.getCurrent()
+  } yield r
+```
+
+This version accepts directly either a `String` or a `Class` for a name, the
+helper method creates the `Label` for us as well as the empty array for the
+labels. There are also helper methods that supports an array for labels:
+
+```scala mdoc:silent
+  val testCounterHelper: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
+    c  <- registry.registerCounter("simple_counter", Array("method", "resource"))
+    _  <- counter.inc(c, Array("get", "users"))
+    _  <- counter.inc(c, 2.0, Array("get", "users"))
+    r  <- registry.getCurrent()
+  } yield r
+```
+
+From here on. we will use environmental efects, helper methods and a mix of both.
 
 ## Gauge
 Besides increasing, a gauge may also decrease and has methods to `set` and `get`
@@ -189,20 +225,20 @@ given registry. Let's look at an example of how all this works.
 
 ```scala mdoc:silent
   val exporterTest: RIO[
-    PrometheusRegistry with PrometheusCounter with PrometheusHistogram with PrometheusExporters with Console,
+    PrometheusRegistry with PrometheusCounter with PrometheusHistogram 
+      with PrometheusExporters with Console,
     HTTPServer
   ] =
     for {
-      pr <- RIO.environment[PrometheusRegistry]
-      r  <- pr.registry.getCurrent()
-      _  <- exporters.initializeDefaultExports(r) // initialize HotSpot collectors
-      hs <- exporters.http(r, 9090) // http exporter
-      c  <- pr.registry.registerCounter(Label(ExportersTest.getClass(), Array("exporter")))
+      r  <- registry.getCurrent()
+      _  <- exporters.initializeDefaultExports(r)
+      hs <- exporters.http(r, 9090)
+      c  <- registry.registerCounter(ExportersTest.getClass(), Array("exporter"))
       _  <- counter.inc(c, Array("counter"))
       _  <- counter.inc(c, 2.0, Array("counter"))
-      h  <- pr.registry.registerHistogram(Label("export_histogram", Array("exporter", "method")))
+      h  <- registry.registerHistogram("export_histogram", Array("exporter", "method"))
       _  <- histogram.time(h, () => Thread.sleep(2000), Array("histogram", "get"))
-      s  <- exporters.write004(r) // export as a 004 encoded string
+      s  <- exporters.write004(r)
       _  <- putStrLn(s)
     } yield hs
 

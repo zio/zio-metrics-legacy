@@ -22,9 +22,17 @@ object PrometheusTest {
   val testCounter: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
     c  <- pr.registry.registerCounter(Label(PrometheusTest.getClass(), Array.empty[String]))
+    pc <- RIO.environment[PrometheusCounter]
+    _  <- pc.counter.inc(c, Array.empty[String])
+    _  <- pc.counter.inc(c, 2.0, Array.empty[String])
+    r  <- pr.registry.getCurrent()
+  } yield r
+
+  val testCounterHelper: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
+    c  <- registry.registerCounter("PrometheusTestHelper")
     _  <- counter.inc(c)
     _  <- counter.inc(c, 2.0)
-    r  <- pr.registry.getCurrent()
+    r  <- registry.getCurrent()
   } yield r
 
   val testGauge: RIO[PrometheusRegistry with PrometheusGauge, (CollectorRegistry, Double)] = for {
@@ -61,6 +69,18 @@ object PrometheusTest {
         val set: util.Set[String] = new util.HashSet[String]()
         set.add(Show.fixClassName(PrometheusTest.getClass()))
         val r = rt.unsafeRun(testCounter)
+        val counter = r
+          .filteredMetricFamilySamples(set)
+          .nextElement()
+          .samples
+          .get(0)
+          .value
+        assert(counter == 3.0)
+      },
+      test("counter increases by `inc` amount on helper method") { () =>
+        val set: util.Set[String] = new util.HashSet[String]()
+        set.add(Show.fixClassName(PrometheusTest.getClass()))
+        val r = rt.unsafeRun(testCounterHelper)
         val counter = r
           .filteredMetricFamilySamples(set)
           .nextElement()
