@@ -1,0 +1,378 @@
+<!DOCTYPE html><html lang="en"><head><meta charSet="utf-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><title>Prometheus ZIO Wrapper · ZIO Metrics</title><meta name="viewport" content="width=device-width"/><meta name="generator" content="Docusaurus"/><meta name="description" content="ZIO Metrics Prometheus provides Prometheus&#x27; 5 metrics plus a number of"/><meta name="docsearch:language" content="en"/><meta property="og:title" content="Prometheus ZIO Wrapper · ZIO Metrics"/><meta property="og:type" content="website"/><meta property="og:url" content="https://zio.github.io/zio-metrics/"/><meta property="og:description" content="ZIO Metrics Prometheus provides Prometheus&#x27; 5 metrics plus a number of"/><meta name="twitter:card" content="summary"/><link rel="shortcut icon" href="/zio-metrics/img/favicon.png"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css"/><script type="text/javascript" src="https://buttons.github.io/buttons.js"></script><script src="https://unpkg.com/vanilla-back-to-top@7.1.14/dist/vanilla-back-to-top.min.js"></script><script>
+        document.addEventListener('DOMContentLoaded', function() {
+          addBackToTop(
+            {"zIndex":100,"cornerOffset":100}
+          )
+        });
+        </script><script src="/zio-metrics/js/scrollSpy.js"></script><link rel="stylesheet" href="/zio-metrics/css/main.css"/><script src="/zio-metrics/js/codetabs.js"></script></head><body class="sideNavVisible separateOnPageNav"><div class="fixedHeaderContainer"><div class="headerWrapper wrapper"><header><a href="/zio-metrics/"><img class="logo" src="/zio-metrics/img/navbar_brand2x.png" alt="ZIO Metrics"/><h2 class="headerTitleWithLogo">ZIO Metrics</h2></a><div class="navigationWrapper navigationSlider"><nav class="slidingNav"><ul class="nav-site nav-site-internal"><li class="siteNavGroupActive"><a href="/zio-metrics/docs/essentials/essentials_index" target="_self">Documentation</a></li></ul></nav></div></header></div></div><div class="navPusher"><div class="docMainWrapper wrapper"><div class="docsNavContainer" id="docsNav"><nav class="toc"><div class="toggleNav"><section class="navWrapper wrapper"><div class="navBreadcrumb wrapper"><div class="navToggle" id="navToggler"><div class="hamburger-menu"><div class="line1"></div><div class="line2"></div><div class="line3"></div></div></div><h2><i>›</i><span>Essentials</span></h2><div class="tocToggler" id="tocToggler"><i class="icon-toc"></i></div></div><div class="navGroups"><div class="navGroup"><h3 class="navGroupCategoryTitle">Essentials</h3><ul class=""><li class="navListItem"><a class="navItem" href="/zio-metrics/docs/essentials/essentials_index">Overview</a></li><li class="navListItem navListItemActive"><a class="navItem" href="/zio-metrics/docs/essentials/essentials_files">Prometheus ZIO Wrapper</a></li><li class="navListItem"><a class="navItem" href="/zio-metrics/docs/essentials/essentials_sockets">Dropwizard ZIO WSrapper</a></li></ul></div></div></section></div><script>
+            var coll = document.getElementsByClassName('collapsible');
+            var checkActiveCategory = true;
+            for (var i = 0; i < coll.length; i++) {
+              var links = coll[i].nextElementSibling.getElementsByTagName('*');
+              if (checkActiveCategory){
+                for (var j = 0; j < links.length; j++) {
+                  if (links[j].classList.contains('navListItemActive')){
+                    coll[i].nextElementSibling.classList.toggle('hide');
+                    coll[i].childNodes[1].classList.toggle('rotate');
+                    checkActiveCategory = false;
+                    break;
+                  }
+                }
+              }
+
+              coll[i].addEventListener('click', function() {
+                var arrow = this.childNodes[1];
+                arrow.classList.toggle('rotate');
+                var content = this.nextElementSibling;
+                content.classList.toggle('hide');
+              });
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+              createToggler('#navToggler', '#docsNav', 'docsSliderActive');
+              createToggler('#tocToggler', 'body', 'tocActive');
+
+              var headings = document.querySelector('.toc-headings');
+              headings && headings.addEventListener('click', function(event) {
+                var el = event.target;
+                while(el !== headings){
+                  if (el.tagName === 'A') {
+                    document.body.classList.remove('tocActive');
+                    break;
+                  } else{
+                    el = el.parentNode;
+                  }
+                }
+              }, false);
+
+              function createToggler(togglerSelector, targetSelector, className) {
+                var toggler = document.querySelector(togglerSelector);
+                var target = document.querySelector(targetSelector);
+
+                if (!toggler) {
+                  return;
+                }
+
+                toggler.onclick = function(event) {
+                  event.preventDefault();
+
+                  target.classList.toggle(className);
+                };
+              }
+            });
+        </script></nav></div><div class="container mainContainer docsContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1 id="__docusaurus" class="postHeaderTitle">Prometheus ZIO Wrapper</h1></header><article><div><span><p>ZIO Metrics Prometheus provides Prometheus' 5 metrics plus a number of
+exporters all connected through the <code>CollectorRegstyr</code>.</p>
+<p>Required imports for presented snippets:</p>
+<pre><code class="hljs css language-scala mdoc:silent"><span class="hljs-keyword">import</span> zio.{ <span class="hljs-type">RIO</span>, <span class="hljs-type">Runtime</span> }
+<span class="hljs-keyword">import</span> io.prometheus.client.<span class="hljs-type">CollectorRegistry</span>
+<span class="hljs-keyword">import</span> zio.internal.<span class="hljs-type">PlatformLive</span>
+<span class="hljs-keyword">import</span> zio.metrics.{ <span class="hljs-type">Label</span> =&gt; <span class="hljs-type">PLabel</span>, _ }
+<span class="hljs-keyword">import</span> zio.metrics.prometheus.{ counter =&gt; counterHelper, _}
+
+<span class="hljs-comment">// also for printing debug messages to the console</span>
+<span class="hljs-keyword">import</span> zio.console.{ <span class="hljs-type">Console</span>, putStrLn }
+<span class="hljs-comment">// and for sleeping/clocks</span>
+<span class="hljs-keyword">import</span> zio.clock.<span class="hljs-type">Clock</span>
+<span class="hljs-keyword">import</span> zio.duration.<span class="hljs-type">Duration</span>
+<span class="hljs-keyword">import</span> scala.concurrent.duration._
+<span class="hljs-comment">// and for inspecting primetheus</span>
+<span class="hljs-keyword">import</span> java.util
+</code></pre>
+<p>We will also provide our own <code>Runtime</code>:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> rt = <span class="hljs-type">Runtime</span>(
+    <span class="hljs-keyword">new</span> <span class="hljs-type">PrometheusRegistry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusCounter</span> <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusGauge</span> <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusHistogram</span>
+        <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusSummary</span> <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusExporters</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Console</span>.<span class="hljs-type">Live</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Clock</span>.<span class="hljs-type">Live</span>,
+    <span class="hljs-type">PlatformLive</span>.<span class="hljs-type">Default</span>
+  )
+</code></pre>
+<p>We include ALL 5 metrics since we will see an example for each one, normally you
+just need to include the ones you will actually use.</p>
+<p>We will assume the reader knows has working knowledge for Prometheus already, if
+not then head over to <a href="https://github.com/prometheus/client_java">Prometheus Java Client</a>.</p>
+<h2><a class="anchor" aria-hidden="true" id="registry"></a><a href="#registry" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Registry</h2>
+<p>All metrics register themselves with the registry and all exporters need access
+to the registry in order to obtain and export its registered metrics.
+ZIO-Metrics expose it via <a href="https://zio.dev/docs/datatypes/datatypes_ref">Ref</a>
+providing methods to register every metric type plus one <code>getCurrent</code> method to
+obtain the current <code>CollectorRegistry</code></p>
+<p>You can access the registry module using either environmental effects or
+zio-metrics
+<a href="https://github.com/zio/zio-metrics/blob/master/prometheus/src/main/scala/zio/metrics/prometheus/Helpers.scala">Helper</a>
+methods. We'll start using environmental effects until the <code>Helper</code> methods are introduced:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testRegistry: <span class="hljs-type">RIO</span>[<span class="hljs-type">PrometheusRegistry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusCounter</span>, <span class="hljs-type">CollectorRegistry</span>] = <span class="hljs-keyword">for</span> {
+    pr &lt;- <span class="hljs-type">RIO</span>.environment[<span class="hljs-type">PrometheusRegistry</span>]
+    _  &lt;- pr.registry.registerCounter(<span class="hljs-type">PLabel</span>(<span class="hljs-string">"simple_counter"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"method"</span>)))
+    r  &lt;- pr.registry.getCurrent()
+  } <span class="hljs-keyword">yield</span> r
+</code></pre>
+<p>All <code>register*</code> methods require <code>Label</code> object (some require some more
+parameters). A label is composed of a name and an array of labels which may be
+empty in the case of no labels.</p>
+<pre><code class="hljs css language-scala mdoc:silent"><span class="hljs-keyword">case</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Label</span>[<span class="hljs-type">A</span>: <span class="hljs-type">Show</span>](<span class="hljs-params">name: <span class="hljs-type">A</span>, labels: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]</span>)</span>
+</code></pre>
+<p>Note that zio-metrics does not depend on either cats or scalaz so this <code>Show</code> is
+defined on
+<a href="https://github.com/zio/zio-metrics/blob/master/common/src/main/scala/zio/metrics/typeclasses.scala">typeclasses</a>
+with instances for <code>String</code> and <code>Class[A]</code>.</p>
+<p>Then we also have <code>getCurrent()</code> that simply returns the <code>CollectorRegistry</code> and
+is needed by all <code>Exporters</code>.</p>
+<h2><a class="anchor" aria-hidden="true" id="counter"></a><a href="#counter" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Counter</h2>
+<p>Counter has methods to increase a counter by 1 or by an arbitrary double
+passed as a parameter along with optional labels.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testCounter: <span class="hljs-type">RIO</span>[<span class="hljs-type">PrometheusRegistry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusCounter</span>, <span class="hljs-type">CollectorRegistry</span>] = <span class="hljs-keyword">for</span> {
+    pr &lt;- <span class="hljs-type">RIO</span>.environment[<span class="hljs-type">PrometheusRegistry</span>]
+    c  &lt;- pr.registry.registerCounter(<span class="hljs-type">PLabel</span>(<span class="hljs-string">"simple_counter"</span>, <span class="hljs-type">Array</span>.empty[<span class="hljs-type">String</span>]))
+    pc &lt;- <span class="hljs-type">RIO</span>.environment[<span class="hljs-type">PrometheusCounter</span>]
+    _  &lt;- pc.counter.inc(c, <span class="hljs-type">Array</span>.empty[<span class="hljs-type">String</span>])
+    _  &lt;- pc.counter.inc(c, <span class="hljs-number">2.0</span>, <span class="hljs-type">Array</span>.empty[<span class="hljs-type">String</span>])
+    r  &lt;- pr.registry.getCurrent()
+  } <span class="hljs-keyword">yield</span> r
+</code></pre>
+<p>If the counter is registered with labels, then you need to increase the counter
+passing the same number of labels when registered.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testLabeledCounter: <span class="hljs-type">RIO</span>[<span class="hljs-type">PrometheusRegistry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusCounter</span>, <span class="hljs-type">CollectorRegistry</span>] = <span class="hljs-keyword">for</span> {
+    pr &lt;- <span class="hljs-type">RIO</span>.environment[<span class="hljs-type">PrometheusRegistry</span>]
+    c  &lt;- pr.registry.registerCounter(<span class="hljs-type">PLabel</span>(<span class="hljs-string">"simple_counter"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"method"</span>, <span class="hljs-string">"resource"</span>)))
+    pc &lt;- <span class="hljs-type">RIO</span>.environment[<span class="hljs-type">PrometheusCounter</span>]
+    _  &lt;- pc.counter.inc(c, <span class="hljs-type">Array</span>(<span class="hljs-string">"get"</span>, <span class="hljs-string">"users"</span>))
+    _  &lt;- pc.counter.inc(c, <span class="hljs-number">2.0</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"get"</span>, <span class="hljs-string">"users"</span>))
+    r  &lt;- pr.registry.getCurrent()
+  } <span class="hljs-keyword">yield</span> r
+</code></pre>
+<p>You can run and verify the results so:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> set: util.<span class="hljs-type">Set</span>[<span class="hljs-type">String</span>] = <span class="hljs-keyword">new</span> util.<span class="hljs-type">HashSet</span>[<span class="hljs-type">String</span>]()
+  set.add(<span class="hljs-string">"simple_counter"</span>)
+  <span class="hljs-keyword">val</span> r = rt.unsafeRun(testCounter)
+  <span class="hljs-keyword">val</span> counter = r
+    .filteredMetricFamilySamples(set)
+    .nextElement()
+    .samples
+    .get(<span class="hljs-number">0</span>)
+    .value
+  assert(counter == <span class="hljs-number">3.0</span>)
+</code></pre>
+<p>There's an easier way to observe the state of the <code>CollectorRegistry</code> using the
+<code>write004</code> Exporter covered later.</p>
+<p>Also notice that <code>counter</code> here is a <a href="https://github.com/zio/zio-metrics/blob/master/prometheus/src/main/scala/zio/metrics/prometheus/Helpers.scala">helper method</a> that makes it easier to call
+the actual methods from <code>Counter</code>.</p>
+<h2><a class="anchor" aria-hidden="true" id="helpers"></a><a href="#helpers" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Helpers</h2>
+<p>Environmental effects gives us access direct access to zio-metrics' modules
+which means we have to create <code>Label</code> objects for the name, empty arrays when
+we do not use any labels, etc. Helper methods take care of all the boilerplate
+and gives us easy-to-use functions. Using them out <code>testCounter</code> example above
+becomes:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testCounterHelper: <span class="hljs-type">RIO</span>[<span class="hljs-type">PrometheusRegistry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusCounter</span>, <span class="hljs-type">CollectorRegistry</span>] = <span class="hljs-keyword">for</span> {
+    c  &lt;- registry.registerCounter(<span class="hljs-string">"simple_counter"</span>)
+    _  &lt;- counterHelper.inc(c)
+    _  &lt;- counterHelper.inc(c, <span class="hljs-number">2.0</span>)
+    r  &lt;- registry.getCurrent()
+  } <span class="hljs-keyword">yield</span> r
+</code></pre>
+<p>This version accepts directly either a <code>String</code> or a <code>Class</code> for a name, the
+helper method creates the <code>Label</code> for us as well as the empty array for the
+labels. There are also helper methods that supports an array for labels:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testCounterHelperLabels: <span class="hljs-type">RIO</span>[<span class="hljs-type">PrometheusRegistry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusCounter</span>, <span class="hljs-type">CollectorRegistry</span>] = <span class="hljs-keyword">for</span> {
+    c  &lt;- registry.registerCounter(<span class="hljs-string">"simple_counter"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"method"</span>, <span class="hljs-string">"resource"</span>))
+    _  &lt;- counterHelper.inc(c, <span class="hljs-type">Array</span>(<span class="hljs-string">"get"</span>, <span class="hljs-string">"users"</span>))
+    _  &lt;- counterHelper.inc(c, <span class="hljs-number">2.0</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"get"</span>, <span class="hljs-string">"users"</span>))
+    r  &lt;- registry.getCurrent()
+  } <span class="hljs-keyword">yield</span> r
+</code></pre>
+<p>From here on. we will use environmental efects, helper methods and a mix of both.</p>
+<h2><a class="anchor" aria-hidden="true" id="gauge"></a><a href="#gauge" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Gauge</h2>
+<p>Besides increasing, a gauge may also decrease and has methods to <code>set</code> and <code>get</code>
+values as well as to <code>setToTime</code> and <code>setToCurrentTime</code>.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testGauge: <span class="hljs-type">RIO</span>[<span class="hljs-type">PrometheusRegistry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusGauge</span>, (<span class="hljs-type">CollectorRegistry</span>, <span class="hljs-type">Double</span>)] = <span class="hljs-keyword">for</span> {
+    r  &lt;- registry.getCurrent()
+    g  &lt;- registry.registerGauge(<span class="hljs-string">"simple_gauge"</span>, <span class="hljs-type">Array</span>.empty[<span class="hljs-type">String</span>])
+    _  &lt;- gauge.inc(g)
+    _  &lt;- gauge.inc(g, <span class="hljs-number">2.0</span>)
+    d  &lt;- gauge.getValue(g)
+  } <span class="hljs-keyword">yield</span> (r, d)
+</code></pre>
+<p>Here I chose to return both the <code>CollectorRegistry</code> and the latest value from
+the gauge as a tuple. <code>gauge</code> refers to the <a href="https://github.com/zio/zio-metrics/blob/master/prometheus/src/main/scala/zio/metrics/prometheus/Helpers.scala">helper
+method</a>.
+With labels it looks like this:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testLabeledGauge: <span class="hljs-type">RIO</span>[<span class="hljs-type">PrometheusRegistry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusGauge</span>, (<span class="hljs-type">CollectorRegistry</span>, <span class="hljs-type">Double</span>)] = <span class="hljs-keyword">for</span> {
+    r  &lt;- registry.getCurrent()
+    g  &lt;- registry.registerGauge(<span class="hljs-string">"simple_gauge"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"method"</span>))
+    _  &lt;- gauge.inc(g, <span class="hljs-type">Array</span>(<span class="hljs-string">"get"</span>))
+    _  &lt;- gauge.inc(g, <span class="hljs-number">2.0</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"get"</span>))
+    d  &lt;- gauge.getValue(g, <span class="hljs-type">Array</span>(<span class="hljs-string">"get"</span>))
+  } <span class="hljs-keyword">yield</span> (r, d)
+</code></pre>
+<p>And to run and verify the result:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> setG: util.<span class="hljs-type">Set</span>[<span class="hljs-type">String</span>] = <span class="hljs-keyword">new</span> util.<span class="hljs-type">HashSet</span>[<span class="hljs-type">String</span>]()
+  setG.add(<span class="hljs-string">"simple_gauge"</span>)
+  <span class="hljs-keyword">val</span> rG = rt.unsafeRun(testGauge)
+  <span class="hljs-keyword">val</span> a1 = rG._1
+    .filteredMetricFamilySamples(setG)
+    .nextElement()
+    .samples
+    .get(<span class="hljs-number">0</span>)
+    .value
+
+  assert(a1 == rG._2)
+  assert(a1 == <span class="hljs-number">3.0</span>)
+</code></pre>
+<p>This way to verify our metrics is awkward and cumbersome, let's look at what
+<code>Exporters</code> can do for us in this regard.</p>
+<h2><a class="anchor" aria-hidden="true" id="exporters"></a><a href="#exporters" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Exporters</h2>
+<p>Prometheus provides 4 main exporters:</p>
+<ol>
+<li>Http</li>
+<li>Pushgateways</li>
+<li>Graphite Bridges</li>
+<li>TextFormat</li>
+<li>DefaultExports</li>
+</ol>
+<p>TextFormat is a Prometheus Exporter with a single method <code>write004</code> which writes the
+contents of a <code>CollectorRegistry</code> in the 004 content-type encoding that
+Prometheus expects. That's what we will use to verify our metrics from now on.</p>
+<p>DefaultExports, on the other hand, registers a number of HotSpot collectors to a
+given registry. Let's look at an example of how all this works.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">import</span> io.prometheus.client.exporter.<span class="hljs-type">HTTPServer</span>
+
+  <span class="hljs-keyword">val</span> exporterTest: <span class="hljs-type">RIO</span>[
+    <span class="hljs-type">PrometheusRegistry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusCounter</span> <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusHistogram</span> 
+      <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusExporters</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Console</span>,
+    <span class="hljs-type">HTTPServer</span>
+  ] =
+    <span class="hljs-keyword">for</span> {
+      r  &lt;- registry.getCurrent()
+      _  &lt;- exporters.initializeDefaultExports(r)
+      hs &lt;- exporters.http(r, <span class="hljs-number">9090</span>)
+      c  &lt;- registry.registerCounter(<span class="hljs-string">"ExportersTest"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"exporter"</span>))
+      _  &lt;- counterHelper.inc(c, <span class="hljs-type">Array</span>(<span class="hljs-string">"counter"</span>))
+      _  &lt;- counterHelper.inc(c, <span class="hljs-number">2.0</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"counter"</span>))
+      h  &lt;- registry.registerHistogram(<span class="hljs-string">"export_histogram"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"exporter"</span>, <span class="hljs-string">"method"</span>))
+      _  &lt;- histogram.time(h, () =&gt; <span class="hljs-type">Thread</span>.sleep(<span class="hljs-number">2000</span>), <span class="hljs-type">Array</span>(<span class="hljs-string">"histogram"</span>, <span class="hljs-string">"get"</span>))
+      s  &lt;- exporters.write004(r)
+      _  &lt;- putStrLn(s)
+    } <span class="hljs-keyword">yield</span> hs
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">main</span></span>(args: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">Unit</span> =
+    rt.unsafeRun(exporterTest &gt;&gt;= (server =&gt; putStrLn(<span class="hljs-string">s"Server port: <span class="hljs-subst">${server.getPort()}</span>"</span>)))
+</code></pre>
+<p>Where <code>&gt;&gt;=</code> = <code>flatMap</code>. Also note that <code>exporters</code> refers to the helper object
+and that in this example we are returning the <code>HTTPServer</code> object used by
+Prometheus, we could potentially use it (for instance) to stop the
+server,<code>exporters</code> helper has the method <code>stopHttp</code> for that.
+Besides printing the metrics to the console you can also ask them via http <code>curl http://localhost:9090</code>. Since we are already using <code>histogram</code> in this example,
+let's look at it in more detail next.</p>
+<h2><a class="anchor" aria-hidden="true" id="histogram"></a><a href="#histogram" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Histogram</h2>
+<p>Histogram has 3 modes we can use:</p>
+<ol>
+<li>We can <code>time</code> how long a task/function takes to complete.</li>
+<li>We can <code>observe</code> arbitrary <code>Double</code> values.</li>
+<li>We can start an arbitrary <code>timer</code> and <code>observe</code> its duration.</li>
+</ol>
+<p>Using a histogram to <code>time</code> a function is pretty much what was shown on the
+<code>Exporters</code> example above, where <code>() =&gt; Thread.sleep(2000)</code> is the function we
+want to time:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testHistogramTimer: <span class="hljs-type">RIO</span>[<span class="hljs-type">PrometheusRegistry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusHistogram</span>, <span class="hljs-type">CollectorRegistry</span>] = <span class="hljs-keyword">for</span> {
+    pr &lt;- <span class="hljs-type">RIO</span>.environment[<span class="hljs-type">PrometheusRegistry</span>]
+    h  &lt;- pr.registry.registerHistogram(<span class="hljs-type">PLabel</span>(<span class="hljs-string">"simple_histogram_timer"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"method"</span>)), <span class="hljs-type">DefaultBuckets</span>(<span class="hljs-type">Seq</span>.empty[<span class="hljs-type">Double</span>]))
+    _  &lt;- histogram.time(h, () =&gt; <span class="hljs-type">Thread</span>.sleep(<span class="hljs-number">2000</span>), <span class="hljs-type">Array</span>(<span class="hljs-string">"post"</span>).reverse )
+    r  &lt;- pr.registry.getCurrent()
+  } <span class="hljs-keyword">yield</span> r
+</code></pre>
+<p>You can also configure the <a href="https://prometheus.github.io/client_java/io/prometheus/client/Histogram.Builder.html#buckets-double">different types of
+buckets</a>
+, for instance, we can use <code>Linear Buckets</code> with the function above:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testHistogramTimerHelper: <span class="hljs-type">RIO</span>[<span class="hljs-type">PrometheusRegistry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusHistogram</span>, <span class="hljs-type">CollectorRegistry</span>] = <span class="hljs-keyword">for</span> {
+    h  &lt;- registry.registerHistogram(<span class="hljs-string">"simple_histogram_thelper"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"method"</span>), <span class="hljs-type">LinearBuckets</span>(<span class="hljs-number">1</span>, <span class="hljs-number">2</span>, <span class="hljs-number">5</span>))
+    _  &lt;- histogram.time(h, () =&gt; <span class="hljs-type">Thread</span>.sleep(<span class="hljs-number">2000</span>), <span class="hljs-type">Array</span>(<span class="hljs-string">"post"</span>))
+    r  &lt;- registry.getCurrent()
+  } <span class="hljs-keyword">yield</span> r
+</code></pre>
+<p>You can, of course, verify the usual way:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> setHT: util.<span class="hljs-type">Set</span>[<span class="hljs-type">String</span>] = <span class="hljs-keyword">new</span> util.<span class="hljs-type">HashSet</span>[<span class="hljs-type">String</span>]()
+  setHT.add(<span class="hljs-string">"simple_histogram_timer_count"</span>)
+  setHT.add(<span class="hljs-string">"simple_histogram_timer_sum"</span>)
+
+  <span class="hljs-keyword">val</span> rht     = rt.unsafeRun(testHistogramTimer)
+  <span class="hljs-keyword">val</span> count = rht.filteredMetricFamilySamples(setHT).nextElement().samples.get(<span class="hljs-number">0</span>).value
+  <span class="hljs-keyword">val</span> sum   = rht.filteredMetricFamilySamples(setHT).nextElement().samples.get(<span class="hljs-number">1</span>).value
+</code></pre>
+<p>or simpler using our <code>exporters</code> helper:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> rhtE = rt.unsafeRun(testHistogramTimerHelper)
+  exporters.write004(rhtE)
+</code></pre>
+<p>If, instead, we want to measure arbitrary values:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testHistogram: <span class="hljs-type">RIO</span>[<span class="hljs-type">PrometheusRegistry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusHistogram</span>, <span class="hljs-type">CollectorRegistry</span>] = <span class="hljs-keyword">for</span> {
+    h  &lt;- registry.registerHistogram(<span class="hljs-string">"simple_histogram"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"method"</span>))
+    _  &lt;- <span class="hljs-type">RIO</span>.foreach(<span class="hljs-type">List</span>(<span class="hljs-number">10.5</span>, <span class="hljs-number">25.0</span>, <span class="hljs-number">50.7</span>, <span class="hljs-number">57.3</span>, <span class="hljs-number">19.8</span>))(histogram.observe(h, _, <span class="hljs-type">Array</span>(<span class="hljs-string">"get"</span>)))
+    r  &lt;- registry.getCurrent()
+  } <span class="hljs-keyword">yield</span> r
+
+</code></pre>
+<p><code>RIO.foreach</code> will take each value of the list <code>List(10.5, 25.0, 50.7, 57.3, 19.8)</code> and apply the function <code>histogram.observe(h, _, Array(&quot;get&quot;))</code> to each
+value in a synchronous manner, where <code>h</code> is the histogram we registered as
+<code>simple_histogram</code> with a <code>method</code> label, <code>_</code> refers to the value (10.5, 25.0,
+etc.) and <code>Array(&quot;get&quot;)</code> is the specif label for the current observation.</p>
+<p>We can override the <code>DefaultBuckets</code> so:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testHistogramBuckets: <span class="hljs-type">RIO</span>[<span class="hljs-type">PrometheusRegistry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusHistogram</span>, <span class="hljs-type">CollectorRegistry</span>] = <span class="hljs-keyword">for</span> {
+    h  &lt;- registry.registerHistogram(<span class="hljs-string">"simple_histogram"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"method"</span>), <span class="hljs-type">DefaultBuckets</span>(<span class="hljs-type">Seq</span>(<span class="hljs-number">10</span>,<span class="hljs-number">20</span>,<span class="hljs-number">30</span>,<span class="hljs-number">40</span>,<span class="hljs-number">50</span>)))
+    _  &lt;- <span class="hljs-type">RIO</span>.foreach(<span class="hljs-type">List</span>(<span class="hljs-number">10.5</span>, <span class="hljs-number">25.0</span>, <span class="hljs-number">50.7</span>, <span class="hljs-number">57.3</span>, <span class="hljs-number">19.8</span>))(histogram.observe(h, _, <span class="hljs-type">Array</span>(<span class="hljs-string">"get"</span>)))
+    r  &lt;- registry.getCurrent()
+  } <span class="hljs-keyword">yield</span> r
+</code></pre>
+<p>Finally, to use an arbitrary timer, after registering the histogram, we need to
+start the timer using our recently created <code>histogram</code> object with the
+<code>startTimer</code> method which returns a <code>timer</code> object. We will use this <code>timer</code> to
+mark every point we want observed (measure) thus giving us the duration between
+when <code>startTimer</code> was called and each time we <code>observeDuration</code>.</p>
+<pre><code class="hljs css language-scala mdoc:silent"> <span class="hljs-keyword">val</span> f = (n: <span class="hljs-type">Long</span>) =&gt; {
+    <span class="hljs-type">RIO</span>.sleep(<span class="hljs-type">Duration</span>.fromScala(n.millis)) *&gt; putStrLn(<span class="hljs-string">s"n = <span class="hljs-subst">$n</span>"</span>)
+  }
+
+  <span class="hljs-keyword">val</span> testHistogramDuration: <span class="hljs-type">RIO</span>[<span class="hljs-type">PrometheusRegistry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusHistogram</span>
+      <span class="hljs-keyword">with</span> <span class="hljs-type">Console</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Clock</span>, <span class="hljs-type">CollectorRegistry</span>] = <span class="hljs-keyword">for</span> {
+    h  &lt;- registry.registerHistogram(<span class="hljs-string">"duration_histogram"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"method"</span>))
+    t  &lt;- histogram.startTimer(h, <span class="hljs-type">Array</span>(<span class="hljs-string">"time"</span>))
+    dl &lt;- <span class="hljs-type">RIO</span>.foreach(<span class="hljs-type">List</span>(<span class="hljs-number">75</span>L, <span class="hljs-number">150</span>L, <span class="hljs-number">200</span>L))(n =&gt; <span class="hljs-keyword">for</span> {
+            _ &lt;- f(n)
+            d &lt;- histogram.observeDuration(t)
+          } <span class="hljs-keyword">yield</span> d
+          )
+    _  &lt;- <span class="hljs-type">RIO</span>.foreach(dl)(d =&gt; putStrLn(d.toString()))
+    r  &lt;- registry.getCurrent()
+  } <span class="hljs-keyword">yield</span> r
+</code></pre>
+<p>We could define <code>ExponentialBuckets</code> substituting the following line:</p>
+<p><code>h &lt;- registry.registerHistogram(&quot;duration_histogram&quot;, Array(&quot;method&quot;), ExponentialBuckets(0.25,2,5))</code></p>
+<p>Now lets inspect our values by <code>tap</code>ping our <code>RIO</code>. Add <code>with Clock.Live</code>
+to the runtime <code>rt</code> before executing the following code.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  rt.unsafeRun(testHistogramDuration.tap(r =&gt; exporters.write004(r).map(println)))
+</code></pre>
+<p>Please note there's no reason to use <code>tap</code> here, its just to demonstrate that we
+are returning <code>RIO</code>s which means we have at our disposal all its combinators. We
+might as well just use</p>
+<pre><code class="hljs">  <span class="hljs-keyword">val</span> rhd = rt.unsafe<span class="hljs-constructor">Run(<span class="hljs-params">testHistogramDuration</span>)</span>
+  exporters.write004(rhd)
+</code></pre>
+<p>instead or any other way we've seen of observing our <code>CollectoRegistry</code>.</p>
+<h2><a class="anchor" aria-hidden="true" id="summary"></a><a href="#summary" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Summary</h2>
+<p><code>Sumamry</code> works exactly as <code>Histogram</code> above except a <code>Summary</code> also allows to
+pass the list of percentiles we wish to include in our measures: <code>quantiles: List[(Percentile, Tolerance)]</code> where <code>Percentile</code> is a <code>Double</code> value between 0
+and 1 that represents the percentile (i.e. 0.5 = median) and <code>Tolerance</code> is a
+<code>Double</code> value (also between 0 and 1) that represents the tolerated error. Refer
+to the <a href="https://prometheus.io/docs/practices/histograms/#quantiles">Prometheus
+Percentile</a>
+documentation for more information.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testSummary: <span class="hljs-type">RIO</span>[<span class="hljs-type">PrometheusRegistry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">PrometheusSummary</span>, <span class="hljs-type">CollectorRegistry</span>] = <span class="hljs-keyword">for</span> {
+    pr &lt;- <span class="hljs-type">RIO</span>.environment[<span class="hljs-type">PrometheusRegistry</span>]
+    s  &lt;- pr.registry.registerSummary(<span class="hljs-type">PLabel</span>(<span class="hljs-string">"simple_summary"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"method"</span>)), <span class="hljs-type">List</span>((<span class="hljs-number">0.5</span>, <span class="hljs-number">0.05</span>), (<span class="hljs-number">0.9</span>, <span class="hljs-number">0.01</span>)))
+    _  &lt;- <span class="hljs-type">RIO</span>.foreach(<span class="hljs-type">List</span>(<span class="hljs-number">10.5</span>, <span class="hljs-number">25.0</span>, <span class="hljs-number">50.7</span>, <span class="hljs-number">57.3</span>, <span class="hljs-number">19.8</span>))(summary.observe(s, _, <span class="hljs-type">Array</span>(<span class="hljs-string">"put"</span>)))
+    r  &lt;- pr.registry.getCurrent()
+  } <span class="hljs-keyword">yield</span> r
+</code></pre>
+</span></div></article></div><div class="docLastUpdate"><em>Last updated on 12/1/2019 by toxicafunk</em></div><div class="docs-prevnext"><a class="docs-prev button" href="/zio-metrics/docs/essentials/essentials_index"><span class="arrow-prev">← </span><span>Overview</span></a><a class="docs-next button" href="/zio-metrics/docs/essentials/essentials_sockets"><span>Dropwizard ZIO WSrapper</span><span class="arrow-next"> →</span></a></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#registry">Registry</a></li><li><a href="#counter">Counter</a></li><li><a href="#helpers">Helpers</a></li><li><a href="#gauge">Gauge</a></li><li><a href="#exporters">Exporters</a></li><li><a href="#histogram">Histogram</a></li><li><a href="#summary">Summary</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section><div><div class="gitter-open-chat-button">Open Chat</div><script type="text/javascript">
+        ((window.gitter = {}).chat = {}).options = {
+          showChatByDefault: false,
+          activationElement: '.gitter-open-chat-button',
+          room: 'zio/zio-nio'
+        };
+      </script><script src="https://sidecar.gitter.im/dist/sidecar.v1.js" async="" defer=""></script></div></section><section class="sitemap"><a href="/zio-metrics/" class="nav-home"><img src="/zio-metrics/img/sidebar_brand2x.png" alt="ZIO Metrics"/></a><div><h5>GitHub</h5><a class="github-button" href="https://github.com/zio/zio-nio" data-icon="octicon-star" data-count-href="/zio/zio-nio/stargazers" data-show-count="true" data-count-aria-label="# stargazers on GitHub" aria-label="Star this project on GitHub">Star</a></div><div><h5>Additional resources</h5><a href="https://javadoc.io/doc/dev.zio/zio_2.12/">Scaladoc of ZIO</a></div></section><section class="copyright">Copyright © 2019 ZIO Maintainers</section></footer></div></body></html>
