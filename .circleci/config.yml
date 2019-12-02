@@ -32,6 +32,14 @@ load_cache: &load_cache
   - restore_cache:
       key: sbt-metrics-cache
 
+clean_cache: &clean_cache
+  - run:
+      name: Clean unwanted files from cache
+      command: |
+        rm -fv $HOME/.ivy2/.sbt.ivy.lock
+        find $HOME/.ivy2/cache -name "ivydata-*.properties" -print -delete
+        find $HOME/.sbt        -name "*.lock"               -print -delete
+
 save_cache: &save_cache
   - save_cache:
       key: sbt-metrics-cache
@@ -78,6 +86,7 @@ lint: &lint
     - run:
         name: Lint code
         command: ./sbt ++${SCALA_VERSION}! check
+    - <<: *clean_cache
     - <<: *save_cache
 
 mdoc: &mdoc
@@ -86,7 +95,10 @@ mdoc: &mdoc
     - <<: *load_cache
     - run:
         name: Generate documentation
-        command: ./sbt ++${SCALA_VERSION}! mdoc
+        command: |
+          ./sbt doc
+          ./sbt ++${SCALA_VERSION}! docs/mdoc
+    - <<: *clean_cache
     - <<: *save_cache
 
 test: &test
@@ -106,7 +118,7 @@ release: &release
           name: Fetch git tags
           command: git fetch --tags
       - <<: *load_cache
-      - run: 
+      - run:
           name: Write sonatype credentials
           command: echo "credentials += Credentials(\"Sonatype Nexus Repository Manager\", \"oss.sonatype.org\", \"${SONATYPE_USER}\", \"${SONATYPE_PASSWORD}\")" > ~/.sbt/1.0/sonatype.sbt
       - run:
@@ -132,14 +144,31 @@ documentation: &documentation
 
 microsite: &microsite
   steps:
-      - add_ssh_keys:
-          fingerprints:
-            - "11:2c:fa:98:69:d8:a1:d5:76:2e:38:d0:91:39:85:ce"
-      - checkout
-      - <<: *load_cache
-      - run: sbt ++2.12.8! microsite/makeMicrosite
-      - run: sbt ++2.12.8! microsite/publishMicrosite
-      - <<: *save_cache
+    - add_ssh_keys:
+        fingerprints:
+          - "aa:e5:47:15:d8:8d:cd:3f:d1:b5:43:35:8c:dd:19:1e"
+    - checkout
+    - <<: *load_cache
+    - <<: *install_nodejs
+    - <<: *install_yarn
+    - run:
+        name: Publishing website
+        command: |
+          git config --global user.email "${GH_NAME}@users.noreply.github.com"
+          git config --global user.name "${GH_NAME}"
+          export GIT_USER=${GH_NAME}
+          export TRAVIS_BUILD_NUMBER="${CIRCLE_BUILD_NUM}"
+          export TRAVIS_COMMIT="${CIRCLE_SHA1}"
+          sudo chown -R $USER:$USER /tmp
+          export NVM_DIR="/opt/circleci/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          nvm install
+          nvm use
+          node -v
+          ./sbt ++${SCALA_VERSION}! docs/docusaurusCreateSite
+          ./sbt ++${SCALA_VERSION}! docs/docusaurusPublishGhpages
+    - <<: *clean_cache
+    - <<: *save_cache
 
 jobs:
   lint:
@@ -229,6 +258,7 @@ jobs:
     <<: *microsite
     <<: *machine_ubuntu
     environment:
+      - <<: *scala_212
       - <<: *jdk_8
 
 workflows:
@@ -236,6 +266,12 @@ workflows:
   build:
     jobs:
       - lint:
+          filters:
+            tags:
+              only: /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
+      - mdoc:
+          requires:
+            - lint
           filters:
             tags:
               only: /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
@@ -251,11 +287,22 @@ workflows:
           filters:
             tags:
               only: /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
-      - release:
-          context: Sonatype
+      - microsite:
+          context: Website
           requires:
             - test_212_jdk8_jvm
             - test_212_jdk11_jvm
+            - mdoc
+          filters:
+            branches:
+              only:
+                - master
+            tags:
+              only: /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
+      - release:
+          context: Sonatype
+          requires:
+            - microsite
           filters:
             branches:
               ignore: /.*/
