@@ -106,7 +106,7 @@ release: &release
           name: Fetch git tags
           command: git fetch --tags
       - <<: *load_cache
-      - run: 
+      - run:
           name: Write sonatype credentials
           command: echo "credentials += Credentials(\"Sonatype Nexus Repository Manager\", \"oss.sonatype.org\", \"${SONATYPE_USER}\", \"${SONATYPE_PASSWORD}\")" > ~/.sbt/1.0/sonatype.sbt
       - run:
@@ -239,6 +239,12 @@ workflows:
           filters:
             tags:
               only: /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
+      - mdoc:
+          requires:
+            - lint
+          filters:
+            tags:
+              only: /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
       - test_212_jdk8_jvm:
           requires:
             - lint
@@ -251,11 +257,22 @@ workflows:
           filters:
             tags:
               only: /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
-      - release:
-          context: Sonatype
+      - microsite:
+          context: Website
           requires:
             - test_212_jdk8_jvm
             - test_212_jdk11_jvm
+            - mdoc
+          filters:
+            branches:
+              only:
+                - master
+            tags:
+              only: /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
+      - release:
+          context: Sonatype
+          requires:
+            - microsite
           filters:
             branches:
               ignore: /.*/
