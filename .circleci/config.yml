@@ -258,6 +258,7 @@ jobs:
     <<: *microsite
     <<: *machine_ubuntu
     environment:
+      - <<: *scala_212
       - <<: *jdk_8
 
 workflows:
