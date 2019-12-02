@@ -78,6 +78,7 @@ lint: &lint
     - run:
         name: Lint code
         command: ./sbt ++${SCALA_VERSION}! check
+    - <<: *clean_cache
     - <<: *save_cache
 
 mdoc: &mdoc
@@ -86,7 +87,10 @@ mdoc: &mdoc
     - <<: *load_cache
     - run:
         name: Generate documentation
-        command: ./sbt ++${SCALA_VERSION}! mdoc
+        command: |
+          ./sbt doc
+          ./sbt ++${SCALA_VERSION}! docs/mdoc
+    - <<: *clean_cache
     - <<: *save_cache
 
 test: &test
@@ -132,14 +136,31 @@ documentation: &documentation
 
 microsite: &microsite
   steps:
-      - add_ssh_keys:
-          fingerprints:
-            - "11:2c:fa:98:69:d8:a1:d5:76:2e:38:d0:91:39:85:ce"
-      - checkout
-      - <<: *load_cache
-      - run: sbt ++2.12.8! microsite/makeMicrosite
-      - run: sbt ++2.12.8! microsite/publishMicrosite
-      - <<: *save_cache
+    - add_ssh_keys:
+        fingerprints:
+          - "6f:1b:b1:33:e8:4c:7d:38:fc:42:28:0b:5c:43:67:ae"
+    - checkout
+    - <<: *load_cache
+    - <<: *install_nodejs
+    - <<: *install_yarn
+    - run:
+        name: Publishing website
+        command: |
+          git config --global user.email "${GH_NAME}@users.noreply.github.com"
+          git config --global user.name "${GH_NAME}"
+          export GIT_USER=${GH_NAME}
+          export TRAVIS_BUILD_NUMBER="${CIRCLE_BUILD_NUM}"
+          export TRAVIS_COMMIT="${CIRCLE_SHA1}"
+          sudo chown -R $USER:$USER /tmp
+          export NVM_DIR="/opt/circleci/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          nvm install
+          nvm use
+          node -v
+          ./sbt ++${SCALA_VERSION}! docs/docusaurusCreateSite
+          ./sbt ++${SCALA_VERSION}! docs/docusaurusPublishGhpages
+    - <<: *clean_cache
+    - <<: *save_cache
 
 jobs:
   lint:
