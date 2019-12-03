@@ -6,9 +6,9 @@ import zio.metrics.prometheus.PrometheusRegistry.{ Percentile, Tolerance }
 import io.prometheus.client.{ Counter => PCounter, Gauge => PGauge }
 import io.prometheus.client.{ Histogram => PHistogram, Summary => PSummary }
 
-trait Metric {}
+sealed trait Metric {}
 
-case class Counter(private val pCounter: PCounter) extends Metric {
+class Counter(private val pCounter: PCounter) extends Metric {
   def inc(): Task[Unit] = inc(Array.empty[String])
 
   def inc(amount: Double): Task[Unit] = inc(amount, Array.empty[String])
@@ -27,7 +27,7 @@ object Counter {
     } yield new Counter(c)
 }
 
-case class Gauge(private val pGauge: PGauge) extends Metric {
+class Gauge(private val pGauge: PGauge) extends Metric {
   def getValue(): Task[Double] =
     getValue(Array.empty[String])
 
@@ -91,7 +91,7 @@ object Gauge {
     } yield new Gauge(g)
 }
 
-case class Histogram(private val pHistogram: PHistogram) extends Metric {
+class Histogram(private val pHistogram: PHistogram) extends Metric {
   type HistogramTimer = PHistogram.Timer
 
   def observe(amount: Double): Task[Unit] =
@@ -127,7 +127,7 @@ object Histogram {
     } yield new Histogram(h)
 }
 
-case class Summary(private val pSummary: PSummary) extends Metric {
+class Summary(private val pSummary: PSummary) extends Metric {
   type SummaryTimer = PSummary.Timer
 
   def observe(amount: Double): Task[Unit] =
