@@ -12,53 +12,44 @@ import zio.metrics.prometheus._
 object PrometheusTest {
 
   val rt = Runtime(
-    new PrometheusRegistry with PrometheusCounter with PrometheusGauge with PrometheusHistogram with PrometheusSummary
-    with PrometheusExporters with Console.Live,
+    new PrometheusRegistry with PrometheusExporters with Console.Live,
     PlatformLive.Default
   )
 
   val tester = () => System.nanoTime()
 
-  val testCounter: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
-    pr <- RIO.environment[PrometheusRegistry]
-    c  <- pr.registry.registerCounter(Label(PrometheusTest.getClass(), Array.empty[String]))
-    pc <- RIO.environment[PrometheusCounter]
-    _  <- pc.counter.inc(c, Array.empty[String])
-    _  <- pc.counter.inc(c, 2.0, Array.empty[String])
-    r  <- pr.registry.getCurrent()
-  } yield r
-
-  val testCounterHelper: RIO[PrometheusRegistry with PrometheusCounter, CollectorRegistry] = for {
-    c <- registry.registerCounter("PrometheusTestHelper")
-    _ <- counter.inc(c)
-    _ <- counter.inc(c, 2.0)
+  val testCounter: RIO[PrometheusRegistry, CollectorRegistry] = for {
+    c <- Counter("PrometheusTestHelper", Array.empty[String])
+    _ <- c.inc()
+    _ <- c.inc(2.0)
     r <- registry.getCurrent()
   } yield r
 
-  val testGauge: RIO[PrometheusRegistry with PrometheusGauge, (CollectorRegistry, Double)] = for {
+  val testGauge: RIO[PrometheusRegistry, (CollectorRegistry, Double)] = for {
     pr <- RIO.environment[PrometheusRegistry]
+    g  <- Gauge("simple_gauge", Array.empty[String])
+    _  <- g.inc()
+    _  <- g.inc(2.0)
+    _  <- g.dec(1.0)
+    d  <- g.getValue()
     r  <- pr.registry.getCurrent()
-    g  <- pr.registry.registerGauge(Label("simple_gauge", Array.empty[String]))
-    _  <- gauge.inc(g)
-    _  <- gauge.inc(g, 2.0)
-    d  <- gauge.getValue(g)
   } yield (r, d)
 
-  val testHistogram: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
-    h <- registry.registerHistogram("simple_histogram")
-    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.observe(h, _))
+  val testHistogram: RIO[PrometheusRegistry, CollectorRegistry] = for {
+    h <- Histogram("simple_histogram", Array.empty[String], DefaultBuckets(Seq.empty[Double]))
+    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.observe(_))
     r <- registry.getCurrent()
   } yield r
 
-  val testHistogramTimer: RIO[PrometheusRegistry with PrometheusHistogram, CollectorRegistry] = for {
-    h <- registry.registerHistogram("simple_histogram_timer")
-    _ <- histogram.time(h, () => Thread.sleep(2000))
+  val testHistogramTimer: RIO[PrometheusRegistry, CollectorRegistry] = for {
+    h <- Histogram("simple_histogram_timer", Array.empty[String], DefaultBuckets(Seq.empty[Double]))
+    _ <- h.time(() => Thread.sleep(2000))
     r <- registry.getCurrent()
   } yield r
 
-  val testSummary: RIO[PrometheusRegistry with PrometheusSummary, CollectorRegistry] = for {
-    s <- registry.registerSummary("simple_summary")
-    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(summary.observe(s, _))
+  val testSummary: RIO[PrometheusRegistry, CollectorRegistry] = for {
+    s <- Summary("simple_summary", Array.empty[String], List.empty[(Double, Double)])
+    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(s.observe(_))
     r <- registry.getCurrent()
   } yield r
 
@@ -67,20 +58,8 @@ object PrometheusTest {
     section(
       test("counter increases by `inc` amount") { () =>
         val set: util.Set[String] = new util.HashSet[String]()
-        set.add(Show.fixClassName(PrometheusTest.getClass()))
+        set.add("PrometheusTestHelper")
         val r = rt.unsafeRun(testCounter)
-        val counter = r
-          .filteredMetricFamilySamples(set)
-          .nextElement()
-          .samples
-          .get(0)
-          .value
-        assert(counter == 3.0)
-      },
-      test("counter increases by `inc` amount on helper method") { () =>
-        val set: util.Set[String] = new util.HashSet[String]()
-        set.add(Show.fixClassName(PrometheusTest.getClass()))
-        val r = rt.unsafeRun(testCounterHelper)
         val counter = r
           .filteredMetricFamilySamples(set)
           .nextElement()
@@ -101,7 +80,7 @@ object PrometheusTest {
           .value
 
         assert(a1 == r._2)
-        assert(a1 == 3.0)
+        assert(a1 == 2.0)
       },
       test("histogram count and sum are as expected") { () =>
         val set: util.Set[String] = new util.HashSet[String]()

@@ -12,8 +12,7 @@ Required imports for presented snippets:
 import zio.{ RIO, Runtime }
 import io.prometheus.client.CollectorRegistry
 import zio.internal.PlatformLive
-import zio.metrics.{ Label => PLabel, _ }
-import zio.metrics.prometheus.{ counter => counterHelper, _}
+import zio.metrics.prometheus.{ counter => zcounter, _}
 
 // also for printing debug messages to the console
 import zio.console.{ Console, putStrLn }
@@ -29,17 +28,16 @@ We will also provide our own `Runtime`:
 
 ```scala mdoc:silent
   val rt = Runtime(
-    new PrometheusRegistry with PrometheusCounter with PrometheusGauge with PrometheusHistogram
-        with PrometheusSummary with PrometheusExporters with Console.Live with Clock.Live,
+    new PrometheusRegistry with PrometheusExporters with Console.Live with Clock.Live,
     PlatformLive.Default
   )
 ```
 
-We include ALL 5 metrics since we will see an example for each one, normally you
+We include ALL 5 metrics in the `runtime` since we will see examples for each, normally you
 just need to include the ones you will actually use.
 
 
-We will assume the reader knows has working knowledge for Prometheus already, if
+We will assume the reader has working knowledge for Prometheus already, if
 not then head over to [Prometheus Java Client](https://github.com/prometheus/client_java).
 
 ## Registry
