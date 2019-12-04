@@ -54,7 +54,7 @@ lazy val prometheus = project
   .settings(
     name := "prometheus",
     stdSettings("metrics-prometheus") ++ settings,
-    libraryDependencies ++= commonDependencies ++ prometheusDependencies
+    libraryDependencies ++= commonDependencies ++ prometheusDependencies ++ dropwizardDependencies
   )
   .dependsOn(common)
 

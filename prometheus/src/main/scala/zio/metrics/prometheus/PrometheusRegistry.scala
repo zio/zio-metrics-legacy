@@ -4,7 +4,7 @@ import io.prometheus.client.{ Counter => PCounter }
 import io.prometheus.client.{ Gauge => PGauge }
 import io.prometheus.client.{ Histogram => PHistogram }
 import io.prometheus.client.{ Collector, CollectorRegistry }
-import io.prometheus.client.Summary
+import io.prometheus.client.{ Summary => PSummary }
 import zio.metrics._
 
 import zio.metrics.{ Label, Registry, Show }
@@ -12,7 +12,7 @@ import zio.{ Ref, Task, UIO }
 
 trait PrometheusRegistry extends Registry {
 
-  type PTimer     = Summary.Timer
+  type PTimer     = PSummary.Timer
   type Percentile = Double
   type Tolerance  = Double
 
@@ -62,10 +62,10 @@ trait PrometheusRegistry extends Registry {
         (h.register(r), r)
       }))
 
-    override def registerSummary[L: Show](label: Label[L], quantiles: List[(Percentile, Tolerance)]): Task[Summary] =
+    override def registerSummary[L: Show](label: Label[L], quantiles: List[(Percentile, Tolerance)]): Task[PSummary] =
       registryRef >>= (_.modify(r => {
         val name = Show[L].show(label.name)
-        val sb = Summary
+        val sb = PSummary
           .build()
           .name(name)
           .labelNames(label.labels: _*)
