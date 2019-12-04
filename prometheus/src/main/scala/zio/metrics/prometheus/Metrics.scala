@@ -56,7 +56,7 @@ class Gauge(private val pGauge: PGauge) extends Metric {
   def inc(amount: Double, labelNames: Array[String]): Task[Unit] =
     Task(if (labelNames.isEmpty) pGauge.inc(amount) else pGauge.labels(labelNames: _*).inc(amount))
 
-    def dec(amount: Double): Task[Unit] =
+  def dec(amount: Double): Task[Unit] =
     dec(amount, Array.empty[String])
 
   def dec(amount: Double, labelNames: Array[String]): Task[Unit] =
@@ -152,7 +152,12 @@ class Summary(private val pSummary: PSummary) extends Metric {
 }
 
 object Summary {
-  def apply(name: String, labels: Array[String], percentiles: List[(Percentile, Tolerance)]): RIO[PrometheusRegistry, Summary] = for {
-    s   <- registry.registerSummary(name, labels, percentiles)
-  } yield new Summary(s)
+  def apply(
+    name: String,
+    labels: Array[String],
+    percentiles: List[(Percentile, Tolerance)]
+  ): RIO[PrometheusRegistry, Summary] =
+    for {
+      s <- registry.registerSummary(name, labels, percentiles)
+    } yield new Summary(s)
 }

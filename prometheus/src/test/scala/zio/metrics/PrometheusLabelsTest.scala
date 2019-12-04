@@ -22,19 +22,19 @@ object PrometheusLabelsTest {
   )
 
   val testCounter: RIO[PrometheusRegistry, CollectorRegistry] = for {
-    c  <- Counter("simple_counter", Array("method", "resource"))
-    _  <- c.inc(Array("get", "users"))
-    _  <- c.inc(2.0, Array("get", "users"))
-    r  <- registry.getCurrent()
+    c <- Counter("simple_counter", Array("method", "resource"))
+    _ <- c.inc(Array("get", "users"))
+    _ <- c.inc(2.0, Array("get", "users"))
+    r <- registry.getCurrent()
   } yield r
 
   val testGauge: RIO[PrometheusRegistry, (CollectorRegistry, Double)] = for {
-    g  <- Gauge("simple_gauge", Array("method"))
-    _  <- g.inc(Array("get"))
-    _  <- g.inc(2.0, Array("get"))
-    _  <- g.dec(1.0, Array("get"))
-    d  <- g.getValue(Array("get"))
-    r  <- registry.getCurrent()
+    g <- Gauge("simple_gauge", Array("method"))
+    _ <- g.inc(Array("get"))
+    _ <- g.inc(2.0, Array("get"))
+    _ <- g.dec(1.0, Array("get"))
+    d <- g.getValue(Array("get"))
+    r <- registry.getCurrent()
   } yield (r, d)
 
   val testHistogram: RIO[PrometheusRegistry, CollectorRegistry] = for {
@@ -68,9 +68,9 @@ object PrometheusLabelsTest {
   } yield r
 
   val testSummary: RIO[PrometheusRegistry, CollectorRegistry] = for {
-    s  <- Summary("simple_summary", Array("method"), List((0.5, 0.05), (0.9, 0.01)))
-    _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(s.observe(_, Array("put")))
-    r  <- registry.getCurrent()
+    s <- Summary("simple_summary", Array("method"), List((0.5, 0.05), (0.9, 0.01)))
+    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(s.observe(_, Array("put")))
+    r <- registry.getCurrent()
   } yield r
 
   def tests[T](harness: Harness[T]): T = {

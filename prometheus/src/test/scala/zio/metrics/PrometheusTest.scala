@@ -34,12 +34,12 @@ object PrometheusTest {
   } yield r
 
   val testGauge: RIO[PrometheusRegistry, (CollectorRegistry, Double)] = for {
-    g  <- gauge.register("simple_gauge")
-    _  <- g.inc()
-    _  <- g.inc(2.0)
-    _  <- g.dec(1.0)
-    d  <- g.getValue()
-    r  <- registry.getCurrent()
+    g <- gauge.register("simple_gauge")
+    _ <- g.inc()
+    _ <- g.inc(2.0)
+    _ <- g.dec(1.0)
+    d <- g.getValue()
+    r <- registry.getCurrent()
   } yield (r, d)
 
   val testHistogram: RIO[PrometheusRegistry, CollectorRegistry] = for {
