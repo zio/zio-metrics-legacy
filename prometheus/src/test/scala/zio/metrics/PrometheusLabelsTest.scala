@@ -21,21 +21,19 @@ object PrometheusLabelsTest {
   )
 
   val testCounter: RIO[PrometheusRegistry, CollectorRegistry] = for {
-    pr <- RIO.environment[PrometheusRegistry]
     c  <- Counter("simple_counter", Array("method", "resource"))
     _  <- c.inc(Array("get", "users"))
     _  <- c.inc(2.0, Array("get", "users"))
-    r  <- pr.registry.getCurrent()
+    r  <- registry.getCurrent()
   } yield r
 
   val testGauge: RIO[PrometheusRegistry, (CollectorRegistry, Double)] = for {
-    pr <- RIO.environment[PrometheusRegistry]
-    r  <- pr.registry.getCurrent()
     g  <- Gauge("simple_gauge", Array("method"))
     _  <- g.inc(Array("get"))
     _  <- g.inc(2.0, Array("get"))
     _  <- g.dec(1.0, Array("get"))
     d  <- g.getValue(Array("get"))
+    r  <- registry.getCurrent()
   } yield (r, d)
 
   val testHistogram: RIO[PrometheusRegistry, CollectorRegistry] = for {
@@ -54,8 +52,7 @@ object PrometheusLabelsTest {
     RIO.sleep(Duration.fromScala(n.millis)) *> putStrLn(s"n = $n")
   }
 
-  val testHistogramDuration
-    : RIO[PrometheusRegistry with Console with Clock, CollectorRegistry] = for {
+  val testHistogramDuration: RIO[PrometheusRegistry with Console with Clock, CollectorRegistry] = for {
     h <- Histogram("duration_histogram", Array("method"), ExponentialBuckets(0.25, 2, 5))
     t <- h.startTimer(Array("time"))
     dl <- RIO.foreach(List(75L, 750L, 2000L))(
@@ -70,10 +67,9 @@ object PrometheusLabelsTest {
   } yield r
 
   val testSummary: RIO[PrometheusRegistry, CollectorRegistry] = for {
-    pr <- RIO.environment[PrometheusRegistry]
     s  <- Summary("simple_summary", Array("method"), List((0.5, 0.05), (0.9, 0.01)))
     _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(s.observe(_, Array("put")))
-    r  <- pr.registry.getCurrent()
+    r  <- registry.getCurrent()
   } yield r
 
   def tests[T](harness: Harness[T]): T = {

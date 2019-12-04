@@ -19,20 +19,26 @@ object PrometheusTest {
   val tester = () => System.nanoTime()
 
   val testCounter: RIO[PrometheusRegistry, CollectorRegistry] = for {
-    c <- Counter("PrometheusTestHelper", Array.empty[String])
+    c <- Counter("PrometheusTest", Array.empty[String])
+    _ <- c.inc()
+    _ <- c.inc(2.0)
+    r <- registry.getCurrent()
+  } yield r
+
+  val testCounterHelper: RIO[PrometheusRegistry, CollectorRegistry] = for {
+    c <- counter.register("PrometheusTestHelper")
     _ <- c.inc()
     _ <- c.inc(2.0)
     r <- registry.getCurrent()
   } yield r
 
   val testGauge: RIO[PrometheusRegistry, (CollectorRegistry, Double)] = for {
-    pr <- RIO.environment[PrometheusRegistry]
-    g  <- Gauge("simple_gauge", Array.empty[String])
+    g  <- gauge.register("simple_gauge")
     _  <- g.inc()
     _  <- g.inc(2.0)
     _  <- g.dec(1.0)
     d  <- g.getValue()
-    r  <- pr.registry.getCurrent()
+    r  <- registry.getCurrent()
   } yield (r, d)
 
   val testHistogram: RIO[PrometheusRegistry, CollectorRegistry] = for {
@@ -58,8 +64,20 @@ object PrometheusTest {
     section(
       test("counter increases by `inc` amount") { () =>
         val set: util.Set[String] = new util.HashSet[String]()
-        set.add("PrometheusTestHelper")
+        set.add("PrometheusTest")
         val r = rt.unsafeRun(testCounter)
+        val counter = r
+          .filteredMetricFamilySamples(set)
+          .nextElement()
+          .samples
+          .get(0)
+          .value
+        assert(counter == 3.0)
+      },
+      test("counter helper increases by `inc` amount") { () =>
+        val set: util.Set[String] = new util.HashSet[String]()
+        set.add("PrometheusTestHelper")
+        val r = rt.unsafeRun(testCounterHelper)
         val counter = r
           .filteredMetricFamilySamples(set)
           .nextElement()

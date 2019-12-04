@@ -9,6 +9,7 @@ import io.prometheus.client.exporter.HTTPServer
 import io.prometheus.client.exporter.HttpConnectionFactory
 import zio.metrics.{ Buckets, DefaultBuckets, Label }
 import zio.metrics.prometheus.PrometheusRegistry.{ Percentile, Tolerance }
+import zio.metrics._
 
 object registry {
   def getCurrent(): RIO[PrometheusRegistry, CollectorRegistry] =
@@ -93,6 +94,50 @@ object registry {
     percentiles: List[(Percentile, Tolerance)]
   ): RIO[PrometheusRegistry, PSummary] =
     RIO.accessM(_.registry.registerSummary(Label(name, labels), percentiles))
+}
+
+object counter {
+  def register(name: String) =
+    Counter(name, Array.empty[String])
+
+  def register(name: String, labels: Array[String]) =
+    Counter(name, labels)
+}
+
+object gauge {
+  def register(name: String) =
+    Gauge(name, Array.empty[String])
+
+  def register(name: String, labels: Array[String]) =
+    Gauge(name, labels)
+}
+
+object histogram {
+  def register(name: String) =
+    Histogram(name, Array.empty[String], DefaultBuckets(Seq.empty[Double]))
+
+  def register(name: String, labels: Array[String]) =
+    Histogram(name, labels, DefaultBuckets(Seq.empty[Double]))
+
+  def register(name: String, buckets: Buckets) =
+    Histogram(name, Array.empty[String], buckets)
+
+  def register(name: String, labels: Array[String], buckets: Buckets) =
+    Histogram(name, labels, buckets)
+}
+
+object summary {
+  def register(name: String) =
+    Summary(name, Array.empty[String], List.empty[(Double, Double)])
+
+  def register(name: String, labels: Array[String]) =
+    Summary(name, labels, List.empty[(Percentile, Tolerance)])
+
+  def register(name: String, percentiles: List[(Percentile, Tolerance)]) =
+    Summary(name, Array.empty[String], percentiles)
+
+  def register(name: String, labels: Array[String], percentiles: List[(Percentile, Tolerance)]) =
+    Summary(name, labels, percentiles)
 }
 
 object exporters {
