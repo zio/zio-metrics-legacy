@@ -4,7 +4,7 @@ title:  "Prometheus ZIO Wrapper"
 ---
 
 ZIO Metrics Prometheus provides Prometheus' 5 metrics plus a number of
-exporters all connected through the `CollectorRegstyr`.
+exporters all connected through the `CollectorRegstry`.
 
 Required imports for presented snippets:
 
@@ -12,9 +12,9 @@ Required imports for presented snippets:
 import zio.{ RIO, Runtime }
 import io.prometheus.client.CollectorRegistry
 import zio.internal.PlatformLive
-import zio.metrics.{ Label => ZLabel, Show }
-import zio.metrics.prometheus.__
-import zio.metrics.prometheus.helpers.__
+import zio.metrics.{ Label => ZLabel, Show, DefaultBuckets, LinearBuckets, ExponentialBuckets }
+import zio.metrics.prometheus._
+import zio.metrics.prometheus.helpers._
 
 // also for printing debug messages to the console
 import zio.console.{ Console, putStrLn }
@@ -88,7 +88,7 @@ passed as a parameter along with optional labels.
 
 ```scala mdoc:silent
   val testCounter: RIO[PrometheusRegistry, CollectorRegistry] = for {
-    c <- Counter("PrometheusTestHelper", Array.empty[String])
+    c <- Counter("simple_counter", Array.empty[String])
     _ <- c.inc()
     _ <- c.inc(2.0)
     r <- registry.getCurrent()
@@ -100,7 +100,7 @@ If the counter is registered with labels, then you need to increase the counter
 
 ```scala mdoc:silent
   val testLabeledCounter: RIO[PrometheusRegistry, CollectorRegistry] = for {
-    c  <- Counter("simple_counter", Array("method", "resource"))
+    c  <- Counter("simple_counter_labeled", Array("method", "resource"))
     _  <- c.inc(Array("get", "users"))
     _  <- c.inc(2.0, Array("get", "users"))
     r  <- registry.getCurrent()
@@ -113,13 +113,13 @@ You can run and verify the results so:
   val set: util.Set[String] = new util.HashSet[String]()
   set.add("simple_counter")
   val r = rt.unsafeRun(testCounter)
-  val counter = r
+  val count = r
     .filteredMetricFamilySamples(set)
     .nextElement()
     .samples
     .get(0)
     .value
-  assert(counter == 3.0)
+  assert(count == 3.0)
 ```
 
 There's an easier way to observe the state of the `CollectorRegistry` using the
@@ -180,7 +180,7 @@ With labels it looks like this:
     _  <- g.dec(1.0, Array("get"))
     d  <- g.getValue(Array("get"))
     r  <- registry.getCurrent()
-  } yield (r, d):silent
+  } yield (r, d)
 ```
 
 And to run and verify the result:
@@ -221,10 +221,9 @@ given registry. Let's look at an example of how all this works.
 
 ```scala mdoc:silent
   import io.prometheus.client.exporter.HTTPServer
-
+  
   val exporterTest: RIO[
-    PrometheusRegistry with PrometheusCounter with PrometheusHistogram 
-      with PrometheusExporters with Console,
+    PrometheusRegistry with PrometheusExporters with Console,
     HTTPServer
   ] =
     for {
@@ -234,7 +233,7 @@ given registry. Let's look at an example of how all this works.
       c  <- Counter("ExportersTest", Array("exporter"))
       _  <- c.inc(Array("counter"))
       _  <- c.inc(2.0, Array("counter"))
-      h  <- Histogram("export_histogram", Array("exporter", "method"))
+      h  <- histogram.register("export_histogram", Array("exporter", "method"))
       _  <- h.time(() => Thread.sleep(2000), Array("histogram", "get"))
       s  <- exporters.write004(r)
       _  <- putStrLn(s)
@@ -288,8 +287,8 @@ You can, of course, verify the usual way:
   setHT.add("simple_histogram_timer_count")
   setHT.add("simple_histogram_timer_sum")
 
-  val rht     = rt.unsafeRun(testHistogramTimer)
-  val count = rht.filteredMetricFamilySamples(setHT).nextElement().samples.get(0).value
+  val rht   = rt.unsafeRun(testHistogramTimer)
+  val cnt   = rht.filteredMetricFamilySamples(setHT).nextElement().samples.get(0).value
   val sum   = rht.filteredMetricFamilySamples(setHT).nextElement().samples.get(1).value
 ```
 
