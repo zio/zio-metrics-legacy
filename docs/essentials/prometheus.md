@@ -12,7 +12,9 @@ Required imports for presented snippets:
 import zio.{ RIO, Runtime }
 import io.prometheus.client.CollectorRegistry
 import zio.internal.PlatformLive
-import zio.metrics.prometheus.{ counter => zcounter, _}
+import zio.metrics.{ Label => ZLabel, Show }
+import zio.metrics.prometheus.__
+import zio.metrics.prometheus.helpers.__
 
 // also for printing debug messages to the console
 import zio.console.{ Console, putStrLn }
@@ -55,17 +57,26 @@ methods. We'll start using environmental effects until the `Helper` methods are 
 ```scala mdoc:silent
   val testRegistry: RIO[PrometheusRegistry, CollectorRegistry] = for {
     pr <- RIO.environment[PrometheusRegistry]
-    _  <- pr.registry.registerCounter("simple_counter", Array("method"))
+    _  <- pr.registry.registerCounter(ZLabel("simple_counter", Array("method")))
     r  <- pr.registry.getCurrent()
   } yield r
 ```
 
+All `register*` methods in `PrometheusRegistry` require a `Label` object  (some
+may require more parameters). A label is composed of a name and an array of
+labels which may be empty in the case where no labels are required.
+
+```scala mdoc:silent
+case class Label[A: Show](name: A, labels: Array[String])
+```
+
+Note that zio-metrics does not depend on either cats or scalaz so this Show is defined on typeclasses with instances for String and Class[A].
 Besides the `register*` functions, we also have `getCurrent()` that simply
 returns the `CollectorRegistry` which is needed by all `Exporters`.
 
 Using the registry helper the above becomes:
 ```scala mdoc:silent
-  val testRegistry: RIO[PrometheusRegistry, CollectorRegistry] = for {
+  val testRegistryHelper: RIO[PrometheusRegistry, CollectorRegistry] = for {
     _  <- registry.registerCounter("simple_counter", Array("method"))
     r  <- registry.getCurrent()
   } yield r

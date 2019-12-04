@@ -4,6 +4,7 @@ import zio.{ RIO, Runtime }
 import zio.console.putStrLn
 import zio.internal.PlatformLive
 import zio.metrics.prometheus._
+import zio.metrics.prometheus.helpers._
 import io.prometheus.client.exporter.HTTPServer
 import zio.console.Console
 

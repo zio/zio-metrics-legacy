@@ -7,6 +7,7 @@ import testz.{ assert, Harness, PureHarness, Result }
 import io.prometheus.client.{ CollectorRegistry }
 import zio.internal.PlatformLive
 import zio.metrics.prometheus._
+import zio.metrics.prometheus.helpers._
 import zio.console.putStrLn
 import zio.console.Console
 import zio.duration.Duration
