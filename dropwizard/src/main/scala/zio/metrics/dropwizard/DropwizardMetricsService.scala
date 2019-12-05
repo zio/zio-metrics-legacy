@@ -13,15 +13,15 @@ import zio.interop.catz._
 import zio.metrics.RegistryPrinter
 import zio.metrics.instances.jsonMonoid
 import cats.instances.list._
-import zio.metrics.dropwizard.DropWizardExtractor._
+import zio.metrics.dropwizard.DropwizardExtractor._
 
-trait DropWizardMetricsService extends MetricsService {
-  val service = new MetricsService.Service[DropWizardRegistry] {
-    override def serveMetrics: DropWizardRegistry => HttpRoutes[Server.HttpTask] = { registry =>
+trait DropwizardMetricsService extends MetricsService {
+  val service = new MetricsService.Service[DropwizardRegistry] {
+    override def serveMetrics: DropwizardRegistry => HttpRoutes[Server.HttpTask] = { registry =>
       HttpRoutes.of[Server.HttpTask] {
         case GET -> Root / filter => {
           val optFilter = if (filter == "ALL") None else Some(filter)
-          RegistryPrinter.report[DropWizardRegistry, List, Json](registry, optFilter)(jSingleObject) >>=
+          RegistryPrinter.report[DropwizardRegistry, List, Json](registry, optFilter)(jSingleObject) >>=
             (m => RIO(Response[Server.HttpTask](Ok).withEntity(m)))
         }
       }
@@ -29,4 +29,4 @@ trait DropWizardMetricsService extends MetricsService {
   }
 }
 
-object DropWizardMetricsService extends DropWizardMetricsService
+object DropwizardMetricsService extends DropwizardMetricsService

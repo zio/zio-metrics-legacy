@@ -2,7 +2,8 @@ package zio.metrics
 
 import zio.metrics.Server._
 import zio.metrics.dropwizard._
-import zio.metrics.dropwizard.DropWizardMetricsService.service
+import zio.metrics.dropwizard.helpers._
+import zio.metrics.dropwizard.DropwizardMetricsService.service
 import zio.{ App, RIO, Runtime }
 import zio.internal.PlatformLive
 import java.util.concurrent.TimeUnit
@@ -22,36 +23,35 @@ object ReportersTest extends App {
   println(s"Starting server on port $port")
 
   val rt = Runtime(
-    new DropWizardRegistry with DropWizardCounter with DropWizardGauge with DropWizardHistogram with DropWizardMeter
-    with DropWizardTimer with DropWizardReporters,
+    new DropwizardRegistry with DropwizardReporters,
     PlatformLive.Default
   )
 
   val tests: RIO[
-    DropWizardRegistry with DropWizardCounter with DropWizardTimer with DropWizardReporters,
-    DropWizardRegistry
+    DropwizardRegistry with DropwizardReporters,
+    DropwizardRegistry
   ] =
     for {
-      dwr <- RIO.environment[DropWizardRegistry]
+      dwr <- RIO.environment[DropwizardRegistry]
       r   <- dwr.registry.getCurrent()
       _   <- reporters.jmx(r)
       _   <- reporters.console(r, 30, TimeUnit.SECONDS)
-      c   <- dwr.registry.registerCounter(Label(DropWizardTests.getClass(), Array("test", "counter")))
-      _   <- counter.inc(c)
-      _   <- counter.inc(c, 2.0)
-      t   <- dwr.registry.registerTimer(Label("DropWizardTimer", Array("test", "timer")))
-      ctx <- timer.start(t)
+      c   <- counter.register(Show.fixClassName(DropwizardTests.getClass()), Array("test", "counter"))
+      _   <- c.inc()
+      _   <- c.inc(2.0)
+      t   <- timer.register("DropwizardTimer", Array("test", "timer"))
+      ctx <- t.start()
       l <- RIO.foreach(
             List(
               Thread.sleep(1000L),
               Thread.sleep(1400L),
               Thread.sleep(1200L)
             )
-          )(_ => timer.stop(ctx))
+          )(_ => t.stop(ctx))
     } yield { println(l); dwr }
 
   val httpApp =
-    (registry: DropWizardRegistry) =>
+    (registry: DropwizardRegistry) =>
       Router(
         "/metrics" -> service.serveMetrics(registry)
       ).orNotFound

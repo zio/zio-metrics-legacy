@@ -17,7 +17,7 @@ import com.codahale.metrics.Reporter
 import java.{ util => ju }
 import java.io.File
 
-trait DropWizardReporters extends Reporters {
+trait DropwizardReporters extends Reporters {
   val reporter = new Reporters.Service[MetricRegistry, Reporter] {
     override def jmx(r: MetricRegistry): zio.Task[JmxReporter] = Task(JmxReporter.forRegistry(r).build())
 
@@ -62,4 +62,4 @@ trait DropWizardReporters extends Reporters {
   }
 }
 
-object DropWizardReporters extends DropWizardReporters
+object DropwizardReporters extends DropwizardReporters

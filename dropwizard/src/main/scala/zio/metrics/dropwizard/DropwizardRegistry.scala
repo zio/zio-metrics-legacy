@@ -1,18 +1,18 @@
 package zio.metrics.dropwizard
 
-import com.codahale.metrics.{ Metric, MetricFilter, MetricRegistry }
+import com.codahale.metrics.{ Metric => DWMetric, MetricFilter, MetricRegistry }
 import com.codahale.metrics.{ Counter => DWCounter, Gauge => DWGauge }
-import com.codahale.metrics.{ Histogram => DWHistogram, Timer }
+import com.codahale.metrics.{ Histogram => DWHistogram, Timer => DWTimer }
+import com.codahale.metrics.{ Meter => DWMeter }
 import com.codahale.metrics.MetricRegistry.MetricSupplier
-import com.codahale.metrics.UniformReservoir
+import com.codahale.metrics.Reservoir
 
 import zio.metrics.{ Label, Registry, Show }
 import zio.{ Ref, Task, UIO }
-import com.codahale.metrics.Meter
 
-trait DropWizardRegistry extends Registry {
+trait DropwizardRegistry extends Registry {
 
-  val registry = new Registry.Service[Metric, MetricRegistry] {
+  val registry = new Registry.Service[DWMetric, MetricRegistry] {
     val registryRef: UIO[Ref[MetricRegistry]] = Ref.make(new MetricRegistry())
 
     override def getCurrent(): UIO[MetricRegistry] = registryRef >>= (_.get)
@@ -36,22 +36,22 @@ trait DropWizardRegistry extends Registry {
         (r.register(name, dwgauge), r)
       }))
 
-    override def registerHistogram[L: Show](label: Label[L]): Task[DWHistogram] =
+    override def registerHistogram[L: Show](label: Label[L], reservoir: Reservoir): Task[DWHistogram] =
       registryRef >>= (_.modify(r => {
         val name = Show[L].show(label.name)
         val suppplier = new MetricSupplier[DWHistogram] {
-          override def newMetric(): DWHistogram = new DWHistogram(new UniformReservoir)
+          override def newMetric(): DWHistogram = new DWHistogram(reservoir)
         }
         (r.histogram(name, suppplier), r)
       }))
 
-    override def registerTimer[L: Show](label: Label[L]): Task[Timer] =
+    override def registerTimer[L: Show](label: Label[L]): Task[DWTimer] =
       registryRef >>= (_.modify(r => {
         val name = Show[L].show(label.name)
         (r.timer(name), r)
       }))
 
-    override def registerMeter[L: Show](label: Label[L]): Task[Meter] =
+    override def registerMeter[L: Show](label: Label[L]): Task[DWMeter] =
       registryRef >>= (_.modify(r => {
         val name = Show[L].show(label.name)
         (r.meter(name), r)
@@ -59,7 +59,7 @@ trait DropWizardRegistry extends Registry {
   }
 }
 
-object DropWizardRegistry extends DropWizardRegistry {
+object DropwizardRegistry extends DropwizardRegistry {
   def makeFilter(filter: Option[String]): MetricFilter = filter match {
     case Some(s) =>
       s.charAt(0) match {

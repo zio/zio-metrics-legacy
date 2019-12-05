@@ -1,62 +1,66 @@
 package zio.metrics
 
-import zio.{ RIO, Runtime }
+import zio.{ RIO, Runtime, Task }
 import zio.internal.PlatformLive
 import testz.{ assert, Harness, PureHarness }
 import com.codahale.metrics.{ MetricRegistry }
 import zio.metrics.dropwizard._
+import zio.metrics.dropwizard.helpers._
 
-object DropWizardTests {
+object DropwizardTests {
 
   val rt = Runtime(
-    new DropWizardRegistry with DropWizardCounter with DropWizardGauge with DropWizardHistogram with DropWizardMeter
-    with DropWizardTimer,
+    DropwizardRegistry,
     PlatformLive.Default
   )
 
   val tester = () => System.nanoTime()
 
-  val testCounter: RIO[DropWizardRegistry with DropWizardCounter, MetricRegistry] = for {
-    dwr <- RIO.environment[DropWizardRegistry]
-    c   <- dwr.registry.registerCounter(Label(DropWizardTests.getClass(), Array("test", "counter")))
-    _   <- counter.inc(c)
-    _   <- counter.inc(c, 2.0)
+  val testCounter: RIO[DropwizardRegistry, MetricRegistry] = for {
+    dwr <- RIO.environment[DropwizardRegistry]
+    dwc <- dwr.registry.registerCounter(Label(DropwizardTests.getClass(), Array("test", "counter")))
+    c   <- Task(new Counter(dwc))
+    _   <- c.inc()
+    _   <- c.inc(2.0)
     r   <- dwr.registry.getCurrent()
   } yield r
 
-  val testGauge: RIO[DropWizardRegistry with DropWizardGauge, MetricRegistry] = for {
-    dwr <- RIO.environment[DropWizardRegistry]
-    g   <- dwr.registry.registerGauge(Label("DropWizardGauge", Array("test", "gauge")), tester)
-    _   <- gauge.getValue(g)
-    r   <- dwr.registry.getCurrent()
+  val testCounterHelper: RIO[DropwizardRegistry, MetricRegistry] = for {
+    c   <- counter.register("DropwizardCounterHelper", Array("test", "counter"))
+    _   <- c.inc()
+    _   <- c.inc(2.0)
+    r   <- registry.getCurrent()
   } yield r
 
-  val testHistogram: RIO[DropWizardRegistry with DropWizardHistogram, MetricRegistry] = for {
-    dwr <- RIO.environment[DropWizardRegistry]
-    h   <- dwr.registry.registerHistogram(Label("DropWizardHistogram", Array("test", "histogram")))
-    _   <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(histogram.update(h, _))
-    r   <- dwr.registry.getCurrent()
+  val testGauge: RIO[DropwizardRegistry, (MetricRegistry, Long)] = for {
+    g   <- gauge.register("DropwizardGauge", Array("test", "gauge"), tester)
+    r   <- registry.getCurrent()
+    l   <- g.getValue()
+  } yield (r, l)
+
+  val testHistogram: RIO[DropwizardRegistry, MetricRegistry] = for {
+    h   <- histogram.register("DropwizardHistogram", Array("test", "histogram"))
+    _   <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
+    r   <- registry.getCurrent()
   } yield r
 
-  val testMeter: RIO[DropWizardRegistry with DropWizardMeter, MetricRegistry] = for {
-    dwr <- RIO.environment[DropWizardRegistry]
-    m   <- dwr.registry.registerMeter(Label("DropWizardMeter", Array("test", "meter")))
-    _   <- RIO.foreach(Seq(1L, 2L, 3L, 4L, 5L))(meter.mark(m, _))
-    r   <- dwr.registry.getCurrent()
+  val testMeter: RIO[DropwizardRegistry, MetricRegistry] = for {
+    m   <- meter.register("DropwizardMeter", Array("test", "meter"))
+    _   <- RIO.foreach(Seq(1L, 2L, 3L, 4L, 5L))(m.mark(_))
+    r   <- registry.getCurrent()
   } yield r
 
-  val testTimer: RIO[DropWizardRegistry with DropWizardTimer, (MetricRegistry, List[Long])] = for {
-    dwr <- RIO.environment[DropWizardRegistry]
-    r   <- dwr.registry.getCurrent()
-    t   <- dwr.registry.registerTimer(Label("DropWizardTimer", Array("test", "timer")))
-    ctx <- timer.start(t)
+  val testTimer: RIO[DropwizardRegistry, (MetricRegistry, List[Long])] = for {
+    r   <- registry.getCurrent()
+    t   <- timer.register("DropwizardTimer", Array("test", "timer"))
+    ctx <- t.start()
     l <- RIO.foreach(
           List(
             Thread.sleep(1000L),
             Thread.sleep(1400L),
             Thread.sleep(1200L)
           )
-        )(_ => timer.stop(ctx))
+        )(_ => t.stop(ctx))
   } yield (r, l)
 
   def tests[T](harness: Harness[T]): T = {
@@ -64,21 +68,22 @@ object DropWizardTests {
 
     section(
       test("counter increases by `inc` amount") { () =>
-        val name = MetricRegistry.name(Show.fixClassName(DropWizardTests.getClass()), Array.empty[String]: _*)
+        val name = MetricRegistry.name(Show.fixClassName(DropwizardTests.getClass()), Array.empty[String]: _*)
         val r    = rt.unsafeRun(testCounter)
         val cs   = r.getCounters()
         val c    = if (cs.get(name) == null) 0 else cs.get(name).getCount
         assert(c == 3d)
       },
       test("gauge increases in time") { () =>
-        val name = MetricRegistry.name("DropWizardGauge", Array.empty[String]: _*)
+        val name = MetricRegistry.name("DropwizardGauge", Array.empty[String]: _*)
         val r    = rt.unsafeRun(testGauge)
-        val gs   = r.getGauges()
+        val gs   = r._1.getGauges()
         val g    = if (gs.get(name) == null) Long.MaxValue else gs.get(name).getValue().asInstanceOf[Long]
         assert(g < tester())
+        assert(g == r._2)
       },
       test("histogram increases in time") { () =>
-        val name = MetricRegistry.name("DropWizardHistogram", Array.empty[String]: _*)
+        val name = MetricRegistry.name("DropwizardHistogram", Array.empty[String]: _*)
         val r    = rt.unsafeRun(testHistogram)
         val perc75th = r
           .getHistograms()
@@ -89,7 +94,7 @@ object DropWizardTests {
         assert(perc75th == 53.5)
       },
       test("Meter count and mean rate are within bounds") { () =>
-        val name = MetricRegistry.name("DropWizardMeter", Array.empty[String]: _*)
+        val name = MetricRegistry.name("DropwizardMeter", Array.empty[String]: _*)
         val r    = rt.unsafeRun(testMeter)
         val count = r
           .getMeters()
@@ -105,7 +110,7 @@ object DropWizardTests {
         assert(count == 15 && meanRate > 300 && meanRate < 2000)
       },
       test("Timer called 3 times") { () =>
-        val name = MetricRegistry.name("DropWizardTimer", Array.empty[String]: _*)
+        val name = MetricRegistry.name("DropwizardTimer", Array.empty[String]: _*)
         val r    = rt.unsafeRun(testTimer)
         val count = r._1
           .getTimers()
@@ -117,7 +122,7 @@ object DropWizardTests {
         assert(count == r._2.size && count == 3)
       },
       test("Timer mean rate for 6 calls within bounds") { () =>
-        val name = MetricRegistry.name("DropWizardTimer", Array.empty[String]: _*)
+        val name = MetricRegistry.name("DropwizardTimer", Array.empty[String]: _*)
         val r    = rt.unsafeRun(testTimer)
         val meanRate = r._1
           .getTimers()
