@@ -15,17 +15,20 @@ trait DropwizardRegistry extends Registry {
   val registry = new Registry.Service[DWMetric, MetricRegistry] {
     val registryRef: UIO[Ref[MetricRegistry]] = Ref.make(new MetricRegistry())
 
+    private def label2Name[L: Show](label: Label[L]): String =
+      MetricRegistry.name(Show[L].show(label.name), label.labels: _*)
+
     override def getCurrent(): UIO[MetricRegistry] = registryRef >>= (_.get)
 
     override def registerCounter[L: Show](label: Label[L]): Task[DWCounter] =
       registryRef >>= (_.modify(r => {
-        val name = Show[L].show(label.name)
+        val name = label2Name(label)
         (r.counter(name), r)
       }))
 
     override def registerGauge[L: Show, A](label: Label[L], f: () => A): Task[DWGauge[A]] =
       registryRef >>= (_.modify(r => {
-        val name   = Show[L].show(label.name)
+        val name = label2Name(label)
         val gauges = r.getGauges(MetricFilter.startsWith(name))
         val dwgauge = if (gauges.isEmpty()) {
           val gw = new DWGauge[A]() {
@@ -38,7 +41,7 @@ trait DropwizardRegistry extends Registry {
 
     override def registerHistogram[L: Show](label: Label[L], reservoir: Reservoir): Task[DWHistogram] =
       registryRef >>= (_.modify(r => {
-        val name = Show[L].show(label.name)
+        val name = label2Name(label)
         val suppplier = new MetricSupplier[DWHistogram] {
           override def newMetric(): DWHistogram = new DWHistogram(reservoir)
         }
@@ -47,13 +50,13 @@ trait DropwizardRegistry extends Registry {
 
     override def registerTimer[L: Show](label: Label[L]): Task[DWTimer] =
       registryRef >>= (_.modify(r => {
-        val name = Show[L].show(label.name)
+        val name = label2Name(label)
         (r.timer(name), r)
       }))
 
     override def registerMeter[L: Show](label: Label[L]): Task[DWMeter] =
       registryRef >>= (_.modify(r => {
-        val name = Show[L].show(label.name)
+        val name = label2Name(label)
         (r.meter(name), r)
       }))
   }

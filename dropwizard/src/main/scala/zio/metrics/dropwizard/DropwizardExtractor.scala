@@ -110,4 +110,10 @@ object DropwizardExtractor {
                 .toList
           }
     }
+
+  /*val writeJson: DropwizardRegistry => Extractor.Filter => Json =
+    dwr => filter => for {
+    dwr <- RegistryPrinter.report[DropwizardRegistry, List, Json](dwr, filter)(jSingleObject)
+  } yield j*/
+
 }

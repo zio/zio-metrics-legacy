@@ -63,7 +63,6 @@ object ReportersTest extends App {
       .provideSome[HttpEnvironment] { rt =>
         new Clock with Console with System with Random with Blocking {
           override val clock: Clock.Service[Any] = rt.clock
-          //override val scheduler: Scheduler.Service[Any] = rt.scheduler
           override val console: Console.Service[Any]   = rt.console
           override val random: Random.Service[Any]     = rt.random
           override val system: System.Service[Any]     = rt.system

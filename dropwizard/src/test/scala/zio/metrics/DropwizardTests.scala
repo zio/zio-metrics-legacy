@@ -1,20 +1,27 @@
 package zio.metrics
 
 import zio.{ RIO, Runtime, Task }
+import zio.console._
 import zio.internal.PlatformLive
 import testz.{ assert, Harness, PureHarness }
 import com.codahale.metrics.{ MetricRegistry }
+import argonaut.Argonaut.jSingleObject
+import argonaut.Json
 import zio.metrics.dropwizard._
 import zio.metrics.dropwizard.helpers._
+import zio.metrics.dropwizard.DropwizardExtractor._
+import zio.metrics.instances._
+
+import cats.instances.list._
 
 object DropwizardTests {
 
   val rt = Runtime(
-    DropwizardRegistry,
+    new DropwizardRegistry with Console.Live,
     PlatformLive.Default
   )
 
-  val tester = () => System.nanoTime()
+  val tester: () => Long = () => System.nanoTime()
 
   val testCounter: RIO[DropwizardRegistry, MetricRegistry] = for {
     dwr <- RIO.environment[DropwizardRegistry]
@@ -26,28 +33,28 @@ object DropwizardTests {
   } yield r
 
   val testCounterHelper: RIO[DropwizardRegistry, MetricRegistry] = for {
-    c   <- counter.register("DropwizardCounterHelper", Array("test", "counter"))
-    _   <- c.inc()
-    _   <- c.inc(2.0)
-    r   <- registry.getCurrent()
+    c <- counter.register("DropwizardCounterHelper", Array("test", "counter"))
+    _ <- c.inc()
+    _ <- c.inc(2.0)
+    r <- registry.getCurrent()
   } yield r
 
   val testGauge: RIO[DropwizardRegistry, (MetricRegistry, Long)] = for {
-    g   <- gauge.register("DropwizardGauge", Array("test", "gauge"), tester)
-    r   <- registry.getCurrent()
-    l   <- g.getValue()
+    g <- gauge.register("DropwizardGauge", Array("test", "gauge"), tester)
+    r <- registry.getCurrent()
+    l <- g.getValue[Long]()
   } yield (r, l)
 
   val testHistogram: RIO[DropwizardRegistry, MetricRegistry] = for {
-    h   <- histogram.register("DropwizardHistogram", Array("test", "histogram"))
-    _   <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
-    r   <- registry.getCurrent()
+    h <- histogram.register("DropwizardHistogram", Array("test", "histogram"))
+    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
+    r <- registry.getCurrent()
   } yield r
 
   val testMeter: RIO[DropwizardRegistry, MetricRegistry] = for {
-    m   <- meter.register("DropwizardMeter", Array("test", "meter"))
-    _   <- RIO.foreach(Seq(1L, 2L, 3L, 4L, 5L))(m.mark(_))
-    r   <- registry.getCurrent()
+    m <- meter.register("DropwizardMeter", Array("test", "meter"))
+    _ <- RIO.foreach(Seq(1L, 2L, 3L, 4L, 5L))(m.mark(_))
+    r <- registry.getCurrent()
   } yield r
 
   val testTimer: RIO[DropwizardRegistry, (MetricRegistry, List[Long])] = for {
@@ -68,53 +75,52 @@ object DropwizardTests {
 
     section(
       test("counter increases by `inc` amount") { () =>
-        val name = MetricRegistry.name(Show.fixClassName(DropwizardTests.getClass()), Array.empty[String]: _*)
+        val name = MetricRegistry.name(Show.fixClassName(DropwizardTests.getClass()), Array("test", "counter"): _*)
         val r    = rt.unsafeRun(testCounter)
         val cs   = r.getCounters()
         val c    = if (cs.get(name) == null) 0 else cs.get(name).getCount
         assert(c == 3d)
       },
       test("gauge increases in time") { () =>
-        val name = MetricRegistry.name("DropwizardGauge", Array.empty[String]: _*)
+        val name = MetricRegistry.name("DropwizardGauge", Array("test", "gauge"): _*)
         val r    = rt.unsafeRun(testGauge)
         val gs   = r._1.getGauges()
         val g    = if (gs.get(name) == null) Long.MaxValue else gs.get(name).getValue().asInstanceOf[Long]
-        assert(g < tester())
-        assert(g == r._2)
+        assert(r._2 < g && g < tester())
       },
       test("histogram increases in time") { () =>
-        val name = MetricRegistry.name("DropwizardHistogram", Array.empty[String]: _*)
+        val name = MetricRegistry.name("DropwizardHistogram", Array("test", "histogram"): _*)
         val r    = rt.unsafeRun(testHistogram)
         val perc75th = r
           .getHistograms()
-          .get(MetricRegistry.name(name))
+          .get(name)
           .getSnapshot
           .get75thPercentile
 
         assert(perc75th == 53.5)
       },
       test("Meter count and mean rate are within bounds") { () =>
-        val name = MetricRegistry.name("DropwizardMeter", Array.empty[String]: _*)
+        val name = MetricRegistry.name("DropwizardMeter", Array("test", "meter"): _*)
         val r    = rt.unsafeRun(testMeter)
         val count = r
           .getMeters()
-          .get(MetricRegistry.name(name))
+          .get(name)
           .getCount
 
         val meanRate = r
           .getMeters()
-          .get(MetricRegistry.name(name))
+          .get(name)
           .getMeanRate
 
         println(s"count: $count, meanRate: $meanRate")
         assert(count == 15 && meanRate > 300 && meanRate < 2000)
       },
       test("Timer called 3 times") { () =>
-        val name = MetricRegistry.name("DropwizardTimer", Array.empty[String]: _*)
+        val name = MetricRegistry.name("DropwizardTimer", Array("test", "timer"): _*)
         val r    = rt.unsafeRun(testTimer)
         val count = r._1
           .getTimers()
-          .get(MetricRegistry.name(name))
+          .get(name)
           .getCount
 
         println(r._2)
@@ -122,14 +128,25 @@ object DropwizardTests {
         assert(count == r._2.size && count == 3)
       },
       test("Timer mean rate for 6 calls within bounds") { () =>
-        val name = MetricRegistry.name("DropwizardTimer", Array.empty[String]: _*)
+        val name = MetricRegistry.name("DropwizardTimer", Array("test", "timer"): _*)
         val r    = rt.unsafeRun(testTimer)
         val meanRate = r._1
           .getTimers()
-          .get(MetricRegistry.name(name))
+          .get(name)
           .getMeanRate
 
         assert(meanRate > 0.78 && meanRate < 0.84)
+      },
+      test("Report printer is consistens") { () =>
+        val str = for {
+          dwr <- RIO.environment[DropwizardRegistry]
+          j   <- RegistryPrinter.report[DropwizardRegistry, List, Json](dwr, None)(jSingleObject)
+        } yield j.spaces2
+
+        rt.unsafeRun(str >>= putStrLn)
+
+        assert(true)
+
       }
     )
   }

@@ -10,4 +10,10 @@ object instances {
 
     def empty = jEmptyObject
   }
+
+  implicit val stringMonoid: Monoid[String] = new Monoid[String] {
+    def combine(j1: String, j2: String) = s"$j1\n$j2"
+
+    def empty = ""
+  }
 }
