@@ -1,11 +1,12 @@
 package zio.metrics
 
+import scala.util.Properties.envOrNone
+
 import cats.data.Kleisli
 import org.http4s.server.blaze._
 import org.http4s.{ Request, Response }
+
 import zio.{ RIO, ZIO }
-import zio.interop.catz._
-import scala.util.Properties.envOrNone
 import zio.system.System
 import zio.clock.Clock
 import zio.console.Console

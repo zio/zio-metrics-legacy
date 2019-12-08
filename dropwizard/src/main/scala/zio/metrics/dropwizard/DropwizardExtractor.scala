@@ -2,11 +2,12 @@ package zio.metrics.dropwizard
 
 import zio.metrics.Extractor
 import zio.Task
-import argonaut.Argonaut.{ jNumber, jSingleObject, jString }
-import argonaut.Json
 import com.codahale.metrics.Snapshot
 
 import scala.collection.JavaConverters._
+
+import argonaut.Argonaut.{ jNumber, jSingleObject, jString }
+import argonaut.Json
 
 object DropwizardExtractor {
 
@@ -111,9 +112,14 @@ object DropwizardExtractor {
           }
     }
 
-  /*val writeJson: DropwizardRegistry => Extractor.Filter => Json =
+//  import cats.instances.list._
+  import zio.metrics.RegistryPrinter
+
+  type Filter = Option[String]
+
+  val writeJson: DropwizardRegistry => Filter => Task[Json] =
     dwr => filter => for {
-    dwr <- RegistryPrinter.report[DropwizardRegistry, List, Json](dwr, filter)(jSingleObject)
-  } yield j*/
+    j <- RegistryPrinter.report[DropwizardRegistry, List, Json](dwr, filter)(jSingleObject)
+  } yield j
 
 }

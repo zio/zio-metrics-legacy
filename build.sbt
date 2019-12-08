@@ -22,7 +22,7 @@ inThisBuild(
 ThisBuild / publishTo := sonatypePublishToBundle.value
 
 val http4sVersion     = "0.21.0-M5"
-val zioVersion        = "1.0.0-RC16"
+val zioVersion        = "1.0.0-RC17"
 val interopVersion    = "2.0.0.0-RC7" // "1.3.1.0-RC3"
 val prometheusVersion = "0.7.0"
 val dropwizardVersion = "4.0.1"
@@ -46,7 +46,11 @@ lazy val dropwizard = project
   .settings(
     name := "dropwizard",
     stdSettings("metrics-dropwizard") ++ settings,
-    libraryDependencies ++= commonDependencies ++ http4s ++ dropwizardDependencies
+    libraryDependencies ++= commonDependencies ++ dropwizardDependencies ++ (CrossVersion
+      .partialVersion(scalaBinaryVersion.value) match {
+      case Some((2, 12)) => http4s
+      case _             => Seq()
+    })
   )
   .dependsOn(common)
 
@@ -78,7 +82,8 @@ lazy val dropwizardDependencies = Seq(
   "io.dropwizard.metrics" % "metrics-core"         % dropwizardVersion,
   "io.dropwizard.metrics" % "metrics-healthchecks" % dropwizardVersion,
   "io.dropwizard.metrics" % "metrics-jmx"          % dropwizardVersion,
-  "io.dropwizard.metrics" % "metrics-graphite"     % dropwizardVersion
+  "io.dropwizard.metrics" % "metrics-graphite"     % dropwizardVersion,
+  "io.argonaut"           %% "argonaut"            % "6.2.2"
 )
 
 lazy val docs = project
@@ -105,7 +110,6 @@ lazy val http4s = Seq(
   "org.http4s"    %% "http4s-blaze-server" % http4sVersion,
   "org.http4s"    %% "http4s-dsl"          % http4sVersion,
   "org.typelevel" %% "cats-effect"         % "2.0.0" % Optional,
-  "io.argonaut"   %% "argonaut"            % "6.2.2",
   "io.argonaut"   %% "argonaut-cats"       % "6.2.2"
 )
 

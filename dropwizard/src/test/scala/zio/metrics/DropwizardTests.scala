@@ -5,14 +5,8 @@ import zio.console._
 import zio.internal.PlatformLive
 import testz.{ assert, Harness, PureHarness }
 import com.codahale.metrics.{ MetricRegistry }
-import argonaut.Argonaut.jSingleObject
-import argonaut.Json
 import zio.metrics.dropwizard._
 import zio.metrics.dropwizard.helpers._
-import zio.metrics.dropwizard.DropwizardExtractor._
-import zio.metrics.instances._
-
-import cats.instances.list._
 
 object DropwizardTests {
 
@@ -137,10 +131,10 @@ object DropwizardTests {
 
         assert(meanRate > 0.78 && meanRate < 0.84)
       },
-      test("Report printer is consistens") { () =>
+      test("Report printer is consistent") { () =>
         val str = for {
           dwr <- RIO.environment[DropwizardRegistry]
-          j   <- RegistryPrinter.report[DropwizardRegistry, List, Json](dwr, None)(jSingleObject)
+          j   <- DropwizardExtractor.writeJson(dwr)(None)
         } yield j.spaces2
 
         rt.unsafeRun(str >>= putStrLn)

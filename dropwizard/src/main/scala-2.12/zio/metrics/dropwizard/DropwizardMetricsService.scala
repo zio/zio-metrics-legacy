@@ -1,7 +1,5 @@
 package zio.metrics.dropwizard
 
-import zio.metrics.MetricsService
-import zio.metrics.Server
 import argonaut.Argonaut.jSingleObject
 import argonaut.Json
 import org.http4s.argonaut._
@@ -11,8 +9,9 @@ import org.http4s.{ HttpRoutes, Response }
 import zio.RIO
 import zio.interop.catz._
 import zio.metrics.RegistryPrinter
-import zio.metrics.instances.jsonMonoid
-import cats.instances.list._
+import zio.metrics.MetricsService
+import zio.metrics.Server
+import zio.metrics.typeclasses.Monoid.jsonMonoid
 import zio.metrics.dropwizard.DropwizardExtractor._
 
 trait DropwizardMetricsService extends MetricsService {
