@@ -371,19 +371,24 @@ finally, we just have to call `Server.builder` and provide the environment:
 
 ```scala mdoc:silent
   override def run(args: List[String]) = {
-    println("Starting tests")
-    val r = rt.unsafeRun(testServer)
-    builder(httpApp(r))
+    val kApp: Task[KleisliApp] = testServer.map(r => httpApp(r)).provideSome(_ => {
+      new DropwizardRegistry with DropwizardReporters
+    })
+
+    val app: RIO[HttpEnvironment, Unit] = kApp >>= builder
+
+    app
+      .catchAll(t => putStrLn(s"$t"))
       .provideSome[HttpEnvironment] { rt =>
         new Clock with Console with System with Random with Blocking {
-          override val clock: Clock.Service[Any] = rt.clock
+          override val clock: Clock.Service[Any]       = rt.clock
           override val console: Console.Service[Any]   = rt.console
-          override val random: Random.Service[Any]     = rt.random
           override val system: System.Service[Any]     = rt.system
+          override val random: Random.Service[Any]     = rt.random
           override val blocking: Blocking.Service[Any] = rt.blocking
         }
       }
       .run
-      .map(_ => 0)
+      .map(r => { println(s"Exiting $r"); 0})
   }
 ```

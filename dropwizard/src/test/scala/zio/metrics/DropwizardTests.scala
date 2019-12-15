@@ -56,13 +56,21 @@ object DropwizardTests {
   } yield r
 
   val testExponentialHistogram: RIO[DropwizardRegistry, MetricRegistry] = for {
-    h <- histogram.register("DropwizardExponentialHistogram", Array("exponential", "histogram"), new ExponentiallyDecayingReservoir)
+    h <- histogram.register(
+          "DropwizardExponentialHistogram",
+          Array("exponential", "histogram"),
+          new ExponentiallyDecayingReservoir
+        )
     _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
     r <- registry.getCurrent()
   } yield r
 
   val testSlidingTimeWindowHistogram: RIO[DropwizardRegistry, MetricRegistry] = for {
-    h <- histogram.register("DropwizardSlidingHistogram", Array("sliding", "histogram"), new SlidingTimeWindowArrayReservoir(30, TimeUnit.SECONDS))
+    h <- histogram.register(
+          "DropwizardSlidingHistogram",
+          Array("sliding", "histogram"),
+          new SlidingTimeWindowArrayReservoir(30, TimeUnit.SECONDS)
+        )
     _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
     r <- registry.getCurrent()
   } yield r

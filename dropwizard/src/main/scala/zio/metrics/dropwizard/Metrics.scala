@@ -20,60 +20,60 @@ class Counter(private val dwCounter: DWCounter) extends Metric {
 object Counter {
   def apply(name: String, labels: Array[String]): RIO[DropwizardRegistry, Counter] =
     for {
-      c   <- registry.registerCounter(name, labels)
+      c <- registry.registerCounter(name, labels)
     } yield new Counter(c)
 }
 
 class Gauge(private val dwGauge: DWGauge[_]) extends Metric {
   def getValue[A](): Task[A] =
-      Task(dwGauge.getValue().asInstanceOf[A])
+    Task(dwGauge.getValue().asInstanceOf[A])
 }
 
 object Gauge {
   def apply[A](name: String, labels: Array[String], f: () => A): RIO[DropwizardRegistry, Gauge] =
     for {
-      g   <- registry.registerGauge(name, labels, f)
+      g <- registry.registerGauge(name, labels, f)
     } yield new Gauge(g)
 }
 
 class Timer(private val dwTimer: DWTimer) extends Metric {
   def start(): zio.Task[DWTimer.Context] =
-      Task(dwTimer.time())
+    Task(dwTimer.time())
 
   def stop(c: DWTimer.Context): Task[Long] =
-      Task(c.stop())
+    Task(c.stop())
 }
 
 object Timer {
   def apply(name: String, labels: Array[String]): RIO[DropwizardRegistry, Timer] =
     for {
-      t   <- registry.registerTimer(name, labels)
+      t <- registry.registerTimer(name, labels)
     } yield new Timer(t)
 }
 
 class Meter(private val dwMeter: DWMeter) extends Metric {
   def mark(): zio.Task[Unit] =
-      Task(dwMeter.mark())
+    Task(dwMeter.mark())
 
   def mark(amount: Long): zio.Task[Unit] =
-      Task(dwMeter.mark(amount))
+    Task(dwMeter.mark(amount))
 }
 
 object Meter {
   def apply(name: String, labels: Array[String]): RIO[DropwizardRegistry, Meter] =
     for {
-      m   <- registry.registerMeter(name, labels)
+      m <- registry.registerMeter(name, labels)
     } yield new Meter(m)
 }
 
 class Histogram(private val dwHistogram: DWHistogram) extends Metric {
   def update(amount: Double): Task[Unit] =
-      Task(dwHistogram.update(amount.toLong))
+    Task(dwHistogram.update(amount.toLong))
 }
 
 object Histogram {
   def apply(name: String, labels: Array[String], reservoir: Reservoir): RIO[DropwizardRegistry, Histogram] =
     for {
-      h   <- registry.registerHistogram(name, labels, reservoir)
+      h <- registry.registerHistogram(name, labels, reservoir)
     } yield new Histogram(h)
 }

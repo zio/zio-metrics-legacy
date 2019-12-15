@@ -28,7 +28,7 @@ trait DropwizardRegistry extends Registry {
 
     override def registerGauge[L: Show, A](label: Label[L], f: () => A): Task[DWGauge[A]] =
       registryRef >>= (_.modify(r => {
-        val name = label2Name(label)
+        val name   = label2Name(label)
         val gauges = r.getGauges(MetricFilter.startsWith(name))
         val dwgauge = if (gauges.isEmpty()) {
           val gw = new DWGauge[A]() {

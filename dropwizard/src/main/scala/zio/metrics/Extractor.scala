@@ -5,7 +5,7 @@ import cats.Foldable
 import cats.syntax.semigroup._*/
 import zio.Task
 import zio.metrics.typeclasses.Monoid.MonoidSyntax
-import zio.metrics.typeclasses.{ Monoid, Foldable }
+import zio.metrics.typeclasses.{ Foldable, Monoid }
 
 trait Extractor[R <: Registry, F[_], A] {
 

@@ -53,9 +53,11 @@ object ServerTest extends App {
   override def run(args: List[String]) = {
     println("Starting tests")
 
-    val kApp: Task[KleisliApp] = testServer.map(r => httpApp(r)).provideSome(_ => {
-      new DropwizardRegistry with DropwizardReporters
-    })
+    val kApp: Task[KleisliApp] = testServer
+      .map(r => httpApp(r))
+      .provideSome(_ => {
+        new DropwizardRegistry with DropwizardReporters
+      })
 
     val app: RIO[HttpEnvironment, Unit] = kApp >>= builder
     println(s"App: $app")
@@ -72,6 +74,6 @@ object ServerTest extends App {
         }
       }
       .run
-      .map(r => { println(s"Exiting $r"); 0})
+      .map(r => { println(s"Exiting $r"); 0 })
   }
 }

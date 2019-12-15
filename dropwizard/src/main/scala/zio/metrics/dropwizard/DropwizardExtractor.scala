@@ -118,8 +118,10 @@ object DropwizardExtractor {
   type Filter = Option[String]
 
   val writeJson: DropwizardRegistry => Filter => Task[Json] =
-    dwr => filter => for {
-    j <- RegistryPrinter.report[DropwizardRegistry, List, Json](dwr, filter)(jSingleObject)
-  } yield j
+    dwr =>
+      filter =>
+        for {
+          j <- RegistryPrinter.report[DropwizardRegistry, List, Json](dwr, filter)(jSingleObject)
+        } yield j
 
 }
