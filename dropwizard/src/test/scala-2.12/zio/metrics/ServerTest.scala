@@ -4,8 +4,7 @@ import zio.metrics.Server._
 import zio.metrics.dropwizard._
 import zio.metrics.dropwizard.helpers._
 import zio.metrics.dropwizard.DropwizardMetricsService.service
-import zio.{ App, RIO, Runtime }
-import zio.internal.PlatformLive
+import zio.{ App, RIO, Task }
 import java.util.concurrent.TimeUnit
 import scala.util.Properties.envOrNone
 import zio.system.System
@@ -21,11 +20,6 @@ object ServerTest extends App {
 
   val port: Int = envOrNone("HTTP_PORT").fold(9090)(_.toInt)
   println(s"Starting server on port $port")
-
-  val rt = Runtime(
-    new DropwizardRegistry with DropwizardReporters,
-    PlatformLive.Default
-  )
 
   val testServer: RIO[
     DropwizardRegistry with DropwizardReporters,
@@ -59,9 +53,11 @@ object ServerTest extends App {
   override def run(args: List[String]) = {
     println("Starting tests")
 
-    val kApp: KleisliApp = rt.unsafeRun(testServer.map(r => httpApp(r)))
+    val kApp: Task[KleisliApp] = testServer.map(r => httpApp(r)).provideSome(_ => {
+      new DropwizardRegistry with DropwizardReporters
+    })
 
-    val app: RIO[HttpEnvironment, Unit] = builder(kApp)
+    val app: RIO[HttpEnvironment, Unit] = kApp >>= builder
     println(s"App: $app")
 
     app
