@@ -48,8 +48,8 @@ lazy val dropwizard = project
     stdSettings("metrics-dropwizard") ++ settings,
     libraryDependencies ++= commonDependencies ++ dropwizardDependencies ++ (CrossVersion
       .partialVersion(scalaBinaryVersion.value) match {
-      case Some((2, 12)) => http4s
-      case _             => Seq()
+      case Some((2, 11)) => Seq()
+      case _             => http4s
     })
   )
   .dependsOn(common)
@@ -109,7 +109,7 @@ lazy val http4s = Seq(
   "org.http4s"    %% "http4s-argonaut"     % http4sVersion,
   "org.http4s"    %% "http4s-blaze-server" % http4sVersion,
   "org.http4s"    %% "http4s-dsl"          % http4sVersion,
-  "org.typelevel" %% "cats-effect"         % "2.0.0" % Optional,
+  "org.typelevel" %% "cats-effect"         % "2.0.0", //% Optional,
   "io.argonaut"   %% "argonaut-cats"       % "6.2.2"
 )
 

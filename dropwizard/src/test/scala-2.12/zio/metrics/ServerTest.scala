@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit
 import scala.util.Properties.envOrNone
 import zio.system.System
 import zio.clock.Clock
-import zio.console.Console
+import zio.console._
 import zio.random.Random
 import zio.blocking.Blocking
 import zio.interop.catz._
@@ -27,7 +27,7 @@ object ServerTest extends App {
     PlatformLive.Default
   )
 
-  val tests: RIO[
+  val testServer: RIO[
     DropwizardRegistry with DropwizardReporters,
     DropwizardRegistry
   ] =
@@ -41,14 +41,14 @@ object ServerTest extends App {
       _   <- c.inc(2.0)
       t   <- timer.register("DropwizardTimer", Array("test", "timer"))
       ctx <- t.start()
-      l <- RIO.foreach(
+      _ <- RIO.foreach(
             List(
               Thread.sleep(1000L),
               Thread.sleep(1400L),
               Thread.sleep(1200L)
             )
           )(_ => t.stop(ctx))
-    } yield { println(l); dwr }
+    } yield dwr
 
   val httpApp =
     (registry: DropwizardRegistry) =>
@@ -58,18 +58,24 @@ object ServerTest extends App {
 
   override def run(args: List[String]) = {
     println("Starting tests")
-    val r = rt.unsafeRun(tests)
-    builder(httpApp(r))
+
+    val kApp: KleisliApp = rt.unsafeRun(testServer.map(r => httpApp(r)))
+
+    val app: RIO[HttpEnvironment, Unit] = builder(kApp)
+    println(s"App: $app")
+
+    app
+      .catchAll(t => putStrLn(s"$t"))
       .provideSome[HttpEnvironment] { rt =>
         new Clock with Console with System with Random with Blocking {
-          override val clock: Clock.Service[Any] = rt.clock
+          override val clock: Clock.Service[Any]       = rt.clock
           override val console: Console.Service[Any]   = rt.console
-          override val random: Random.Service[Any]     = rt.random
           override val system: System.Service[Any]     = rt.system
+          override val random: Random.Service[Any]     = rt.random
           override val blocking: Blocking.Service[Any] = rt.blocking
         }
       }
       .run
-      .map(_ => 0)
+      .map(r => { println(s"Exiting $r"); 0})
   }
 }

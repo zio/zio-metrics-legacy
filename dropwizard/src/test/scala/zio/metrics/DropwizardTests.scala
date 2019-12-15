@@ -7,6 +7,10 @@ import testz.{ assert, Harness, PureHarness }
 import com.codahale.metrics.{ MetricRegistry }
 import zio.metrics.dropwizard._
 import zio.metrics.dropwizard.helpers._
+import com.codahale.metrics.UniformReservoir
+import com.codahale.metrics.ExponentiallyDecayingReservoir
+import com.codahale.metrics.SlidingTimeWindowArrayReservoir
+import java.util.concurrent.TimeUnit
 
 object DropwizardTests {
 
@@ -41,6 +45,24 @@ object DropwizardTests {
 
   val testHistogram: RIO[DropwizardRegistry, MetricRegistry] = for {
     h <- histogram.register("DropwizardHistogram", Array("test", "histogram"))
+    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
+    r <- registry.getCurrent()
+  } yield r
+
+  val testUniformHistogram: RIO[DropwizardRegistry, MetricRegistry] = for {
+    h <- histogram.register("DropwizardUniformHistogram", Array("uniform", "histogram"), new UniformReservoir(512))
+    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
+    r <- registry.getCurrent()
+  } yield r
+
+  val testExponentialHistogram: RIO[DropwizardRegistry, MetricRegistry] = for {
+    h <- histogram.register("DropwizardExponentialHistogram", Array("exponential", "histogram"), new ExponentiallyDecayingReservoir)
+    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
+    r <- registry.getCurrent()
+  } yield r
+
+  val testSlidingTimeWindowHistogram: RIO[DropwizardRegistry, MetricRegistry] = for {
+    h <- histogram.register("DropwizardSlidingHistogram", Array("sliding", "histogram"), new SlidingTimeWindowArrayReservoir(30, TimeUnit.SECONDS))
     _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
     r <- registry.getCurrent()
   } yield r
@@ -85,6 +107,39 @@ object DropwizardTests {
       test("histogram increases in time") { () =>
         val name = MetricRegistry.name("DropwizardHistogram", Array("test", "histogram"): _*)
         val r    = rt.unsafeRun(testHistogram)
+        val perc75th = r
+          .getHistograms()
+          .get(name)
+          .getSnapshot
+          .get75thPercentile
+
+        assert(perc75th == 53.5)
+      },
+      test("customized uniform histogram increases in time") { () =>
+        val name = MetricRegistry.name("DropwizardUniformHistogram", Array("uniform", "histogram"): _*)
+        val r    = rt.unsafeRun(testUniformHistogram)
+        val perc75th = r
+          .getHistograms()
+          .get(name)
+          .getSnapshot
+          .get75thPercentile
+
+        assert(perc75th == 53.5)
+      },
+      test("exponential histogram increases in time") { () =>
+        val name = MetricRegistry.name("DropwizardExponentialHistogram", Array("exponential", "histogram"): _*)
+        val r    = rt.unsafeRun(testExponentialHistogram)
+        val perc75th = r
+          .getHistograms()
+          .get(name)
+          .getSnapshot
+          .get75thPercentile
+
+        assert(perc75th == 50.0)
+      },
+      test("sliding time window histogram increases in time") { () =>
+        val name = MetricRegistry.name("DropwizardSlidingHistogram", Array("sliding", "histogram"): _*)
+        val r    = rt.unsafeRun(testSlidingTimeWindowHistogram)
         val perc75th = r
           .getHistograms()
           .get(name)

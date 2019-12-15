@@ -30,14 +30,14 @@ object ReportersTest extends App {
       _   <- c.inc(2.0)
       t   <- timer.register("DropwizardTimer", Array("test", "timer"))
       ctx <- t.start()
-      l <- RIO.foreach(
+      _ <- RIO.foreach(
             List(
               Thread.sleep(1000L),
               Thread.sleep(1400L),
               Thread.sleep(1200L)
             )
           )(_ => t.stop(ctx))
-    } yield { println(l); dwr }
+    } yield dwr
 
   override def run(args: List[String]) = {
     println("Starting tests")
