@@ -1,21 +1,21 @@
 package zio.metrics.dropwizard
 
-import zio.metrics.Extractor
 import zio.Task
-import argonaut.Argonaut.{ jNumber, jSingleObject, jString }
-import argonaut.Json
 import com.codahale.metrics.Snapshot
 
 import scala.collection.JavaConverters._
 
-object DropWizardExtractor {
+import argonaut.Argonaut.{ jNumber, jSingleObject, jString }
+import argonaut.Json
 
-  implicit val jsonDWExtractor: Extractor[DropWizardRegistry, List, Json] =
-    new Extractor[DropWizardRegistry, List, Json] {
-      override val extractCounters: DropWizardRegistry => Filter => Task[List[Json]] =
-        (registry: DropWizardRegistry) =>
+object DropwizardExtractor {
+
+  implicit val jsonDWExtractor: Extractor[DropwizardRegistry, List, Json] =
+    new Extractor[DropwizardRegistry, List, Json] {
+      override val extractCounters: DropwizardRegistry => Filter => Task[List[Json]] =
+        (registry: DropwizardRegistry) =>
           (filter: Filter) => {
-            val metricFilter = DropWizardRegistry.makeFilter(filter)
+            val metricFilter = DropwizardRegistry.makeFilter(filter)
             for {
               r <- registry.registry.getCurrent()
             } yield
@@ -25,10 +25,10 @@ object DropWizardExtractor {
                 .toList
           }
 
-      override val extractGauges: DropWizardRegistry => Filter => Task[List[Json]] =
-        (registry: DropWizardRegistry) =>
+      override val extractGauges: DropwizardRegistry => Filter => Task[List[Json]] =
+        (registry: DropwizardRegistry) =>
           (filter: Filter) => {
-            val metricFilter = DropWizardRegistry.makeFilter(filter)
+            val metricFilter = DropwizardRegistry.makeFilter(filter)
             for {
               r <- registry.registry.getCurrent()
             } yield
@@ -52,10 +52,10 @@ object DropWizardExtractor {
           s"${name}_999th"  -> jNumber(snapshot.get999thPercentile())
         )
 
-      override val extractTimers: DropWizardRegistry => Filter => Task[List[Json]] =
-        (registry: DropWizardRegistry) =>
+      override val extractTimers: DropwizardRegistry => Filter => Task[List[Json]] =
+        (registry: DropwizardRegistry) =>
           (filter: Filter) => {
-            val metricFilter = DropWizardRegistry.makeFilter(filter)
+            val metricFilter = DropwizardRegistry.makeFilter(filter)
             for {
               r <- registry.registry.getCurrent()
             } yield
@@ -73,10 +73,10 @@ object DropWizardExtractor {
                 .toList
           }
 
-      override val extractHistograms: DropWizardRegistry => Filter => Task[List[Json]] =
-        (registry: DropWizardRegistry) =>
+      override val extractHistograms: DropwizardRegistry => Filter => Task[List[Json]] =
+        (registry: DropwizardRegistry) =>
           (filter: Filter) => {
-            val metricFilter = DropWizardRegistry.makeFilter(filter)
+            val metricFilter = DropwizardRegistry.makeFilter(filter)
             for {
               r <- registry.registry.getCurrent()
             } yield
@@ -89,10 +89,10 @@ object DropWizardExtractor {
                 .toList
           }
 
-      override val extractMeters: DropWizardRegistry => Filter => Task[List[Json]] =
-        (registry: DropWizardRegistry) =>
+      override val extractMeters: DropwizardRegistry => Filter => Task[List[Json]] =
+        (registry: DropwizardRegistry) =>
           (filter: Filter) => {
-            val metricFilter = DropWizardRegistry.makeFilter(filter)
+            val metricFilter = DropwizardRegistry.makeFilter(filter)
             for {
               r <- registry.registry.getCurrent()
             } yield
@@ -110,4 +110,17 @@ object DropWizardExtractor {
                 .toList
           }
     }
+
+//  import cats.instances.list._
+  import zio.metrics.dropwizard.RegistryPrinter
+
+  type Filter = Option[String]
+
+  val writeJson: DropwizardRegistry => Filter => Task[Json] =
+    dwr =>
+      filter =>
+        for {
+          j <- RegistryPrinter.report[DropwizardRegistry, List, Json](dwr, filter)(jSingleObject)
+        } yield j
+
 }

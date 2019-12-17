@@ -1,4 +1,4 @@
-package zio.metrics
+package zio.metrics.prometheus
 
 import zio.Task
 import io.prometheus.client.exporter.HttpConnectionFactory

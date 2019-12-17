@@ -1,7 +1,6 @@
 package zio.metrics.prometheus
 
 import zio.Task
-import zio.metrics.Exporters
 import io.prometheus.client.CollectorRegistry
 import io.prometheus.client.exporter.{ HTTPServer, PushGateway }
 import io.prometheus.client.bridge.Graphite

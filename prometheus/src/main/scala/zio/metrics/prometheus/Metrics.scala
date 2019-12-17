@@ -4,7 +4,6 @@ import zio.{ RIO, Task }
 import zio.metrics.prometheus.PrometheusRegistry.{ Percentile, Tolerance }
 import io.prometheus.client.{ Counter => PCounter, Gauge => PGauge }
 import io.prometheus.client.{ Histogram => PHistogram, Summary => PSummary }
-import zio.metrics.Buckets
 import zio.metrics.prometheus.helpers.registry
 
 sealed trait Metric {}

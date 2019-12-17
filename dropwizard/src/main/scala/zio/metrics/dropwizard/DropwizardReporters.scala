@@ -1,7 +1,6 @@
 package zio.metrics.dropwizard
 
 import zio.Task
-import zio.metrics.Reporters
 import com.codahale.metrics.MetricRegistry
 import com.codahale.metrics.MetricFilter
 import com.codahale.metrics.graphite.Graphite
@@ -17,7 +16,7 @@ import com.codahale.metrics.Reporter
 import java.{ util => ju }
 import java.io.File
 
-trait DropWizardReporters extends Reporters {
+trait DropwizardReporters extends Reporters {
   val reporter = new Reporters.Service[MetricRegistry, Reporter] {
     override def jmx(r: MetricRegistry): zio.Task[JmxReporter] = Task(JmxReporter.forRegistry(r).build())
 
@@ -62,4 +61,4 @@ trait DropWizardReporters extends Reporters {
   }
 }
 
-object DropWizardReporters extends DropWizardReporters
+object DropwizardReporters extends DropwizardReporters
