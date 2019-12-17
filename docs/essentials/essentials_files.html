@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charSet="utf-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><title>Prometheus ZIO Wrapper · ZIO Metrics</title><meta name="viewport" content="width=device-width"/><meta name="generator" content="Docusaurus"/><meta name="description" content="ZIO Metrics Prometheus provides Prometheus&#x27; 5 metrics plus a number of"/><meta name="docsearch:language" content="en"/><meta property="og:title" content="Prometheus ZIO Wrapper · ZIO Metrics"/><meta property="og:type" content="website"/><meta property="og:url" content="https://zio.github.io/zio-metrics/"/><meta property="og:description" content="ZIO Metrics Prometheus provides Prometheus&#x27; 5 metrics plus a number of"/><meta name="twitter:card" content="summary"/><link rel="shortcut icon" href="/zio-metrics/img/favicon.png"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css"/><script type="text/javascript" src="https://buttons.github.io/buttons.js"></script><script src="https://unpkg.com/vanilla-back-to-top@7.1.14/dist/vanilla-back-to-top.min.js"></script><script>
+<!DOCTYPE html><html lang="en"><head><meta charSet="utf-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><title>Prometheus ZIO Wrapper · ZIO Metrics</title><meta name="viewport" content="width=device-width"/><meta name="generator" content="Docusaurus"/><meta name="description" content="ZIO Metrics Prometheus provides Prometheus&#x27; 4 metrics plus a number of"/><meta name="docsearch:language" content="en"/><meta property="og:title" content="Prometheus ZIO Wrapper · ZIO Metrics"/><meta property="og:type" content="website"/><meta property="og:url" content="https://zio.github.io/zio-metrics/"/><meta property="og:description" content="ZIO Metrics Prometheus provides Prometheus&#x27; 4 metrics plus a number of"/><meta name="twitter:card" content="summary"/><link rel="shortcut icon" href="/zio-metrics/img/favicon.png"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css"/><script type="text/javascript" src="https://buttons.github.io/buttons.js"></script><script src="https://unpkg.com/vanilla-back-to-top@7.1.14/dist/vanilla-back-to-top.min.js"></script><script>
         document.addEventListener('DOMContentLoaded', function() {
           addBackToTop(
             {"zIndex":100,"cornerOffset":100}
@@ -60,13 +60,13 @@
                 };
               }
             });
-        </script></nav></div><div class="container mainContainer docsContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1 id="__docusaurus" class="postHeaderTitle">Prometheus ZIO Wrapper</h1></header><article><div><span><p>ZIO Metrics Prometheus provides Prometheus' 5 metrics plus a number of
+        </script></nav></div><div class="container mainContainer docsContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1 id="__docusaurus" class="postHeaderTitle">Prometheus ZIO Wrapper</h1></header><article><div><span><p>ZIO Metrics Prometheus provides Prometheus' 4 metrics plus a number of
 exporters all connected through the <code>CollectorRegstry</code>.</p>
 <p>Required imports for presented snippets:</p>
 <pre><code class="hljs css language-scala mdoc:silent"><span class="hljs-keyword">import</span> zio.{ <span class="hljs-type">RIO</span>, <span class="hljs-type">Runtime</span> }
 <span class="hljs-keyword">import</span> io.prometheus.client.<span class="hljs-type">CollectorRegistry</span>
 <span class="hljs-keyword">import</span> zio.internal.<span class="hljs-type">PlatformLive</span>
-<span class="hljs-keyword">import</span> zio.metrics.{ <span class="hljs-type">Label</span> =&gt; <span class="hljs-type">ZLabel</span>, <span class="hljs-type">Show</span>, <span class="hljs-type">DefaultBuckets</span>, <span class="hljs-type">LinearBuckets</span>, <span class="hljs-type">ExponentialBuckets</span> }
+<span class="hljs-keyword">import</span> zio.metrics.{ <span class="hljs-type">Label</span> =&gt; <span class="hljs-type">ZLabel</span>, <span class="hljs-type">Show</span> }
 <span class="hljs-keyword">import</span> zio.metrics.prometheus._
 <span class="hljs-keyword">import</span> zio.metrics.prometheus.helpers._
 
@@ -110,10 +110,9 @@ may require more parameters). A label is composed of a name and an array of
 labels which may be empty in the case where no labels are required.</p>
 <pre><code class="hljs css language-scala mdoc:silent"><span class="hljs-keyword">case</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Label</span>[<span class="hljs-type">A</span>: <span class="hljs-type">Show</span>](<span class="hljs-params">name: <span class="hljs-type">A</span>, labels: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]</span>)</span>
 </code></pre>
-<p>Note that zio-metrics does not depend on either cats or scalaz so this Show is defined on typeclasses with instances for String and Class[A].
-Besides the <code>register*</code> functions, we also have <code>getCurrent()</code> that simply
-returns the <code>CollectorRegistry</code> which is needed by all <code>Exporters</code>.</p>
-<p>Using the registry helper the above becomes:</p>
+<p>Note that zio-metrics does not depend on either cats or scalaz so this Show is
+defined on ``typeclasses<code>with instances for String and Class[A]. Besides the</code>register*<code>functions, we also have</code>getCurrent()<code>that simply returns the</code>CollectorRegistry<code>which is needed by all</code>Exporters`.</p>
+<p>Using the registry helper the above function becomes:</p>
 <pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testRegistryHelper: <span class="hljs-type">RIO</span>[<span class="hljs-type">PrometheusRegistry</span>, <span class="hljs-type">CollectorRegistry</span>] = <span class="hljs-keyword">for</span> {
     _  &lt;- registry.registerCounter(<span class="hljs-string">"simple_counter"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"method"</span>))
     r  &lt;- registry.getCurrent()
@@ -359,7 +358,7 @@ documentation for more information.</p>
     r  &lt;- registry.getCurrent()
   } <span class="hljs-keyword">yield</span> r
 </code></pre>
-</span></div></article></div><div class="docLastUpdate"><em>Last updated on 12/4/2019 by toxicafunk</em></div><div class="docs-prevnext"><a class="docs-prev button" href="/zio-metrics/docs/essentials/essentials_index"><span class="arrow-prev">← </span><span>Overview</span></a><a class="docs-next button" href="/zio-metrics/docs/essentials/essentials_sockets"><span>Dropwizard ZIO WSrapper</span><span class="arrow-next"> →</span></a></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#registry">Registry</a></li><li><a href="#counter">Counter</a></li><li><a href="#helpers">Helpers</a></li><li><a href="#gauge">Gauge</a></li><li><a href="#exporters">Exporters</a></li><li><a href="#histogram">Histogram</a></li><li><a href="#summary">Summary</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section><div><div class="gitter-open-chat-button">Open Chat</div><script type="text/javascript">
+</span></div></article></div><div class="docLastUpdate"><em>Last updated on 12/17/2019 by toxicafunk</em></div><div class="docs-prevnext"><a class="docs-prev button" href="/zio-metrics/docs/essentials/essentials_index"><span class="arrow-prev">← </span><span>Overview</span></a><a class="docs-next button" href="/zio-metrics/docs/essentials/essentials_sockets"><span>Dropwizard ZIO WSrapper</span><span class="arrow-next"> →</span></a></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#registry">Registry</a></li><li><a href="#counter">Counter</a></li><li><a href="#helpers">Helpers</a></li><li><a href="#gauge">Gauge</a></li><li><a href="#exporters">Exporters</a></li><li><a href="#histogram">Histogram</a></li><li><a href="#summary">Summary</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section><div><div class="gitter-open-chat-button">Open Chat</div><script type="text/javascript">
         ((window.gitter = {}).chat = {}).options = {
           showChatByDefault: false,
           activationElement: '.gitter-open-chat-button',
