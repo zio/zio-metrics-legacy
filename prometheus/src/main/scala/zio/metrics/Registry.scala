@@ -1,6 +1,7 @@
-package zio.metrics
+package zio.metrics.prometheus
 
 import zio.{ Task, UIO }
+import zio.metrics.{ Label, Show }
 
 trait Registry {
   val registry: Registry.Service[_, _]

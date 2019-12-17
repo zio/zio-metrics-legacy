@@ -24,7 +24,11 @@ both Prometheus and Dropwizard library.
 `ZIO-Metrics` is available via maven repo so import in `build.sbt` is sufficient:
 
 ```scala
-libraryDependencies += "dev.zio" %% "zio-metrics" % "0.0.5"
+// Prometheus
+libraryDependencies += "dev.zio" %% "zio-metrics-prometheus" % "0.0.6"
+
+// Dropwizard
+libraryDependencies += "dev.zio" %% "zio-metrics-dropwizard" % "0.0.6"
 ```
 
 ## References

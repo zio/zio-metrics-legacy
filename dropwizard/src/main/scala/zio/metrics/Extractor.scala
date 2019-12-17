@@ -1,9 +1,11 @@
-package zio.metrics
+package zio.metrics.dropwizard
 
-import cats.Monoid
+/*import cats.Monoid
 import cats.Foldable
-import cats.syntax.semigroup._
+import cats.syntax.semigroup._*/
 import zio.Task
+import zio.metrics.dropwizard.typeclasses.Monoid.MonoidSyntax
+import zio.metrics.dropwizard.typeclasses.{ Foldable, Monoid }
 
 trait Extractor[R <: Registry, F[_], A] {
 

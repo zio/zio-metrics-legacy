@@ -3,7 +3,7 @@ id: essentials_files
 title:  "Prometheus ZIO Wrapper"
 ---
 
-ZIO Metrics Prometheus provides Prometheus' 5 metrics plus a number of
+ZIO Metrics Prometheus provides Prometheus' 4 metrics plus a number of
 exporters all connected through the `CollectorRegstry`.
 
 Required imports for presented snippets:
@@ -12,7 +12,7 @@ Required imports for presented snippets:
 import zio.{ RIO, Runtime }
 import io.prometheus.client.CollectorRegistry
 import zio.internal.PlatformLive
-import zio.metrics.{ Label => ZLabel, Show, DefaultBuckets, LinearBuckets, ExponentialBuckets }
+import zio.metrics.{ Label => ZLabel, Show }
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.helpers._
 
@@ -70,11 +70,13 @@ labels which may be empty in the case where no labels are required.
 case class Label[A: Show](name: A, labels: Array[String])
 ```
 
-Note that zio-metrics does not depend on either cats or scalaz so this Show is defined on typeclasses with instances for String and Class[A].
+Note that zio-metrics does not depend on either cats or scalaz so this Show is
+defined on ``typeclasses` with instances for String and Class[A].
 Besides the `register*` functions, we also have `getCurrent()` that simply
 returns the `CollectorRegistry` which is needed by all `Exporters`.
 
-Using the registry helper the above becomes:
+Using the registry helper the above function becomes:
+
 ```scala mdoc:silent
   val testRegistryHelper: RIO[PrometheusRegistry, CollectorRegistry] = for {
     _  <- registry.registerCounter("simple_counter", Array("method"))

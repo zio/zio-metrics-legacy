@@ -7,7 +7,7 @@ import io.prometheus.client.{ Histogram => PHistogram, Summary => PSummary }
 import io.prometheus.client.CollectorRegistry
 import io.prometheus.client.exporter.HTTPServer
 import io.prometheus.client.exporter.HttpConnectionFactory
-import zio.metrics.{ Buckets, DefaultBuckets, Label }
+import zio.metrics.Label
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.PrometheusRegistry.{ Percentile, Tolerance }
 
