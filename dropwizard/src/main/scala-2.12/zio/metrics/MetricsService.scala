@@ -1,4 +1,5 @@
-package zio.metrics
+package zio.metrics.dropwizard
+
 import org.http4s.HttpRoutes
 
 trait MetricsService {

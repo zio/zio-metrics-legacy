@@ -1,4 +1,4 @@
-package zio.metrics
+package zio.metrics.dropwizard
 
 import zio.Task
 import java.util.concurrent.TimeUnit

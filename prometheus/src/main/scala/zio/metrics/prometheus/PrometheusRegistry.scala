@@ -5,9 +5,8 @@ import io.prometheus.client.{ Gauge => PGauge }
 import io.prometheus.client.{ Histogram => PHistogram }
 import io.prometheus.client.{ Collector, CollectorRegistry }
 import io.prometheus.client.{ Summary => PSummary }
-import zio.metrics._
 
-import zio.metrics.{ Label, Registry, Show }
+import zio.metrics.{ Label, Show }
 import zio.{ Ref, Task, UIO }
 
 trait PrometheusRegistry extends Registry {
