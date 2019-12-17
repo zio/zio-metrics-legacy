@@ -1,7 +1,7 @@
 package zio.metrics.dropwizard
 
 import zio.{ Task, UIO }
-import zio.metrics.{ Show, Label }
+import zio.metrics.{ Label, Show }
 import com.codahale.metrics.Reservoir
 
 trait Registry {
