@@ -131,7 +131,7 @@ long-running) function `() => A` such as `def currentTemperature(): Double` or
   val tester: () => Long = () => System.nanoTime()
   
   val testGauge: RIO[DropwizardRegistry, (MetricRegistry, Long)] = for {
-    g <- gauge.register[Long]("DropwizardGauge", Array("test", "gauge"), tester)
+    g <- gauge.register("DropwizardGauge", Array("test", "gauge"), tester)
     r <- registry.getCurrent()
     l <- g.getValue[Long]()
   } yield (r, l)
@@ -143,7 +143,7 @@ You can run and verify the results so:
     val gaugeName = MetricRegistry.name("DropwizardGauge", Array("test", "gauge"): _*)
     val rGauge    = rt.unsafeRun(testGauge)
     val gs   = rGauge._1.getGauges()
-    val g    = if (gs.get(gaugeName) == null) Long.MaxValue else gs.get(name).getValue().asInstanceOf[Long]
+    val g    = if (gs.get(gaugeName) == null) Long.MaxValue else gs.get(gaugeName).getValue().asInstanceOf[Long]
 ```
 
 `ZIO-Metrics` offers a `JSON Registry Printer` that can also be used to verify
