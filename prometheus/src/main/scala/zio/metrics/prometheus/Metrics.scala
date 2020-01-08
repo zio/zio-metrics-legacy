@@ -122,17 +122,17 @@ class Histogram(private val pHistogram: PHistogram) extends Metric {
   def time[A](task: Task[A]): Task[(Double, A)] =
     time(task, Array.empty[String])
 
-  def time[A](task: Task[A], labelNames: Array[String]): Task[(Double, A)] = for {
-    t   <- Task(if (labelNames.isEmpty) pHistogram.startTimer() else pHistogram.labels(labelNames: _*).startTimer())
-    a   <- task
-  } yield (t.observeDuration(), a)
+  def time[A](task: Task[A], labelNames: Array[String]): Task[(Double, A)] = {
+    val t = if (labelNames.isEmpty) pHistogram.startTimer() else pHistogram.labels(labelNames: _*).startTimer()
+    task >>= (a => Task((t.observeDuration(), a)))
+  }
 
   def time_[A](task: Task[A]): Task[A] =
     time_(task, Array.empty[String])
 
   def time_[A](task: Task[A], labelNames: Array[String]): Task[A] =
     Task(if (labelNames.isEmpty) pHistogram.startTimer() else pHistogram.labels(labelNames: _*).startTimer())
-      .bracket(t => UIO(t.close))(_ => task >>= (a => Task(a)))
+      .bracket(t => UIO(t.close))(_ => task)
 }
 
 object Histogram {
@@ -173,17 +173,17 @@ class Summary(private val pSummary: PSummary) extends Metric {
   def time[A](task: Task[A]): Task[(Double, A)] =
     time(task, Array.empty[String])
 
-  def time[A](task: Task[A], labelNames: Array[String]): Task[(Double, A)] = for {
-    t   <- Task(if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer())
-    a   <- task
-  } yield (t.observeDuration(), a)
+  def time[A](task: Task[A], labelNames: Array[String]): Task[(Double, A)] = {
+    val t = if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer()
+    task >>= (a => Task((t.observeDuration(), a)))
+  }
 
   def time_[A](task: Task[A]): Task[A] =
     time_(task, Array.empty[String])
 
   def time_[A](task: Task[A], labelNames: Array[String]): Task[A] =
     Task(if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer())
-      .bracket(t => UIO(t.close))(_ => task >>= (a => Task(a)))
+      .bracket(t => UIO(t.close))(_ => task)
 }
 
 object Summary {
