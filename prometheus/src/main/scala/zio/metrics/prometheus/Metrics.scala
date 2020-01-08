@@ -1,6 +1,6 @@
 package zio.metrics.prometheus
 
-import zio.{ RIO, Task }
+import zio.{ RIO, Task, UIO }
 import zio.metrics.prometheus.PrometheusRegistry.{ Percentile, Tolerance }
 import io.prometheus.client.{ Counter => PCounter, Gauge => PGauge }
 import io.prometheus.client.{ Histogram => PHistogram, Summary => PSummary }
@@ -118,6 +118,21 @@ class Histogram(private val pHistogram: PHistogram) extends Metric {
       f()
       t.observeDuration()
     }
+
+  def time[A](task: Task[A]): Task[(Double, A)] =
+    time(task, Array.empty[String])
+
+  def time[A](task: Task[A], labelNames: Array[String]): Task[(Double, A)] = for {
+    t   <- Task(if (labelNames.isEmpty) pHistogram.startTimer() else pHistogram.labels(labelNames: _*).startTimer())
+    a   <- task
+  } yield (t.observeDuration(), a)
+
+  def time_[A](task: Task[A]): Task[A] =
+    time_(task, Array.empty[String])
+
+  def time_[A](task: Task[A], labelNames: Array[String]): Task[A] =
+    Task(if (labelNames.isEmpty) pHistogram.startTimer() else pHistogram.labels(labelNames: _*).startTimer())
+      .bracket(t => UIO(t.close))(_ => task >>= (a => Task(a)))
 }
 
 object Histogram {
@@ -136,11 +151,17 @@ class Summary(private val pSummary: PSummary) extends Metric {
   def observe(amount: Double, labelNames: Array[String]): Task[Unit] =
     Task(if (labelNames.isEmpty) pSummary.observe(amount) else pSummary.labels(labelNames: _*).observe(amount))
 
+  def startTimer(): Task[SummaryTimer] =
+    startTimer(Array.empty[String])
+
   def startTimer(labelNames: Array[String]): Task[SummaryTimer] =
     Task(if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer)
 
   def observeDuration(timer: SummaryTimer): Task[Double] =
     Task(timer.observeDuration())
+
+  def time(f: () => Unit): Task[Double] =
+    time(f, Array.empty[String])
 
   def time(f: () => Unit, labelNames: Array[String]): Task[Double] =
     Task {
@@ -148,6 +169,21 @@ class Summary(private val pSummary: PSummary) extends Metric {
       f()
       t.observeDuration()
     }
+
+  def time[A](task: Task[A]): Task[(Double, A)] =
+    time(task, Array.empty[String])
+
+  def time[A](task: Task[A], labelNames: Array[String]): Task[(Double, A)] = for {
+    t   <- Task(if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer())
+    a   <- task
+  } yield (t.observeDuration(), a)
+
+  def time_[A](task: Task[A]): Task[A] =
+    time_(task, Array.empty[String])
+
+  def time_[A](task: Task[A], labelNames: Array[String]): Task[A] =
+    Task(if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer())
+      .bracket(t => UIO(t.close))(_ => task >>= (a => Task(a)))
 }
 
 object Summary {
