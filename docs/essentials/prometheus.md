@@ -254,10 +254,11 @@ http://localhost:9090`. Since we are already using `histogram` in this example,
 let's look at it in more detail next.
 
 ## Histogram
-Histogram has 3 modes we can use:
-1. We can ``time`` how long a task/function takes to complete.
+Histogram has 4 modes we can use:
+1. We can `time` how long a function takes to complete.
 2. We can `observe` arbitrary `Double` values.
 3. We can start an arbitrary `timer` and `observe` its duration.
+4. We can `time` how long a `zio.Task` or a `zio.RIO` takes to complete.
 
 Using a histogram to `time` a function is pretty much what was shown on the
 `Exporters` example above, where `() => Thread.sleep(2000)` is the function we
@@ -324,7 +325,7 @@ We can override the `DefaultBuckets` so:
   } yield r
 ```
 
-Finally, to use an arbitrary timer, after registering the histogram, we need to
+To use an arbitrary timer, after registering the histogram, we need to
 start the timer using our recently created `histogram` object with the
 `startTimer` method which returns a `timer` object. We will use this `timer` to
 mark every point we want observed (measure) thus giving us the duration between
@@ -353,6 +354,29 @@ when `startTimer` was called and each time we `observeDuration`.
 We could define `ExponentialBuckets` substituting the following line:
 
 `h  <- histogram.register("duration_histogram", Array("method"), ExponentialBuckets(0.25,2,5))`
+
+
+Finally, we have two variations of `time`, one that returns the duration and the
+result of executing the `Task` or `RIO` and another (`time_`) that only executes the
+`Task` and returns the result, but not the duration. The benefit of `time_` is
+that it uses `ZIO.bracket` underneath to have stronger guarantees on the
+aquisition, use and release of the timer and the task execution.
+
+```scala mdoc:silent
+  import zio.Task
+  
+  val testHistogramTask: RIO[PrometheusRegistry, (CollectorRegistry, Double, String)] = for {
+    h     <- Histogram("task_histogram_timer", Array.empty[String], DefaultBuckets(Seq.empty[Double]))
+    (d,s) <- h.time(Task{Thread.sleep(2000); "Success"})
+    r     <- registry.getCurrent()
+  } yield (r, d, s)
+
+  val testHistogramTask2: RIO[PrometheusRegistry, (CollectorRegistry, String)] = for {
+    h <- histogram.register("task_histogram_timer_")
+    a <- h.time_(Task{Thread.sleep(2000); "Success"})
+    r <- registry.getCurrent()
+  } yield (r, a)
+```
 
 Now lets inspect our values by `tap`ping our `RIO`. Add ` with Clock.Live`
  to the runtime `rt` before executing the following code.
@@ -387,6 +411,23 @@ documentation for more information.
     s  <- Summary("simple_summary", Array("method"), List((0.5, 0.05), (0.9, 0.01)))
     _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(s.observe(_, Array("put")))
     r  <- registry.getCurrent()
+  } yield r
+```
+
+Just like `Histogram` it has methods `time` and `time_` that take a `Task` or
+`RIO` as input.
+
+```scala mdoc:silent
+  val testSummaryTask: RIO[PrometheusRegistry, CollectorRegistry] = for {
+    s <- summary.register("task_summary_timer")
+    _ <- s.time(Task(Thread.sleep(2000)))
+    r <- registry.getCurrent()
+  } yield r
+
+  val testSummaryTask2: RIO[PrometheusRegistry, CollectorRegistry] = for {
+    s <- summary.register("task_summary_timer_")
+    _ <- s.time_(Task(Thread.sleep(2000)))
+    r <- registry.getCurrent()
   } yield r
 ```
 

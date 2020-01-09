@@ -55,16 +55,16 @@ object PrometheusTest {
   } yield r
 
   val testHistogramTask: RIO[PrometheusRegistry, (CollectorRegistry, Double, String)] = for {
-    h     <- Histogram("task_histogram_timer", Array.empty[String], DefaultBuckets(Seq.empty[Double]))
-    (d,s) <- h.time(Task{Thread.sleep(2000); "Success"})
-    r     <- registry.getCurrent()
+    h      <- Histogram("task_histogram_timer", Array.empty[String], DefaultBuckets(Seq.empty[Double]))
+    (d, s) <- h.time(Task { Thread.sleep(2000); "Success" })
+    r      <- registry.getCurrent()
   } yield (r, d, s)
 
-  val testHistogramTask2: RIO[PrometheusRegistry, CollectorRegistry] = for {
-    h <- Histogram("task_histogram_timer_", Array.empty[String], DefaultBuckets(Seq.empty[Double]))
-    _ <- h.time_(Task(Thread.sleep(2000)))
+  val testHistogramTask2: RIO[PrometheusRegistry, (CollectorRegistry, String)] = for {
+    h <- histogram.register("task_histogram_timer_")
+    a <- h.time_(Task { Thread.sleep(2000); "Success" })
     r <- registry.getCurrent()
-  } yield r
+  } yield (r, a)
 
   val testSummary: RIO[PrometheusRegistry, CollectorRegistry] = for {
     s <- Summary("simple_summary", Array.empty[String], List.empty[(Double, Double)])
@@ -73,14 +73,14 @@ object PrometheusTest {
   } yield r
 
   val testSummaryTask: RIO[PrometheusRegistry, CollectorRegistry] = for {
-    h <- Summary("task_summary_timer", Array.empty[String], List.empty[(Double,Double)])
-    _ <- h.time(Task(Thread.sleep(2000)))
+    s <- summary.register("task_summary_timer")
+    _ <- s.time(Task(Thread.sleep(2000)))
     r <- registry.getCurrent()
   } yield r
 
   val testSummaryTask2: RIO[PrometheusRegistry, CollectorRegistry] = for {
-    h <- Summary("task_summary_timer_", Array.empty[String], List.empty[(Double,Double)])
-    _ <- h.time_(Task(Thread.sleep(2000)))
+    s <- summary.register("task_summary_timer_")
+    _ <- s.time_(Task(Thread.sleep(2000)))
     r <- registry.getCurrent()
   } yield r
 
@@ -167,9 +167,9 @@ object PrometheusTest {
 
         val r = rt.unsafeRun(testHistogramTask2)
 
-        val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
-        val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
-        Result.combine(assert(count == 1.0), assert(sum >= 2.0 && sum <= 3.0))
+        val count = r._1.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
+        val sum   = r._1.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
+        Result.combine(assert(count == 1.0 && sum >= 2.0 && sum <= 3.0), assert(r._2 == "Success"))
       },
       test("summary count and sum are as expected") { () =>
         val set: util.Set[String] = new util.HashSet[String]()

@@ -25,10 +25,10 @@ both Prometheus and Dropwizard library.
 
 ```scala
 // Prometheus
-libraryDependencies += "dev.zio" %% "zio-metrics-prometheus" % "0.0.6"
+libraryDependencies += "dev.zio" %% "zio-metrics-prometheus" % "0.0.9"
 
 // Dropwizard
-libraryDependencies += "dev.zio" %% "zio-metrics-dropwizard" % "0.0.6"
+libraryDependencies += "dev.zio" %% "zio-metrics-dropwizard" % "0.0.9"
 ```
 
 ## References

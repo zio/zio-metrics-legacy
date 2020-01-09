@@ -119,18 +119,18 @@ class Histogram(private val pHistogram: PHistogram) extends Metric {
       t.observeDuration()
     }
 
-  def time[A](task: Task[A]): Task[(Double, A)] =
+  def time[R, A](task: RIO[R, A]): RIO[R, (Double, A)] =
     time(task, Array.empty[String])
 
-  def time[A](task: Task[A], labelNames: Array[String]): Task[(Double, A)] = {
+  def time[R, A](task: RIO[R, A], labelNames: Array[String]): RIO[R, (Double, A)] = {
     val t = if (labelNames.isEmpty) pHistogram.startTimer() else pHistogram.labels(labelNames: _*).startTimer()
     task >>= (a => Task((t.observeDuration(), a)))
   }
 
-  def time_[A](task: Task[A]): Task[A] =
+  def time_[R, A](task: RIO[R, A]): RIO[R, A] =
     time_(task, Array.empty[String])
 
-  def time_[A](task: Task[A], labelNames: Array[String]): Task[A] =
+  def time_[R, A](task: RIO[R, A], labelNames: Array[String]): RIO[R, A] =
     Task(if (labelNames.isEmpty) pHistogram.startTimer() else pHistogram.labels(labelNames: _*).startTimer())
       .bracket(t => UIO(t.close))(_ => task)
 }
@@ -170,19 +170,20 @@ class Summary(private val pSummary: PSummary) extends Metric {
       t.observeDuration()
     }
 
-  def time[A](task: Task[A]): Task[(Double, A)] =
+  def time[R, A](task: RIO[R, A]): RIO[R, (Double, A)] =
     time(task, Array.empty[String])
 
-  def time[A](task: Task[A], labelNames: Array[String]): Task[(Double, A)] = {
+  def time[R, A](task: RIO[R, A], labelNames: Array[String]): RIO[R, (Double, A)] = {
     val t = if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer()
-    task >>= (a => Task((t.observeDuration(), a)))
+    task >>= (a => RIO((t.observeDuration(), a)))
   }
 
-  def time_[A](task: Task[A]): Task[A] =
+  def time_[R, A](task: RIO[R, A]): RIO[R, A] =
     time_(task, Array.empty[String])
 
-  def time_[A](task: Task[A], labelNames: Array[String]): Task[A] =
-    Task(if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer())
+  def time_[R, A](task: RIO[R, A], labelNames: Array[String]): RIO[R, A] =
+    RIO
+      .effect(if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer())
       .bracket(t => UIO(t.close))(_ => task)
 }
 
