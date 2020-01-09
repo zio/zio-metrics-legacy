@@ -2,7 +2,7 @@ package zio.metrics
 
 import java.util
 
-import zio.{ RIO, Runtime }
+import zio.{ RIO, Runtime, Task }
 import zio.console.{ putStrLn, Console }
 import testz.{ assert, Harness, PureHarness, Result }
 import io.prometheus.client.CollectorRegistry
@@ -54,9 +54,33 @@ object PrometheusTest {
     r <- registry.getCurrent()
   } yield r
 
+  val testHistogramTask: RIO[PrometheusRegistry, (CollectorRegistry, Double, String)] = for {
+    h      <- Histogram("task_histogram_timer", Array.empty[String], DefaultBuckets(Seq.empty[Double]))
+    (d, s) <- h.time(Task { Thread.sleep(2000); "Success" })
+    r      <- registry.getCurrent()
+  } yield (r, d, s)
+
+  val testHistogramTask2: RIO[PrometheusRegistry, (CollectorRegistry, String)] = for {
+    h <- histogram.register("task_histogram_timer_")
+    a <- h.time_(Task { Thread.sleep(2000); "Success" })
+    r <- registry.getCurrent()
+  } yield (r, a)
+
   val testSummary: RIO[PrometheusRegistry, CollectorRegistry] = for {
     s <- Summary("simple_summary", Array.empty[String], List.empty[(Double, Double)])
     _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(s.observe(_))
+    r <- registry.getCurrent()
+  } yield r
+
+  val testSummaryTask: RIO[PrometheusRegistry, CollectorRegistry] = for {
+    s <- summary.register("task_summary_timer")
+    _ <- s.time(Task(Thread.sleep(2000)))
+    r <- registry.getCurrent()
+  } yield r
+
+  val testSummaryTask2: RIO[PrometheusRegistry, CollectorRegistry] = for {
+    s <- summary.register("task_summary_timer_")
+    _ <- s.time_(Task(Thread.sleep(2000)))
     r <- registry.getCurrent()
   } yield r
 
@@ -116,11 +140,36 @@ object PrometheusTest {
         set.add("simple_histogram_timer_count")
         set.add("simple_histogram_timer_sum")
 
-        val r = rt.unsafeRun(testHistogramTimer.tap(r => exporters.write004(r).map(println)))
+        val r = rt.unsafeRun(testHistogramTimer)
 
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
         Result.combine(assert(count == 1.0), assert(sum >= 2.0 && sum <= 3.0))
+      },
+      test("histogram timer accepts tasks") { () =>
+        val set: util.Set[String] = new util.HashSet[String]()
+        set.add("task_histogram_timer_count")
+        set.add("task_histogram_timer_sum")
+
+        val r = rt.unsafeRun(testHistogramTask)
+
+        val count = r._1.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
+        val sum   = r._1.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
+
+        println(s"Timed Task returns ${r._3} after ${r._2}")
+
+        Result.combine(assert(count == 1.0 && sum >= 2.0 && sum <= 3.0), assert(r._3 == "Success"))
+      },
+      test("histogram timer_ accepts tasks") { () =>
+        val set: util.Set[String] = new util.HashSet[String]()
+        set.add("task_histogram_timer__count")
+        set.add("task_histogram_timer__sum")
+
+        val r = rt.unsafeRun(testHistogramTask2)
+
+        val count = r._1.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
+        val sum   = r._1.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
+        Result.combine(assert(count == 1.0 && sum >= 2.0 && sum <= 3.0), assert(r._2 == "Success"))
       },
       test("summary count and sum are as expected") { () =>
         val set: util.Set[String] = new util.HashSet[String]()
@@ -131,6 +180,28 @@ object PrometheusTest {
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
         Result.combine(assert(count == 5.0), assert(sum == 163.3))
+      },
+      test("summary timer accepts tasks") { () =>
+        val set: util.Set[String] = new util.HashSet[String]()
+        set.add("task_summary_timer_count")
+        set.add("task_summary_timer_sum")
+
+        val r = rt.unsafeRun(testSummaryTask)
+
+        val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
+        val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
+        Result.combine(assert(count == 1.0), assert(sum >= 2.0 && sum <= 3.0))
+      },
+      test("summary timer_ accepts tasks") { () =>
+        val set: util.Set[String] = new util.HashSet[String]()
+        set.add("task_summary_timer__count")
+        set.add("task_summary_timer__sum")
+
+        val r = rt.unsafeRun(testSummaryTask2.tap(r => exporters.write004(r).map(println)))
+
+        val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
+        val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
+        Result.combine(assert(count == 1.0), assert(sum >= 2.0 && sum <= 3.0))
       }
     )
   }

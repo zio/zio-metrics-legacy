@@ -24,10 +24,10 @@ ZIO](https://zio.dev/docs/howto/howto_use_module_pattern) to provide modules for
 
 ```scala
 // Prometheus
-libraryDependencies += "dev.zio" %% "zio-metrics-prometheus" % "0.0.6"
+libraryDependencies += "dev.zio" %% "zio-metrics-prometheus" % "0.0.9"
 
 // Dropwizard
-libraryDependencies += "dev.zio" %% "zio-metrics-dropwizard" % "0.0.6"
+libraryDependencies += "dev.zio" %% "zio-metrics-dropwizard" % "0.0.9"
 ```
 
 ## References
