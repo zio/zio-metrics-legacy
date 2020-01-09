@@ -254,11 +254,12 @@ server,<code>exporters</code> helper has the method <code>stopHttp</code> for th
 Besides printing the metrics to the console you can also ask them via http <code>curl http://localhost:9090</code>. Since we are already using <code>histogram</code> in this example,
 let's look at it in more detail next.</p>
 <h2><a class="anchor" aria-hidden="true" id="histogram"></a><a href="#histogram" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Histogram</h2>
-<p>Histogram has 3 modes we can use:</p>
+<p>Histogram has 4 modes we can use:</p>
 <ol>
-<li>We can <code>time</code> how long a task/function takes to complete.</li>
+<li>We can <code>time</code> how long a function takes to complete.</li>
 <li>We can <code>observe</code> arbitrary <code>Double</code> values.</li>
 <li>We can start an arbitrary <code>timer</code> and <code>observe</code> its duration.</li>
+<li>We can <code>time</code> how long a <code>zio.Task</code> or a <code>zio.RIO</code> takes to complete.</li>
 </ol>
 <p>Using a histogram to <code>time</code> a function is pretty much what was shown on the
 <code>Exporters</code> example above, where <code>() =&gt; Thread.sleep(2000)</code> is the function we
@@ -308,7 +309,7 @@ etc.) and <code>Array(&quot;get&quot;)</code> is the specic label for the curren
     r &lt;- registry.getCurrent()
   } <span class="hljs-keyword">yield</span> r
 </code></pre>
-<p>Finally, to use an arbitrary timer, after registering the histogram, we need to
+<p>To use an arbitrary timer, after registering the histogram, we need to
 start the timer using our recently created <code>histogram</code> object with the
 <code>startTimer</code> method which returns a <code>timer</code> object. We will use this <code>timer</code> to
 mark every point we want observed (measure) thus giving us the duration between
@@ -333,6 +334,25 @@ when <code>startTimer</code> was called and each time we <code>observeDuration</
 </code></pre>
 <p>We could define <code>ExponentialBuckets</code> substituting the following line:</p>
 <p><code>h &lt;- histogram.register(&quot;duration_histogram&quot;, Array(&quot;method&quot;), ExponentialBuckets(0.25,2,5))</code></p>
+<p>Finally, we have two variations of <code>time</code>, one that returns the duration and the
+result of executing the <code>Task</code> or <code>RIO</code> and another (<code>time_</code>) that only executes the
+<code>Task</code> and returns the result, but not the duration. The benefit of <code>time_</code> is
+that it uses <code>ZIO.bracket</code> underneath to have stronger guarantees on the
+aquisition, use and release of the timer and the task execution.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">import</span> zio.<span class="hljs-type">Task</span>
+  
+  <span class="hljs-keyword">val</span> testHistogramTask: <span class="hljs-type">RIO</span>[<span class="hljs-type">PrometheusRegistry</span>, (<span class="hljs-type">CollectorRegistry</span>, <span class="hljs-type">Double</span>, <span class="hljs-type">String</span>)] = <span class="hljs-keyword">for</span> {
+    h     &lt;- <span class="hljs-type">Histogram</span>(<span class="hljs-string">"task_histogram_timer"</span>, <span class="hljs-type">Array</span>.empty[<span class="hljs-type">String</span>], <span class="hljs-type">DefaultBuckets</span>(<span class="hljs-type">Seq</span>.empty[<span class="hljs-type">Double</span>]))
+    (d,s) &lt;- h.time(<span class="hljs-type">Task</span>{<span class="hljs-type">Thread</span>.sleep(<span class="hljs-number">2000</span>); <span class="hljs-string">"Success"</span>})
+    r     &lt;- registry.getCurrent()
+  } <span class="hljs-keyword">yield</span> (r, d, s)
+
+  <span class="hljs-keyword">val</span> testHistogramTask2: <span class="hljs-type">RIO</span>[<span class="hljs-type">PrometheusRegistry</span>, (<span class="hljs-type">CollectorRegistry</span>, <span class="hljs-type">String</span>)] = <span class="hljs-keyword">for</span> {
+    h &lt;- histogram.register(<span class="hljs-string">"task_histogram_timer_"</span>)
+    a &lt;- h.time_(<span class="hljs-type">Task</span>{<span class="hljs-type">Thread</span>.sleep(<span class="hljs-number">2000</span>); <span class="hljs-string">"Success"</span>})
+    r &lt;- registry.getCurrent()
+  } <span class="hljs-keyword">yield</span> (r, a)
+</code></pre>
 <p>Now lets inspect our values by <code>tap</code>ping our <code>RIO</code>. Add <code>with Clock.Live</code>
 to the runtime <code>rt</code> before executing the following code.</p>
 <pre><code class="hljs css language-scala mdoc:silent">  rt.unsafeRun(testHistogramDuration.tap(r =&gt; exporters.write004(r).map(println)))
@@ -358,10 +378,24 @@ documentation for more information.</p>
     r  &lt;- registry.getCurrent()
   } <span class="hljs-keyword">yield</span> r
 </code></pre>
-</span></div></article></div><div class="docLastUpdate"><em>Last updated on 12/17/2019 by toxicafunk</em></div><div class="docs-prevnext"><a class="docs-prev button" href="/zio-metrics/docs/essentials/essentials_index"><span class="arrow-prev">← </span><span>Overview</span></a><a class="docs-next button" href="/zio-metrics/docs/essentials/essentials_sockets"><span>Dropwizard ZIO WSrapper</span><span class="arrow-next"> →</span></a></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#registry">Registry</a></li><li><a href="#counter">Counter</a></li><li><a href="#helpers">Helpers</a></li><li><a href="#gauge">Gauge</a></li><li><a href="#exporters">Exporters</a></li><li><a href="#histogram">Histogram</a></li><li><a href="#summary">Summary</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section><div><div class="gitter-open-chat-button">Open Chat</div><script type="text/javascript">
+<p>Just like <code>Histogram</code> it has methods <code>time</code> and <code>time_</code> that take a <code>Task</code> or
+<code>RIO</code> as input.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testSummaryTask: <span class="hljs-type">RIO</span>[<span class="hljs-type">PrometheusRegistry</span>, <span class="hljs-type">CollectorRegistry</span>] = <span class="hljs-keyword">for</span> {
+    s &lt;- summary.register(<span class="hljs-string">"task_summary_timer"</span>)
+    _ &lt;- s.time(<span class="hljs-type">Task</span>(<span class="hljs-type">Thread</span>.sleep(<span class="hljs-number">2000</span>)))
+    r &lt;- registry.getCurrent()
+  } <span class="hljs-keyword">yield</span> r
+
+  <span class="hljs-keyword">val</span> testSummaryTask2: <span class="hljs-type">RIO</span>[<span class="hljs-type">PrometheusRegistry</span>, <span class="hljs-type">CollectorRegistry</span>] = <span class="hljs-keyword">for</span> {
+    s &lt;- summary.register(<span class="hljs-string">"task_summary_timer_"</span>)
+    _ &lt;- s.time_(<span class="hljs-type">Task</span>(<span class="hljs-type">Thread</span>.sleep(<span class="hljs-number">2000</span>)))
+    r &lt;- registry.getCurrent()
+  } <span class="hljs-keyword">yield</span> r
+</code></pre>
+</span></div></article></div><div class="docLastUpdate"><em>Last updated on 1/9/2020 by toxicafunk</em></div><div class="docs-prevnext"><a class="docs-prev button" href="/zio-metrics/docs/essentials/essentials_index"><span class="arrow-prev">← </span><span>Overview</span></a><a class="docs-next button" href="/zio-metrics/docs/essentials/essentials_sockets"><span>Dropwizard ZIO WSrapper</span><span class="arrow-next"> →</span></a></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#registry">Registry</a></li><li><a href="#counter">Counter</a></li><li><a href="#helpers">Helpers</a></li><li><a href="#gauge">Gauge</a></li><li><a href="#exporters">Exporters</a></li><li><a href="#histogram">Histogram</a></li><li><a href="#summary">Summary</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section><div><div class="gitter-open-chat-button">Open Chat</div><script type="text/javascript">
         ((window.gitter = {}).chat = {}).options = {
           showChatByDefault: false,
           activationElement: '.gitter-open-chat-button',
           room: 'zio/zio-metrics'
         };
-      </script><script src="https://sidecar.gitter.im/dist/sidecar.v1.js" async="" defer=""></script></div></section><section class="sitemap"><a href="/zio-metrics/" class="nav-home"><img src="/zio-metrics/img/sidebar_brand2x.png" alt="ZIO Metrics"/></a><div><h5>GitHub</h5><a class="github-button" href="https://github.com/zio/zio-metrics" data-icon="octicon-star" data-count-href="/zio/zio-metrics/stargazers" data-show-count="true" data-count-aria-label="# stargazers on GitHub" aria-label="Star this project on GitHub">Star</a></div><div><h5>Chat with us on Discord</h5><a href="https://discord.gg/2ccFBr4"><img src="/zio-metrics/img/discord.png" width="120" alt="discord"/></a></div><div><h5>Additional resources</h5><a href="https://javadoc.io/doc/dev.zio/zio_2.12/">Scaladoc of ZIO</a></div></section><section class="copyright">Copyright © 2019 ZIO Maintainers</section></footer></div></body></html>
+      </script><script src="https://sidecar.gitter.im/dist/sidecar.v1.js" async="" defer=""></script></div></section><section class="sitemap"><a href="/zio-metrics/" class="nav-home"><img src="/zio-metrics/img/sidebar_brand2x.png" alt="ZIO Metrics"/></a><div><h5>GitHub</h5><a class="github-button" href="https://github.com/zio/zio-metrics" data-icon="octicon-star" data-count-href="/zio/zio-metrics/stargazers" data-show-count="true" data-count-aria-label="# stargazers on GitHub" aria-label="Star this project on GitHub">Star</a></div><div><h5>Chat with us on Discord</h5><a href="https://discord.gg/2ccFBr4"><img src="/zio-metrics/img/discord.png" width="120" alt="discord"/></a></div><div><h5>Additional resources</h5><a href="https://javadoc.io/doc/dev.zio/zio_2.12/">Scaladoc of ZIO</a></div></section><section class="copyright">Copyright © 2020 ZIO Maintainers</section></footer></div></body></html>
