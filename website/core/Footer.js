@@ -27,7 +27,7 @@ class Footer extends React.Component {
     return (
         <footer className="nav-footer" id="footer">
           <section>
-            <Gitter room="zio/zio-nio" title="Open Chat" />
+            <Gitter room="zio/zio-metrics" title="Open Chat" />
           </section>
           <section className="sitemap">
             <a href={this.props.config.baseUrl} className="nav-home">
@@ -42,15 +42,21 @@ class Footer extends React.Component {
               <h5>GitHub</h5>
               <a
                   className="github-button"
-                  href="https://github.com/zio/zio-nio"
+                  href="https://github.com/zio/zio-metrics"
                   data-icon="octicon-star"
-                  data-count-href="/zio/zio-nio/stargazers"
+                  data-count-href="/zio/zio-metrics/stargazers"
                   data-show-count="true"
                   data-count-aria-label="# stargazers on GitHub"
                   aria-label="Star this project on GitHub">
                 Star
               </a>
             </div>
+          <div>
+              <h5>Chat with us on Discord</h5>
+              <a href="https://discord.gg/2ccFBr4">
+                <img src={this.props.config.baseUrl + "img/discord.png"} width="120" alt="discord"/>
+              </a>
+          </div>
             <div>
               <h5>Additional resources</h5>
               <a
