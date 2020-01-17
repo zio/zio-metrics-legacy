@@ -2,7 +2,7 @@ import Build._
 
 inThisBuild(
   List(
-    scalaVersion in ThisBuild := "2.12.9",
+    scalaVersion in ThisBuild := "2.12.10",
     organization := "dev.zio",
     homepage := Some(url("https://github.com/zio/zio-metrics/")),
     licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
@@ -32,7 +32,7 @@ addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck"
 
 lazy val root =
   (project in file("."))
-    .aggregate(common, dropwizard, prometheus)
+    .aggregate(common, dropwizard, prometheus, statsd)
     .settings(settings)
 
 lazy val common = project
@@ -62,6 +62,14 @@ lazy val prometheus = project
   )
   .dependsOn(common)
 
+lazy val statsd = project
+  .settings(
+    name := "statsd",
+    stdSettings("metrics-statsd") ++ settings,
+    libraryDependencies ++= commonDependencies ++ statsdDependencies
+  )
+  .dependsOn(common)
+
 lazy val commonDependencies = Seq(
   "dev.zio"    %% "zio"              % zioVersion,
   "dev.zio"    %% "zio-interop-cats" % interopVersion,
@@ -84,6 +92,10 @@ lazy val dropwizardDependencies = Seq(
   "io.dropwizard.metrics" % "metrics-jmx"          % dropwizardVersion,
   "io.dropwizard.metrics" % "metrics-graphite"     % dropwizardVersion,
   "io.argonaut"           %% "argonaut"            % "6.2.2"
+)
+
+lazy val statsdDependencies = Seq(
+   "dev.zio" %% "zio-nio" % "1.0.0-RC2"
 )
 
 lazy val docs = project
