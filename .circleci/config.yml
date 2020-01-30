@@ -304,8 +304,7 @@ workflows:
           filters:
             <<: *filter_tags
             branches:
-              only:
-                - master
+              ignore: /.*/
       - release:
           context: Sonatype2
           requires:
@@ -317,5 +316,6 @@ workflows:
           filters:
             <<: *filter_tags
             branches:
-              ignore: /.*/
+              only:
+                - master
 
