@@ -300,7 +300,7 @@ workflows:
       - microsite:
           context: Website
           requires:
-            - microsite
+            - release
           filters:
             <<: *filter_tags
             branches:
@@ -317,6 +317,5 @@ workflows:
           filters:
             <<: *filter_tags
             branches:
-              only:
-                - master
+              ignore: /.*/
 
