@@ -448,3 +448,5 @@ project/plugins/project/
 
 .bloop
 .metals
+project/metals.sbt
+

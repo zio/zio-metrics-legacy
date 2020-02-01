@@ -8,37 +8,37 @@ import zio.internal.PlatformLive
 
 import zio.metrics.statsd._
 
-object StatsdTest {
+object StatsDTest {
 
   val rt = Runtime(
-    new StatsdEncoder with Console.Live,
+    new StatsDEncoder with Console.Live,
     PlatformLive.Default
   )
 
-  val testCounter: RIO[StatsdEncoder, (Option[String], Option[String])] = for {
-    sde  <- RIO.environment[StatsdEncoder]
+  val testCounter: RIO[StatsDEncoder, (Option[String], Option[String])] = for {
+    sde  <- RIO.environment[StatsDEncoder]
     enc1 <- sde.encoder.encode(Counter("foobar", 1.0, 1.0, Seq.empty[String]))
     enc2 <- sde.encoder.encode(Counter("foobar", 1.0, sampleRate = 0.5, Seq.empty[String]))
   } yield (enc1, enc2)
 
 
-  val testGauge: RIO[StatsdEncoder, Option[String]] = for {
-    sde  <- RIO.environment[StatsdEncoder]
+  val testGauge: RIO[StatsDEncoder, Option[String]] = for {
+    sde  <- RIO.environment[StatsDEncoder]
     enc  <- sde.encoder.encode(Gauge(name = "foobar", value = 1.0, Seq.empty[String]))
   } yield enc
 
-  val testTimer: RIO[StatsdEncoder, Option[String]] = for {
-    sde  <- RIO.environment[StatsdEncoder]
+  val testTimer: RIO[StatsDEncoder, Option[String]] = for {
+    sde  <- RIO.environment[StatsDEncoder]
     enc  <- sde.encoder.encode(Timer(name = "foobar", value = 1.0, sampleRate = 1.0, Seq.empty[String]))
   } yield enc
 
-  val testMeter: RIO[StatsdEncoder, Option[String]] = for {
-    sde  <- RIO.environment[StatsdEncoder]
+  val testMeter: RIO[StatsDEncoder, Option[String]] = for {
+    sde  <- RIO.environment[StatsDEncoder]
     enc  <- sde.encoder.encode(Meter(name = "foobar", value = 1.0, Seq.empty[String]))
   } yield enc
 
-  val testSet: RIO[StatsdEncoder, Option[String]] = for {
-    sde  <- RIO.environment[StatsdEncoder]
+  val testSet: RIO[StatsDEncoder, Option[String]] = for {
+    sde  <- RIO.environment[StatsDEncoder]
     enc  <- sde.encoder.encode(Set(name = "foobar", value = "barfoo", Seq.empty[String]))
   } yield enc
 

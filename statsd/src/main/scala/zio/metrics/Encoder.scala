@@ -1,13 +1,13 @@
-package zio.metrics.statsd
+package zio.metrics
 
 import zio.Task
 
 trait Encoder {
-  val encoder: Encoder.Service[Nothing]
+  val encoder: Encoder.Service[Metric]
 }
 
 object Encoder {
-  trait Service[-M] {
+  trait Service[M] {
     def encode(metric: M): Task[Option[String]]
   }
 }
