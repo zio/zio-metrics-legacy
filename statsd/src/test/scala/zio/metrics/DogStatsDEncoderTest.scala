@@ -93,7 +93,7 @@ object DogStatsDEncoderTest {
     )
     val ev2 = Event(
       "foobar", "derp derp\nderp", Some(now), Some("host"), Some("agg_key"),
-      None, Some("user"), Some(DogStatsDEncoder.EVENT_ALERT_TYPE_ERROR),
+      None, Some("user"), Some(DogStatsDEncoder.EVENT_ALERT_TYPE_WARNING),
       List(eventTag)
     )
     for {
@@ -106,37 +106,37 @@ object DogStatsDEncoderTest {
     import harness._
 
     section(
-      test("Statsd Encoder encodes counters") { () =>
+      test("DogStatsD Encoder encodes counters") { () =>
         val m = rt.unsafeRun(testCounter)
         assert(m._1 == Some("foobar:1|c") && m._2 == Some("foobar:1|c|@0.5|#metric:counter"))
       },
-      test("Statsd Encoder encodes gauges") { () =>
+      test("DogStatsD Encoder encodes gauges") { () =>
         val m = rt.unsafeRun(testGauge)
         assert(m._1 == Some("foobar:1|g|#metric:gauge") && m._2 == None && m._3 == None)
       },
-      test("Statsd Encoder encodes timers") { () =>
+      test("DogStatsD Encoder encodes timers") { () =>
         val m = rt.unsafeRun(testTimer)
         assert(
           m._1 == Some("foobar:1|ms") && m._2 == Some("foobar:1|ms|@0.5|#metric:timer")
             && m._3 == Some("foobar:1|ms|#metric:timer")
         )
       },
-      test("Statsd Encoder encodes histograms") { () =>
+      test("DogStatsD Encoder encodes histograms") { () =>
         val m = rt.unsafeRun(testHistogram)
         assert(
           m._1 == Some("foobar:1|h") && m._2 == Some("foobar:1|h|@0.5|#metric:histogram")
             && m._3 == Some("foobar:1|h|#metric:histogram")
         )
       },
-      test("Statsd Encoder encodes meters") { () =>
+      test("DogStatsD Encoder encodes meters") { () =>
         val m = rt.unsafeRun(testMeter)
         assert(m == Some("foobar:1|m"))
       },
-      test("Statsd Encoder encodes sets") { () =>
+      test("DogStatsD Encoder encodes sets") { () =>
         val m = rt.unsafeRun(testSet)
         assert(m == Some("foobar:barfoo|s"))
       },
-      test("Statsd Encoder encodes serviceChecks") { () =>
+      test("DogStatsD Encoder encodes serviceChecks") { () =>
         val m = rt.unsafeRun(testServiceCheck)
         assert(
           m._1 == Some("_sc|foobar|0|d:%d|h:host|#metric:serviceCheck|m:hello\\\\nworld\\\\nagain!".format(now))
@@ -144,13 +144,13 @@ object DogStatsDEncoderTest {
               m._2 == Some("_sc|foobar|0|d:%d|h:host|#metric:serviceCheck|m:wheeee!".format(now))
         )
       },
-      test("Statsd Encoder encodes events") { () =>
+      test("DogStatsD Encoder encodes events") { () =>
         val m = rt.unsafeRun(testEvent)
         println(m)
         assert(
           m._1 == Some("_e{6,14}:foobar|derp derp derp|d:%d|h:host|k:agg_key|p:low|s:user|t:error|#metric:event".format(now))
             &&
-              m._2 == Some("_e{6,14}:foobar|derp derp\\\\nderp|d:%d|h:fart|k:agg_key|p:normal|s:user|t:error|#metric:event".format(now))
+              m._2 == Some("_e{6,14}:foobar|derp derp\\\\nderp|d:%d|h:host|k:agg_key|p:normal|s:user|t:warning|#metric:event".format(now))
         )
       }
     )
