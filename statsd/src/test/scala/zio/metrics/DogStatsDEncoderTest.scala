@@ -146,7 +146,6 @@ object DogStatsDEncoderTest {
       },
       test("DogStatsD Encoder encodes events") { () =>
         val m = rt.unsafeRun(testEvent)
-        println(m)
         assert(
           m._1 == Some("_e{6,14}:foobar|derp derp derp|d:%d|h:host|k:agg_key|p:low|s:user|t:error|#metric:event".format(now))
             &&
