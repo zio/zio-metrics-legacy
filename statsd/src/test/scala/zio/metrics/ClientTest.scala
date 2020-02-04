@@ -1,6 +1,6 @@
 package zio.metrics
 
-import zio.{ Runtime, RIO }
+import zio.{ Runtime, RIO, Task }
 import zio.clock.Clock
 import zio.console._
 import zio.internal.PlatformLive
@@ -24,17 +24,15 @@ object ClientTest {
     val messages = List(1.0, 2.2, 3.4, 4.6, 5.1, 6.0, 7.9)
     val client = Client()
     for {
-      sde <- RIO.environment[StatsDEncoder]
       q   <- client.queue
-      z   <- client.listen(q)(udp)
-      opt <- RIO.traverse(messages)(d => sde.encoder.encode(Counter("clientbar", d, 1.0, Seq.empty[String])))
-      _   <- RIO.sequence(opt.flatten.map(m => client.send(q)(m)))
+      z   <- client.listen(q)//(udp)
+      opt <- RIO.traverse(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
+      _   <- RIO.sequence(opt.map(m => client.send(q)(m)))
     } yield z
   }
 
   def main(args: Array[String]): Unit = {
-    val lst = rt.unsafeRun(program)
-    println(s"Run: $lst")
+    rt.unsafeRun(program >>= (lst => putStrLn(lst.toString()).provideSome(_ => Console.Live)))
 
     Thread.sleep(20000)
   }

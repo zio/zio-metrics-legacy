@@ -25,11 +25,6 @@ trait StatsDEncoder extends Encoder {
       case _          => ""
     }
 
-    private def encodeEvent(event: Event): String = {
-
-      s"_e{${event.name.size},${event.text.size}}:${event.name}|${event.text}"
-    }
-
     private def encode(metric: Metric, sampleRate: Option[Double]): String =
       sampleRate.foldLeft(s"${metric.name}:${getValue(metric)}|${getMetricType(metric)}")(
         (acc, d) => if (d < 1.0) acc + s"|@${format.format(d)}" else acc
@@ -37,7 +32,6 @@ trait StatsDEncoder extends Encoder {
 
     override def encode(metric: Metric): Task[Option[String]] = Task {
       metric match {
-        case evt: Event => Some(encodeEvent(evt))
         case srm: SampledMetric =>
           Some(encode(metric, Some(srm.sampleRate)))
 

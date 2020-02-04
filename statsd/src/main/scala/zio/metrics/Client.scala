@@ -9,7 +9,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int) {
 
-  type ClientEnv[R] = R with Encoder with Clock with Console
+  type ClientEnv = Encoder with Clock with Console
 
   val queue     = Queue.bounded[Metric](queueCapacity)
   val everyNsec = Schedule.spaced(new DurationSyntax(timeout).seconds)
@@ -34,7 +34,7 @@ class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int) {
       lngs <- RIO.sequence(msgs.flatten.map(s => UDPClient.clientM.use(_.write(Chunk.fromArray(s.getBytes())))))
     } yield lngs
 
-  def listen[R]: Queue[Metric] => URIO[ClientEnv[R], Fiber[Throwable, Unit]] =
+  def listen: Queue[Metric] => URIO[ClientEnv, Fiber[Throwable, Unit]] =
     q =>
       ZStream
         .fromQueue(q)

@@ -82,7 +82,8 @@ class DogStatsDClient(override val bufferSize: Long, override val timeout: Long,
     } yield ()
 }
 
-object StatsDClient {
+object DogStatsDClient {
+
   def apply(): DogStatsDClient = new DogStatsDClient(5, 5, 1000)
 
   def apply(bufferSize: Long, timeout: Long): DogStatsDClient =
