@@ -15,11 +15,13 @@ object ClientTest {
     PlatformLive.Default
   )
 
-  val udp: List[String] => RIO[Console, Unit] = msgs =>
+  val myudp: List[Metric] => RIO[Encoder with Console, List[Long]] = msgs =>
     for {
-      l <- RIO.traverse(msgs)(s => UDPClient.clientM.use(_.write(Chunk.fromArray(s.getBytes()))))
-      _ <- putStrLn(s"udp: $l").provideSome[Console](_ => Console.Live)
-    } yield ()
+      sde  <- RIO.environment[Encoder]
+      opt  <- RIO.traverse(msgs)(sde.encoder.encode(_))
+      _    <- putStrLn(s"udp: $opt")
+      l    <- RIO.sequence(opt.flatten.map(s => UDPClient.clientM.use(_.write(Chunk.fromArray(s.getBytes())))))
+    } yield l
 
   val program = {
     val messages = List(1.0, 2.2, 3.4, 4.6, 5.1, 6.0, 7.9)
@@ -27,8 +29,9 @@ object ClientTest {
     client.queue >>= (queue => {
       implicit val q = queue
       for {
-        //q   <- client.queue
-        z   <- client.listen //(udp)
+        z   <- client.listen[List, Long](myudp(_).provideSome[Encoder](env => new StatsDEncoder with Console.Live {
+          override val encoder = env.encoder
+        }))
         _   <- putStrLn(s"implicit queue: $q")
         opt <- RIO.traverse(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
         _   <- RIO.sequence(opt.map(m => client.send(q)(m)))
@@ -39,7 +42,7 @@ object ClientTest {
   def main(args: Array[String]): Unit = {
     rt.unsafeRun(program >>= (lst => putStrLn(s"Main: $lst").provideSome(_ => Console.Live)))
 
-    Thread.sleep(20000)
+    Thread.sleep(10000)
   }
 
 }

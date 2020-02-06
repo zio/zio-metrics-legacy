@@ -2,7 +2,7 @@ package zio.metrics
 
 import zio.{ Chunk, Fiber, Queue, RIO, Schedule, Task, URIO }
 import zio.clock.Clock
-import zio.console.{ putStrLn, Console }
+import zio.console.Console
 import zio.duration.DurationSyntax
 import zio.stream.{ Sink, ZStream }
 import java.util.concurrent.ThreadLocalRandom
@@ -33,28 +33,29 @@ class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int) {
       lngs <- RIO.sequence(msgs.flatten.map(s => UDPClient.clientM.use(_.write(Chunk.fromArray(s.getBytes())))))
     } yield lngs
 
-  def listen(implicit queue: Queue[Metric]): URIO[Client.ClientEnv, Fiber[Throwable, Unit]] = {
-    println(s"listen: $queue")
+  def listen(implicit queue: Queue[Metric]): URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
+    listen[List, Long](udp)
+
+  def listen[F[_], A](f: List[Metric] => RIO[Encoder, F[A]])(implicit queue: Queue[Metric]): URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
     ZStream
       .fromQueue(queue)
       .aggregateAsyncWithin(sink, everyNsec)
-      .tap(l => putStrLn(s"Selected: $l"))
-      .mapM(l => udp(l))
+      //.tap(l => putStrLn(s"Selected: $l"))
+      .mapM(l => f(l))
       .runDrain
       .fork
-  }
 
   val send: Queue[Metric] => Metric => Task[Unit] = q =>
     metric =>
       for {
         _ <- q.offer(metric) //.fork
-      } yield println(s"Sending: ${metric} to queue: $q")
+      } yield ()
 
   val sendAsync: Queue[Metric] => Metric => Task[Unit] = q =>
     metric =>
       for {
         _ <- q.offer(metric).fork
-      } yield println(s"Sending: ${metric}")
+      } yield ()
 
   val sendM: Metric => Task[Unit] = metric =>
     for {
@@ -67,10 +68,10 @@ object Client {
 
   type ClientEnv = Encoder with Clock with Console
 
-  def apply(): Client = apply(5, 5, 1000)
+  def apply(): Client = apply(5, 5, 100)
 
   def apply(bufferSize: Long, timeout: Long): Client =
-    apply(bufferSize, timeout, 1000)
+    apply(bufferSize, timeout, 100)
 
   def apply(bufferSize: Long, timeout: Long, queueCapacity: Int): Client =
     new Client(bufferSize, timeout, queueCapacity)
