@@ -89,12 +89,25 @@ case class Event(
 
 case class Gauge(name: String, value: Double, tags: Seq[Tag]) extends Metric with NumericMetric
 
-case class Histogram(name: String, value: Double, sampleRate: Double, tags: Seq[Tag]) extends Metric with NumericMetric with SampledMetric
+case class Histogram(name: String, value: Double, sampleRate: Double, tags: Seq[Tag])
+    extends Metric
+    with NumericMetric
+    with SampledMetric
 
 case class Meter(name: String, value: Double, tags: Seq[Tag]) extends Metric with NumericMetric
 
-case class ServiceCheck(name: String, status: ServiceCheckStatus, timestamp: Option[Long], hostname: Option[String], message: Option[String], tags: Seq[Tag]) extends Metric
+case class ServiceCheck(
+  name: String,
+  status: ServiceCheckStatus,
+  timestamp: Option[Long],
+  hostname: Option[String],
+  message: Option[String],
+  tags: Seq[Tag]
+) extends Metric
 
 case class Set(name: String, value: String, tags: Seq[Tag]) extends Metric with StringMetric
 
-case class Timer(name: String, value: Double, sampleRate: Double, tags: Seq[Tag]) extends Metric with NumericMetric with SampledMetric
+case class Timer(name: String, value: Double, sampleRate: Double, tags: Seq[Tag])
+    extends Metric
+    with NumericMetric
+    with SampledMetric

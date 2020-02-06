@@ -1,6 +1,6 @@
 package zio.metrics
 
-import zio.{ Runtime, RIO, Task }
+import zio.{ RIO, Runtime, Task }
 import zio.clock.Clock
 import zio.console._
 import zio.internal.PlatformLive
@@ -15,23 +15,24 @@ object ClientTest {
     PlatformLive.Default
   )
 
-  val udp: List[String] => RIO[Console, Unit] = msgs => for {
-    l   <- RIO.traverse(msgs)(s => UDPClient.clientM.use(_.write(Chunk.fromArray(s.getBytes()))))
-    _   <- putStrLn(s"udp: $l").provideSome[Console](_ => Console.Live)
-  } yield ()
+  val udp: List[String] => RIO[Console, Unit] = msgs =>
+    for {
+      l <- RIO.traverse(msgs)(s => UDPClient.clientM.use(_.write(Chunk.fromArray(s.getBytes()))))
+      _ <- putStrLn(s"udp: $l").provideSome[Console](_ => Console.Live)
+    } yield ()
 
   val program = {
     val messages = List(1.0, 2.2, 3.4, 4.6, 5.1, 6.0, 7.9)
-    val client = Client()
+    val client   = Client()
     client.queue >>= (queue => {
       implicit val q = queue
       for {
-      //q   <- client.queue
-      z   <- client.listen//(udp)
-      _   <- putStrLn(s"implicit queue: $q")
-      opt <- RIO.traverse(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
-      _   <- RIO.sequence(opt.map(m => client.send(q)(m)))
-    } yield z
+        //q   <- client.queue
+        z   <- client.listen //(udp)
+        _   <- putStrLn(s"implicit queue: $q")
+        opt <- RIO.traverse(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
+        _   <- RIO.sequence(opt.map(m => client.send(q)(m)))
+      } yield z
     })
   }
 

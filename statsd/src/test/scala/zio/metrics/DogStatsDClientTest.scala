@@ -26,7 +26,7 @@ object DogStatsDClientTest {
       _  <- client.increment("zmetrics.dog.counter", 0.9)
       _  <- putStrLn(s"waiting for $r ms") *> Clock.Live.clock.sleep(Duration(r, TimeUnit.MILLISECONDS))
       t2 <- Clock.Live.clock.currentTime(TimeUnit.MILLISECONDS)
-      d = (t2 - t1).toDouble
+      d  = (t2 - t1).toDouble
       _  <- client.timer("zmetrics.dog.timer", d, 0.9)
       _  <- client.histogram("zmetrics.dog.hist", d)
       _  <- client.serviceCheck("zmetrics.dog.check", ServiceCheckOk)

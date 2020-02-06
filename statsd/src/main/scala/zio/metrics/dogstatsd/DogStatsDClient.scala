@@ -12,10 +12,14 @@ class DogStatsDClient(override val bufferSize: Long, override val timeout: Long,
   def counter(name: String, value: Double, sampleRate: Double)(implicit queue: Queue[Metric]): Task[Unit] =
     counter(name, value, sampleRate, Seq.empty[Tag], false)
 
-  def counter(name: String, value: Double, sampleRate: Double, tags: Seq[Tag])(implicit queue: Queue[Metric]): Task[Unit] =
+  def counter(name: String, value: Double, sampleRate: Double, tags: Seq[Tag])(
+    implicit queue: Queue[Metric]
+  ): Task[Unit] =
     counter(name, value, sampleRate, tags, false)
 
-  def counter(name: String, value: Double, sampleRate: Double, tags: Seq[Tag], sync: Boolean)(implicit queue: Queue[Metric]): Task[Unit] = {
+  def counter(name: String, value: Double, sampleRate: Double, tags: Seq[Tag], sync: Boolean)(
+    implicit queue: Queue[Metric]
+  ): Task[Unit] = {
     val sendM = if (sync) send(queue) else sendAsync(queue)
     sendM(Counter(name, value, sampleRate, tags))
   }
@@ -29,7 +33,9 @@ class DogStatsDClient(override val bufferSize: Long, override val timeout: Long,
   def increment(name: String, sampleRate: Double, tags: Seq[Tag])(implicit queue: Queue[Metric]): Task[Unit] =
     increment(name, sampleRate, tags, false)
 
-  def increment(name: String, sampleRate: Double, tags: Seq[Tag], sync: Boolean)(implicit queue: Queue[Metric]): Task[Unit] = {
+  def increment(name: String, sampleRate: Double, tags: Seq[Tag], sync: Boolean)(
+    implicit queue: Queue[Metric]
+  ): Task[Unit] = {
     val sendM = if (sync) send(queue) else sendAsync(queue)
     sendM(Counter(name, 1.0, sampleRate, tags))
   }
@@ -43,7 +49,9 @@ class DogStatsDClient(override val bufferSize: Long, override val timeout: Long,
   def decrement(name: String, sampleRate: Double, tags: Seq[Tag])(implicit queue: Queue[Metric]): Task[Unit] =
     decrement(name, sampleRate, tags, false)
 
-  def decrement(name: String, sampleRate: Double, tags: Seq[Tag], sync: Boolean)(implicit queue: Queue[Metric]): Task[Unit] = {
+  def decrement(name: String, sampleRate: Double, tags: Seq[Tag], sync: Boolean)(
+    implicit queue: Queue[Metric]
+  ): Task[Unit] = {
     val sendM = if (sync) send(queue) else sendAsync(queue)
     sendM(Counter(name, -1.0, sampleRate, tags))
   }
@@ -76,10 +84,14 @@ class DogStatsDClient(override val bufferSize: Long, override val timeout: Long,
   def timer(name: String, value: Double, sampleRate: Double)(implicit queue: Queue[Metric]): Task[Unit] =
     timer(name, value, sampleRate, Seq.empty[Tag], false)
 
-  def timer(name: String, value: Double, sampleRate: Double, tags: Seq[Tag])(implicit queue: Queue[Metric]): Task[Unit] =
+  def timer(name: String, value: Double, sampleRate: Double, tags: Seq[Tag])(
+    implicit queue: Queue[Metric]
+  ): Task[Unit] =
     timer(name, value, sampleRate, tags, false)
 
-  def timer(name: String, value: Double, sampleRate: Double, tags: Seq[Tag], sync: Boolean)(implicit queue: Queue[Metric]): Task[Unit] = {
+  def timer(name: String, value: Double, sampleRate: Double, tags: Seq[Tag], sync: Boolean)(
+    implicit queue: Queue[Metric]
+  ): Task[Unit] = {
     val sendM = if (sync) send(queue) else sendAsync(queue)
     sendM(Timer(name, value, sampleRate, tags))
   }
@@ -101,10 +113,14 @@ class DogStatsDClient(override val bufferSize: Long, override val timeout: Long,
   def histogram(name: String, value: Double, sampleRate: Double)(implicit queue: Queue[Metric]): Task[Unit] =
     histogram(name, value, sampleRate, Seq.empty[Tag], false)
 
-  def histogram(name: String, value: Double, sampleRate: Double, tags: Seq[Tag])(implicit queue: Queue[Metric]): Task[Unit] =
+  def histogram(name: String, value: Double, sampleRate: Double, tags: Seq[Tag])(
+    implicit queue: Queue[Metric]
+  ): Task[Unit] =
     histogram(name, value, sampleRate, tags, false)
 
-  def histogram(name: String, value: Double, sampleRate: Double, tags: Seq[Tag], sync: Boolean)(implicit queue: Queue[Metric]): Task[Unit] = {
+  def histogram(name: String, value: Double, sampleRate: Double, tags: Seq[Tag], sync: Boolean)(
+    implicit queue: Queue[Metric]
+  ): Task[Unit] = {
     val sendM = if (sync) send(queue) else sendAsync(queue)
     sendM(Histogram(name, value, sampleRate, tags))
   }
@@ -112,8 +128,15 @@ class DogStatsDClient(override val bufferSize: Long, override val timeout: Long,
   def serviceCheck(name: String, status: ServiceCheckStatus)(implicit queue: Queue[Metric]): Task[Unit] =
     serviceCheck(name, status, None, None, None, Seq.empty[Tag], false)
 
-  def serviceCheck(name: String, status: ServiceCheckStatus, timestamp: Option[Long], hostname: Option[String],
-    message: Option[String], tags: Seq[Tag], sync: Boolean)(implicit queue: Queue[Metric]): Task[Unit] = {
+  def serviceCheck(
+    name: String,
+    status: ServiceCheckStatus,
+    timestamp: Option[Long],
+    hostname: Option[String],
+    message: Option[String],
+    tags: Seq[Tag],
+    sync: Boolean
+  )(implicit queue: Queue[Metric]): Task[Unit] = {
     val sendM = if (sync) send(queue) else sendAsync(queue)
     sendM(ServiceCheck(name, status, timestamp, hostname, message, tags))
   }
@@ -121,9 +144,18 @@ class DogStatsDClient(override val bufferSize: Long, override val timeout: Long,
   def event(name: String, text: String)(implicit queue: Queue[Metric]): Task[Unit] =
     event(name, text, None, None, None, None, None, None, Seq.empty[Tag], false)
 
-  def event(name: String, text: String, timestamp: Option[Long], hostname: Option[String],
-    aggregationKey: Option[String], priority: Option[EventPriority], sourceTypeName: Option[String],
-    alertType: Option[EventAlertType], tags: Seq[Tag], sync: Boolean)(implicit queue: Queue[Metric]): Task[Unit] = {
+  def event(
+    name: String,
+    text: String,
+    timestamp: Option[Long],
+    hostname: Option[String],
+    aggregationKey: Option[String],
+    priority: Option[EventPriority],
+    sourceTypeName: Option[String],
+    alertType: Option[EventAlertType],
+    tags: Seq[Tag],
+    sync: Boolean
+  )(implicit queue: Queue[Metric]): Task[Unit] = {
     val sendM = if (sync) send(queue) else sendAsync(queue)
     sendM(Event(name, text, timestamp, hostname, aggregationKey, priority, sourceTypeName, alertType, tags))
   }

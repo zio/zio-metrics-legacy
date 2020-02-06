@@ -12,7 +12,9 @@ class StatsDClient(override val bufferSize: Long, override val timeout: Long, ov
   def counter(name: String, value: Double, sampleRate: Double)(implicit queue: Queue[Metric]): Task[Unit] =
     counter(name, value, sampleRate, false)
 
-  def counter(name: String, value: Double, sampleRate: Double, sync: Boolean)(implicit queue: Queue[Metric]): Task[Unit] = {
+  def counter(name: String, value: Double, sampleRate: Double, sync: Boolean)(
+    implicit queue: Queue[Metric]
+  ): Task[Unit] = {
     val sendM = if (sync) send(queue) else sendAsync(queue)
     sendM(Counter(name, value, sampleRate, Seq.empty[Tag]))
   }
@@ -61,7 +63,9 @@ class StatsDClient(override val bufferSize: Long, override val timeout: Long, ov
   def timer(name: String, value: Double, sampleRate: Double)(implicit queue: Queue[Metric]): Task[Unit] =
     timer(name, value, sampleRate, false)
 
-  def timer(name: String, value: Double, sampleRate: Double, sync: Boolean)(implicit queue: Queue[Metric]): Task[Unit] = {
+  def timer(name: String, value: Double, sampleRate: Double, sync: Boolean)(
+    implicit queue: Queue[Metric]
+  ): Task[Unit] = {
     val sendM = if (sync) send(queue) else sendAsync(queue)
     sendM(Timer(name, value, sampleRate, Seq.empty[Tag]))
   }

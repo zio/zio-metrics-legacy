@@ -50,19 +50,19 @@ trait DogStatsDEncoder extends Encoder {
     }
 
     private def encodeSeviceCheck(serviceCheck: ServiceCheck): String = {
-      val name = serviceCheck.name
-      val status = serviceCheck.status
+      val name      = serviceCheck.name
+      val status    = serviceCheck.status
       val timestamp = serviceCheck.timestamp.fold(s"|d:${Instant.now().toEpochMilli()}")(l => s"|d:$l")
-      val hostname = serviceCheck.hostname.fold("")(h => s"|h:$h")
-      val tagString   = if (serviceCheck.tags.isEmpty) "" else "|#" + serviceCheck.tags.mkString(",")
-      val message = serviceCheck.message.fold("")(m => s"|m:${m.replace("\n","\\\\n")}")
+      val hostname  = serviceCheck.hostname.fold("")(h => s"|h:$h")
+      val tagString = if (serviceCheck.tags.isEmpty) "" else "|#" + serviceCheck.tags.mkString(",")
+      val message   = serviceCheck.message.fold("")(m => s"|m:${m.replace("\n", "\\\\n")}")
       s"_sc|$name|$status$timestamp$hostname$tagString$message"
     }
 
     override def encode(metric: Metric): Task[Option[String]] = Task {
       metric match {
         case sc: ServiceCheck => Some(encodeSeviceCheck(sc))
-        case evt: Event => Some(encodeEvent(evt))
+        case evt: Event       => Some(encodeEvent(evt))
 
         case srm: SampledMetric =>
           Some(encode(metric, Some(srm.sampleRate), srm.tags))

@@ -87,13 +87,25 @@ object DogStatsDEncoderTest {
 
   val testEvent: RIO[DogStatsDEncoder, (OptString, OptString)] = {
     val ev1 = Event(
-      "foobar", "derp derp derp", Some(now), Some("host"), Some("agg_key"),
-      Some(EventPriorityLow), Some("user"),
-      Some(EventAlertError), List(eventTag)
+      "foobar",
+      "derp derp derp",
+      Some(now),
+      Some("host"),
+      Some("agg_key"),
+      Some(EventPriorityLow),
+      Some("user"),
+      Some(EventAlertError),
+      List(eventTag)
     )
     val ev2 = Event(
-      "foobar", "derp derp\nderp", Some(now), Some("host"), Some("agg_key"),
-      None, Some("user"), Some(EventAlertWarning),
+      "foobar",
+      "derp derp\nderp",
+      Some(now),
+      Some("host"),
+      Some("agg_key"),
+      None,
+      Some("user"),
+      Some(EventAlertWarning),
       List(eventTag)
     )
     for {
@@ -147,9 +159,14 @@ object DogStatsDEncoderTest {
       test("DogStatsD Encoder encodes events") { () =>
         val m = rt.unsafeRun(testEvent)
         assert(
-          m._1 == Some("_e{6,14}:foobar|derp derp derp|d:%d|h:host|k:agg_key|p:low|s:user|t:error|#metric:event".format(now))
+          m._1 == Some(
+            "_e{6,14}:foobar|derp derp derp|d:%d|h:host|k:agg_key|p:low|s:user|t:error|#metric:event".format(now)
+          )
             &&
-              m._2 == Some("_e{6,14}:foobar|derp derp\\\\nderp|d:%d|h:host|k:agg_key|p:normal|s:user|t:warning|#metric:event".format(now))
+              m._2 == Some(
+                "_e{6,14}:foobar|derp derp\\\\nderp|d:%d|h:host|k:agg_key|p:normal|s:user|t:warning|#metric:event"
+                  .format(now)
+              )
         )
       }
     )
