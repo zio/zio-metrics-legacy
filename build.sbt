@@ -19,8 +19,6 @@ inThisBuild(
   )
 )
 
-ThisBuild / publishTo := sonatypePublishToBundle.value
-
 val http4sVersion     = "0.21.0-M5"
 val zioVersion        = "1.0.0-RC17"
 val interopVersion    = "2.0.0.0-RC10" // "1.3.1.0-RC3"
