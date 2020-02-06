@@ -81,17 +81,5 @@ trait DogStatsDEncoder extends Encoder {
 }
 
 object DogStatsDEncoder extends DogStatsDEncoder {
-
-  val SERVICE_CHECK_OK = 0
-  val SERVICE_CHECK_WARNING = 1
-  val SERVICE_CHECK_CRITICAL = 2
-  val SERVICE_CHECK_UNKNOWN = 3
-  val EVENT_PRIORITY_LOW = "low"
-  val EVENT_PRIORITY_NORMAL = "normal"
-  val EVENT_ALERT_TYPE_ERROR = "error"
-  val EVENT_ALERT_TYPE_INFO = "info"
-  val EVENT_ALERT_TYPE_SUCCESS = "success"
-  val EVENT_ALERT_TYPE_WARNING = "warning"
-
   def encode(metric: Metric): Task[Option[String]] = encoder.encode(metric)
 }

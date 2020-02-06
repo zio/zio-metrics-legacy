@@ -65,7 +65,7 @@ object DogStatsDEncoderTest {
   val testServiceCheck: RIO[DogStatsDEncoder, (OptString, OptString)] = {
     val sc1 = ServiceCheck(
       "foobar",
-      DogStatsDEncoder.SERVICE_CHECK_OK,
+      ServiceCheckOk,
       tags = List(serviceCheckTag),
       hostname = Some("host"),
       timestamp = Some(now),
@@ -73,7 +73,7 @@ object DogStatsDEncoderTest {
     )
     val sc2 = ServiceCheck(
       "foobar",
-      DogStatsDEncoder.SERVICE_CHECK_OK,
+      ServiceCheckWarning,
       tags = List(serviceCheckTag),
       hostname = Some("host"),
       timestamp = Some(now),
@@ -88,12 +88,12 @@ object DogStatsDEncoderTest {
   val testEvent: RIO[DogStatsDEncoder, (OptString, OptString)] = {
     val ev1 = Event(
       "foobar", "derp derp derp", Some(now), Some("host"), Some("agg_key"),
-      Some(DogStatsDEncoder.EVENT_PRIORITY_LOW), Some("user"),
-      Some(DogStatsDEncoder.EVENT_ALERT_TYPE_ERROR), List(eventTag)
+      Some(EventPriorityLow), Some("user"),
+      Some(EventAlertError), List(eventTag)
     )
     val ev2 = Event(
       "foobar", "derp derp\nderp", Some(now), Some("host"), Some("agg_key"),
-      None, Some("user"), Some(DogStatsDEncoder.EVENT_ALERT_TYPE_WARNING),
+      None, Some("user"), Some(EventAlertWarning),
       List(eventTag)
     )
     for {
@@ -141,7 +141,7 @@ object DogStatsDEncoderTest {
         assert(
           m._1 == Some("_sc|foobar|0|d:%d|h:host|#metric:serviceCheck|m:hello\\\\nworld\\\\nagain!".format(now))
             &&
-              m._2 == Some("_sc|foobar|0|d:%d|h:host|#metric:serviceCheck|m:wheeee!".format(now))
+              m._2 == Some("_sc|foobar|1|d:%d|h:host|#metric:serviceCheck|m:wheeee!".format(now))
         )
       },
       test("DogStatsD Encoder encodes events") { () =>

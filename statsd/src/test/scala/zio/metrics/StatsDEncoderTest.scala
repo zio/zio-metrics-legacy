@@ -46,23 +46,23 @@ object StatsDEncoderTest {
     import harness._
 
     section(
-      test("Statsd Encoder encodes counters") { () =>
+      test("StatsD Encoder encodes counters") { () =>
         val m = rt.unsafeRun(testCounter)
         assert(m._1 == Some("foobar:1|c") && m._2 == Some("foobar:1|c|@0.5"))
       },
-      test("Statsd Encoder encodes gauges") { () =>
+      test("StatsD Encoder encodes gauges") { () =>
         val m = rt.unsafeRun(testGauge)
         assert(m == Some("foobar:1|g"))
       },
-      test("Statsd Encoder encodes timers") { () =>
+      test("StatsD Encoder encodes timers") { () =>
         val m = rt.unsafeRun(testTimer)
         assert(m == Some("foobar:1|ms"))
       },
-      test("Statsd Encoder encodes meters") { () =>
+      test("StatsD Encoder encodes meters") { () =>
         val m = rt.unsafeRun(testMeter)
         assert(m == Some("foobar:1|m"))
       },
-      test("Statsd Encoder encodes sets") { () =>
+      test("StatsD Encoder encodes sets") { () =>
         val m = rt.unsafeRun(testSet)
         assert(m == Some("foobar:barfoo|s"))
       }

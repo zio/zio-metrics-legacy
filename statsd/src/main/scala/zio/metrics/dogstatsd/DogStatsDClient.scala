@@ -1,85 +1,132 @@
 package zio.metrics.dogstatsd
 
-import zio.Task
+import zio.{ Queue, Task }
 import zio.metrics._
 
 class DogStatsDClient(override val bufferSize: Long, override val timeout: Long, override val queueCapacity: Int)
     extends Client(bufferSize, timeout, queueCapacity) {
 
-  def counter(name: String, value: Double): Task[Unit] =
-    counter(name, value, 1.0, Seq.empty[Tag])
+  def counter(name: String, value: Double)(implicit queue: Queue[Metric]): Task[Unit] =
+    counter(name, value, 1.0, Seq.empty[Tag], false)
 
-  def counter(name: String, value: Double, sampleRate: Double): Task[Unit] =
-    counter(name, value, sampleRate, Seq.empty[Tag])
+  def counter(name: String, value: Double, sampleRate: Double)(implicit queue: Queue[Metric]): Task[Unit] =
+    counter(name, value, sampleRate, Seq.empty[Tag], false)
 
-  def counter(name: String, value: Double, sampleRate: Double, tags: Seq[Tag]): Task[Unit] =
-    for {
-      q <- queue
-      _ <- send(q)(Counter(name, value, sampleRate, tags))
-    } yield ()
+  def counter(name: String, value: Double, sampleRate: Double, tags: Seq[Tag])(implicit queue: Queue[Metric]): Task[Unit] =
+    counter(name, value, sampleRate, tags, false)
 
-  def increment(name: String): Task[Unit] =
-    increment(name, 1.0, Seq.empty[Tag])
+  def counter(name: String, value: Double, sampleRate: Double, tags: Seq[Tag], sync: Boolean)(implicit queue: Queue[Metric]): Task[Unit] = {
+    val sendM = if (sync) send(queue) else sendAsync(queue)
+    sendM(Counter(name, value, sampleRate, tags))
+  }
 
-  def increment(name: String, sampleRate: Double): Task[Unit] =
-    increment(name, sampleRate, Seq.empty[Tag])
+  def increment(name: String)(implicit queue: Queue[Metric]): Task[Unit] =
+    increment(name, 1.0, Seq.empty[Tag], false)
 
-  def increment(name: String, sampleRate: Double, tags: Seq[Tag]): Task[Unit] =
-    for {
-      q <- queue
-      _ <- send(q)(Counter(name, 1.0, sampleRate, tags))
-    } yield ()
+  def increment(name: String, sampleRate: Double)(implicit queue: Queue[Metric]): Task[Unit] =
+    increment(name, sampleRate, Seq.empty[Tag], false)
 
-  def decrement(name: String): Task[Unit] =
-    decrement(name, 1.0, Seq.empty[Tag])
+  def increment(name: String, sampleRate: Double, tags: Seq[Tag])(implicit queue: Queue[Metric]): Task[Unit] =
+    increment(name, sampleRate, tags, false)
 
-  def decrement(name: String, sampleRate: Double): Task[Unit] =
-    decrement(name, sampleRate, Seq.empty[Tag])
+  def increment(name: String, sampleRate: Double, tags: Seq[Tag], sync: Boolean)(implicit queue: Queue[Metric]): Task[Unit] = {
+    val sendM = if (sync) send(queue) else sendAsync(queue)
+    sendM(Counter(name, 1.0, sampleRate, tags))
+  }
 
-  def decrement(name: String, sampleRate: Double, tags: Seq[Tag]): Task[Unit] =
-    for {
-      q <- queue
-      _ <- send(q)(Counter(name, -1.0, sampleRate, tags))
-    } yield ()
+  def decrement(name: String)(implicit queue: Queue[Metric]): Task[Unit] =
+    decrement(name, 1.0, Seq.empty[Tag], false)
 
-  def gauge(name: String, value: Double): Task[Unit] =
-    gauge(name, value, Seq.empty[Tag])
+  def decrement(name: String, sampleRate: Double)(implicit queue: Queue[Metric]): Task[Unit] =
+    decrement(name, sampleRate, Seq.empty[Tag], false)
 
-  def gauge(name: String, value: Double, tags: Seq[Tag]): Task[Unit] =
-    for {
-      q <- queue
-      _ <- send(q)(Gauge(name, value, tags))
-    } yield ()
+  def decrement(name: String, sampleRate: Double, tags: Seq[Tag])(implicit queue: Queue[Metric]): Task[Unit] =
+    decrement(name, sampleRate, tags, false)
 
-  def meter(name: String, value: Double): Task[Unit] =
-    meter(name, value, Seq.empty[Tag])
+  def decrement(name: String, sampleRate: Double, tags: Seq[Tag], sync: Boolean)(implicit queue: Queue[Metric]): Task[Unit] = {
+    val sendM = if (sync) send(queue) else sendAsync(queue)
+    sendM(Counter(name, -1.0, sampleRate, tags))
+  }
 
-  def meter(name: String, value: Double, tags: Seq[Tag]): Task[Unit] =
-    for {
-      q <- queue
-      _ <- send(q)(Meter(name, value, tags))
-    } yield ()
+  def gauge(name: String, value: Double)(implicit queue: Queue[Metric]): Task[Unit] =
+    gauge(name, value, Seq.empty[Tag], false)
 
-  def timer(name: String, value: Double): Task[Unit] =
-    timer(name, value, 1.0, Seq.empty[Tag])
+  def gauge(name: String, value: Double, tags: Seq[Tag])(implicit queue: Queue[Metric]): Task[Unit] =
+    gauge(name, value, tags, false)
 
-  def timer(name: String, value: Double, sampleRate: Double): Task[Unit] =
-    timer(name, value, sampleRate, Seq.empty[Tag])
+  def gauge(name: String, value: Double, tags: Seq[Tag], sync: Boolean)(implicit queue: Queue[Metric]): Task[Unit] = {
+    val sendM = if (sync) send(queue) else sendAsync(queue)
+    sendM(Gauge(name, value, tags))
+  }
 
-  def timer(name: String, value: Double, sampleRate: Double, tags: Seq[Tag]): Task[Unit] =
-    for {
-      q <- queue
-      _ <- send(q)(Timer(name, value, sampleRate, tags))
-    } yield ()
+  def meter(name: String, value: Double)(implicit queue: Queue[Metric]): Task[Unit] =
+    meter(name, value, Seq.empty[Tag], false)
 
-  def set(name: String, value: String): Task[Unit] =
-    set(name, value, Seq.empty[Tag])
+  def meter(name: String, value: Double, tags: Seq[Tag])(implicit queue: Queue[Metric]): Task[Unit] =
+    meter(name, value, tags, false)
 
-  def set(name: String, value: String, tags: Seq[Tag]): Task[Unit] =
-    for {
-      q <- queue
-      _ <- send(q)(Set(name, value, tags))
-    } yield ()
+  def meter(name: String, value: Double, tags: Seq[Tag], sync: Boolean)(implicit queue: Queue[Metric]): Task[Unit] = {
+    val sendM = if (sync) send(queue) else sendAsync(queue)
+    sendM(Meter(name, value, tags))
+  }
+
+  def timer(name: String, value: Double)(implicit queue: Queue[Metric]): Task[Unit] =
+    timer(name, value, 1.0, Seq.empty[Tag], false)
+
+  def timer(name: String, value: Double, sampleRate: Double)(implicit queue: Queue[Metric]): Task[Unit] =
+    timer(name, value, sampleRate, Seq.empty[Tag], false)
+
+  def timer(name: String, value: Double, sampleRate: Double, tags: Seq[Tag])(implicit queue: Queue[Metric]): Task[Unit] =
+    timer(name, value, sampleRate, tags, false)
+
+  def timer(name: String, value: Double, sampleRate: Double, tags: Seq[Tag], sync: Boolean)(implicit queue: Queue[Metric]): Task[Unit] = {
+    val sendM = if (sync) send(queue) else sendAsync(queue)
+    sendM(Timer(name, value, sampleRate, tags))
+  }
+
+  def set(name: String, value: String)(implicit queue: Queue[Metric]): Task[Unit] =
+    set(name, value, Seq.empty[Tag], false)
+
+  def set(name: String, value: String, tags: Seq[Tag])(implicit queue: Queue[Metric]): Task[Unit] =
+    set(name, value, tags, false)
+
+  def set(name: String, value: String, tags: Seq[Tag], sync: Boolean)(implicit queue: Queue[Metric]): Task[Unit] = {
+    val sendM = if (sync) send(queue) else sendAsync(queue)
+    sendM(Set(name, value, tags))
+  }
+
+  def histogram(name: String, value: Double)(implicit queue: Queue[Metric]): Task[Unit] =
+    histogram(name, value, 1.0, Seq.empty[Tag], false)
+
+  def histogram(name: String, value: Double, sampleRate: Double)(implicit queue: Queue[Metric]): Task[Unit] =
+    histogram(name, value, sampleRate, Seq.empty[Tag], false)
+
+  def histogram(name: String, value: Double, sampleRate: Double, tags: Seq[Tag])(implicit queue: Queue[Metric]): Task[Unit] =
+    histogram(name, value, sampleRate, tags, false)
+
+  def histogram(name: String, value: Double, sampleRate: Double, tags: Seq[Tag], sync: Boolean)(implicit queue: Queue[Metric]): Task[Unit] = {
+    val sendM = if (sync) send(queue) else sendAsync(queue)
+    sendM(Histogram(name, value, sampleRate, tags))
+  }
+
+  def serviceCheck(name: String, status: ServiceCheckStatus)(implicit queue: Queue[Metric]): Task[Unit] =
+    serviceCheck(name, status, None, None, None, Seq.empty[Tag], false)
+
+  def serviceCheck(name: String, status: ServiceCheckStatus, timestamp: Option[Long], hostname: Option[String],
+    message: Option[String], tags: Seq[Tag], sync: Boolean)(implicit queue: Queue[Metric]): Task[Unit] = {
+    val sendM = if (sync) send(queue) else sendAsync(queue)
+    sendM(ServiceCheck(name, status, timestamp, hostname, message, tags))
+  }
+
+  def event(name: String, text: String)(implicit queue: Queue[Metric]): Task[Unit] =
+    event(name, text, None, None, None, None, None, None, Seq.empty[Tag], false)
+
+  def event(name: String, text: String, timestamp: Option[Long], hostname: Option[String],
+    aggregationKey: Option[String], priority: Option[EventPriority], sourceTypeName: Option[String],
+    alertType: Option[EventAlertType], tags: Seq[Tag], sync: Boolean)(implicit queue: Queue[Metric]): Task[Unit] = {
+    val sendM = if (sync) send(queue) else sendAsync(queue)
+    sendM(Event(name, text, timestamp, hostname, aggregationKey, priority, sourceTypeName, alertType, tags))
+  }
 }
 
 object DogStatsDClient {
