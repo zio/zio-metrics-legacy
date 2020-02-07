@@ -32,7 +32,12 @@ object Build {
 
   def extraOptions(scalaVersion: String) =
     CrossVersion.partialVersion(scalaVersion) match {
-      case Some((2, 12)) =>
+      case Some((2, 11)) =>
+        Seq(
+          "-Xexperimental",
+          "-Ywarn-unused-import"
+        )
+      case _ =>
         Seq(
           "-opt-warnings",
           "-Ywarn-extra-implicit",
@@ -40,11 +45,6 @@ object Build {
           "-Ywarn-unused:imports",
           "-opt:l:inline",
           "-opt-inline-from:<source>"
-        )
-      case _ =>
-        Seq(
-          "-Xexperimental",
-          "-Ywarn-unused-import"
         )
     }
 

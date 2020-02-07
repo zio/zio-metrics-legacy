@@ -28,10 +28,9 @@ val dropwizardVersion = "4.0.1"
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-lazy val root =
-  (project in file("."))
-    .aggregate(common, dropwizard, prometheus, statsd)
-    .settings(settings)
+lazy val root = (project in file("."))
+  .aggregate(common, dropwizard, prometheus, statsd)
+  .settings(settings)
 
 lazy val common = project
   .settings(
@@ -63,8 +62,15 @@ lazy val prometheus = project
 lazy val statsd = project
   .settings(
     name := "statsd",
+    skip.in(test) := true,
+    skip.in(compile) := true,
+    skip.in(publish) := true,
+    crossScalaVersions -= "2.11.12",
     stdSettings("metrics-statsd") ++ settings,
-    libraryDependencies ++= commonDependencies ++ statsdDependencies
+    libraryDependencies ++= commonDependencies ++ (CrossVersion.partialVersion(scalaBinaryVersion.value) match {
+      case Some((2, 11)) => Seq()
+      case _             => statsdDependencies
+    })
   )
   .dependsOn(common)
 
