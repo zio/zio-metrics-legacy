@@ -103,9 +103,9 @@ lazy val docs = project
     moduleName := "zio-metrics-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
-    libraryDependencies ++= commonDependencies ++ dropwizardDependencies ++ prometheusDependencies
+    libraryDependencies ++= commonDependencies ++ statsdDependencies ++ dropwizardDependencies ++ prometheusDependencies
   )
-  .dependsOn(common, prometheus, dropwizard)
+  .dependsOn(common, prometheus, dropwizard, statsd)
   .enablePlugins(MdocPlugin, DocusaurusPlugin)
 
 lazy val settings = Seq(

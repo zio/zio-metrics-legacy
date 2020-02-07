@@ -17,10 +17,10 @@ object ClientTest {
 
   val myudp: List[Metric] => RIO[Encoder with Console, List[Long]] = msgs =>
     for {
-      sde  <- RIO.environment[Encoder]
-      opt  <- RIO.traverse(msgs)(sde.encoder.encode(_))
-      _    <- putStrLn(s"udp: $opt")
-      l    <- RIO.sequence(opt.flatten.map(s => UDPClient.clientM.use(_.write(Chunk.fromArray(s.getBytes())))))
+      sde <- RIO.environment[Encoder]
+      opt <- RIO.traverse(msgs)(sde.encoder.encode(_))
+      _   <- putStrLn(s"udp: $opt")
+      l   <- RIO.sequence(opt.flatten.map(s => UDPClient.clientM.use(_.write(Chunk.fromArray(s.getBytes())))))
     } yield l
 
   val program = {
@@ -29,9 +29,14 @@ object ClientTest {
     client.queue >>= (queue => {
       implicit val q = queue
       for {
-        z   <- client.listen[List, Long](myudp(_).provideSome[Encoder](env => new StatsDEncoder with Console.Live {
-          override val encoder = env.encoder
-        }))
+        z <- client.listen[List, Long](
+              myudp(_).provideSome[Encoder](
+                env =>
+                  new StatsDEncoder with Console.Live {
+                    override val encoder = env.encoder
+                  }
+              )
+            )
         _   <- putStrLn(s"implicit queue: $q")
         opt <- RIO.traverse(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
         _   <- RIO.sequence(opt.map(m => client.send(q)(m)))

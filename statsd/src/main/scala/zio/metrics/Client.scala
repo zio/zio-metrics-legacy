@@ -36,7 +36,9 @@ class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int) {
   def listen(implicit queue: Queue[Metric]): URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
     listen[List, Long](udp)
 
-  def listen[F[_], A](f: List[Metric] => RIO[Encoder, F[A]])(implicit queue: Queue[Metric]): URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
+  def listen[F[_], A](
+    f: List[Metric] => RIO[Encoder, F[A]]
+  )(implicit queue: Queue[Metric]): URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
     ZStream
       .fromQueue(queue)
       .aggregateAsyncWithin(sink, everyNsec)
