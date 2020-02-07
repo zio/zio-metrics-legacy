@@ -62,9 +62,6 @@ lazy val prometheus = project
 lazy val statsd = project
   .settings(
     name := "statsd",
-    skip.in(test) := true,
-    skip.in(compile) := true,
-    skip.in(publish) := true,
     crossScalaVersions -= "2.11.12",
     stdSettings("metrics-statsd") ++ settings,
     libraryDependencies ++= commonDependencies ++ (CrossVersion.partialVersion(scalaBinaryVersion.value) match {
