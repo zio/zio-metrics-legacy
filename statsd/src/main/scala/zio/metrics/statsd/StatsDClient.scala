@@ -3,8 +3,13 @@ package zio.metrics.statsd
 import zio.{ Queue, Task }
 import zio.metrics._
 
-class StatsDClient(override val bufferSize: Long, override val timeout: Long, override val queueCapacity: Int)
-    extends Client(bufferSize, timeout, queueCapacity) {
+class StatsDClient(
+  override val bufferSize: Long,
+  override val timeout: Long,
+  override val queueCapacity: Int,
+  host: Option[String],
+  port: Option[Int]
+) extends Client(bufferSize, timeout, queueCapacity, host, port) {
 
   def counter(name: String, value: Double)(implicit queue: Queue[Metric]): Task[Unit] =
     counter(name, value, 1.0, false)
@@ -80,11 +85,20 @@ class StatsDClient(override val bufferSize: Long, override val timeout: Long, ov
 }
 
 object StatsDClient {
-  def apply(): StatsDClient = apply(5, 5, 100)
+  def apply(): StatsDClient = apply(5, 5000, 100, None, None)
 
   def apply(bufferSize: Long, timeout: Long): StatsDClient =
-    apply(bufferSize, timeout, 100)
+    apply(bufferSize, timeout, 100, None, None)
 
-  def apply[R](bufferSize: Long, timeout: Long, queueCapacity: Int): StatsDClient =
-    new StatsDClient(bufferSize, timeout, queueCapacity)
+  def apply(bufferSize: Long, timeout: Long, queueCapacity: Int): StatsDClient =
+    apply(bufferSize, timeout, queueCapacity, None, None)
+
+  def apply(
+    bufferSize: Long,
+    timeout: Long,
+    queueCapacity: Int,
+    host: Option[String],
+    port: Option[Int]
+  ): StatsDClient =
+    new StatsDClient(bufferSize, timeout, queueCapacity, host, port)
 }

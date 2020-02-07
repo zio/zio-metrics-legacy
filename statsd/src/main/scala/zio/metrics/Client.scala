@@ -7,11 +7,18 @@ import zio.duration.DurationSyntax
 import zio.stream.{ Sink, ZStream }
 import java.util.concurrent.ThreadLocalRandom
 
-class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int) {
+class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int, host: Option[String], port: Option[Int]) {
 
-  val queue     = Queue.bounded[Metric](queueCapacity)
-  val everyNsec = Schedule.spaced(new DurationSyntax(timeout).seconds)
-  val sink      = Sink.collectAllN[Metric](bufferSize)
+  val queue    = Queue.bounded[Metric](queueCapacity)
+  val everyNms = Schedule.spaced(new DurationSyntax(timeout).millis)
+  val sink     = Sink.collectAllN[Metric](bufferSize)
+
+  val udpClient = (host, port) match {
+    case (None, None)       => UDPClient.clientM
+    case (Some(h), Some(p)) => UDPClient.clientM(h, p)
+    case (Some(h), None)    => UDPClient.clientM(h, 8125)
+    case (None, Some(p))    => UDPClient.clientM("localhost", p)
+  }
 
   val sample: List[Metric] => Task[List[Metric]] = metrics =>
     Task(
@@ -30,7 +37,7 @@ class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int) {
       sde  <- RIO.environment[Encoder]
       flt  <- sample(metrics)
       msgs <- RIO.traverse(flt)(sde.encoder.encode(_))
-      lngs <- RIO.sequence(msgs.flatten.map(s => UDPClient.clientM.use(_.write(Chunk.fromArray(s.getBytes())))))
+      lngs <- RIO.sequence(msgs.flatten.map(s => udpClient.use(_.write(Chunk.fromArray(s.getBytes())))))
     } yield lngs
 
   def listen(implicit queue: Queue[Metric]): URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
@@ -41,7 +48,7 @@ class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int) {
   )(implicit queue: Queue[Metric]): URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
     ZStream
       .fromQueue(queue)
-      .aggregateAsyncWithin(sink, everyNsec)
+      .aggregateAsyncWithin(sink, everyNms)
       //.tap(l => putStrLn(s"Selected: $l"))
       .mapM(l => f(l))
       .runDrain
@@ -58,24 +65,21 @@ class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int) {
       for {
         _ <- q.offer(metric).fork
       } yield ()
-
-  val sendM: Metric => Task[Unit] = metric =>
-    for {
-      q <- queue
-      _ <- send(q)(metric)
-    } yield ()
 }
 
 object Client {
 
   type ClientEnv = Encoder with Clock with Console
 
-  def apply(): Client = apply(5, 5, 100)
+  def apply(): Client = apply(5, 5000, 100, None, None)
 
   def apply(bufferSize: Long, timeout: Long): Client =
-    apply(bufferSize, timeout, 100)
+    apply(bufferSize, timeout, 100, None, None)
 
   def apply(bufferSize: Long, timeout: Long, queueCapacity: Int): Client =
-    new Client(bufferSize, timeout, queueCapacity)
+    apply(bufferSize, timeout, queueCapacity, None, None)
+
+  def apply(bufferSize: Long, timeout: Long, queueCapacity: Int, host: Option[String], port: Option[Int]): Client =
+    new Client(bufferSize, timeout, queueCapacity, host, port)
 
 }

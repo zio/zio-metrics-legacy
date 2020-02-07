@@ -46,7 +46,6 @@ object ClientTest {
 
   def main(args: Array[String]): Unit = {
     rt.unsafeRun(program >>= (lst => putStrLn(s"Main: $lst").provideSome(_ => Console.Live)))
-
     Thread.sleep(10000)
   }
 

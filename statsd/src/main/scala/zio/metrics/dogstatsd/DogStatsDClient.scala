@@ -3,8 +3,13 @@ package zio.metrics.dogstatsd
 import zio.{ Queue, Task }
 import zio.metrics._
 
-class DogStatsDClient(override val bufferSize: Long, override val timeout: Long, override val queueCapacity: Int)
-    extends Client(bufferSize, timeout, queueCapacity) {
+class DogStatsDClient(
+  override val bufferSize: Long,
+  override val timeout: Long,
+  override val queueCapacity: Int,
+  host: Option[String],
+  port: Option[Int]
+) extends Client(bufferSize, timeout, queueCapacity, host, port) {
 
   def counter(name: String, value: Double)(implicit queue: Queue[Metric]): Task[Unit] =
     counter(name, value, 1.0, Seq.empty[Tag], false)
@@ -163,12 +168,21 @@ class DogStatsDClient(override val bufferSize: Long, override val timeout: Long,
 
 object DogStatsDClient {
 
-  def apply(): DogStatsDClient = new DogStatsDClient(5, 5, 1000)
+  def apply(): DogStatsDClient = apply(5, 5000, 100, None, None)
 
   def apply(bufferSize: Long, timeout: Long): DogStatsDClient =
-    new DogStatsDClient(bufferSize, timeout, 1000)
+    apply(bufferSize, timeout, 100, None, None)
 
   def apply(bufferSize: Long, timeout: Long, queueCapacity: Int): DogStatsDClient =
-    new DogStatsDClient(bufferSize, timeout, queueCapacity)
+    apply(bufferSize, timeout, queueCapacity, None, None)
+
+  def apply(
+    bufferSize: Long,
+    timeout: Long,
+    queueCapacity: Int,
+    host: Option[String],
+    port: Option[Int]
+  ): DogStatsDClient =
+    new DogStatsDClient(bufferSize, timeout, queueCapacity, host, port)
 
 }
