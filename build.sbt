@@ -2,7 +2,7 @@ import Build._
 
 inThisBuild(
   List(
-    scalaVersion in ThisBuild := "2.12.9",
+    scalaVersion in ThisBuild := "2.13.1",
     organization := "dev.zio",
     homepage := Some(url("https://github.com/zio/zio-metrics/")),
     licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
@@ -88,6 +88,8 @@ lazy val docs = project
   .in(file("zio-metrics-docs"))
   .settings(
     skip.in(publish) := true,
+    // skip 2.13 mdoc until mdoc is available for 2.13
+    crossScalaVersions -= "2.13.1",
     moduleName := "zio-metrics-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
