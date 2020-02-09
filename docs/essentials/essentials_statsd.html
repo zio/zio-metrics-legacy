@@ -1,0 +1,338 @@
+<!DOCTYPE html><html lang="en"><head><meta charSet="utf-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><title>StatsD/DogStatsD Pure ZIO Client · ZIO Metrics</title><meta name="viewport" content="width=device-width"/><meta name="generator" content="Docusaurus"/><meta name="description" content="ZIO Metrics StatsD/DogStatsD ZIO client is based on the `Censorinus` client, but"/><meta name="docsearch:language" content="en"/><meta property="og:title" content="StatsD/DogStatsD Pure ZIO Client · ZIO Metrics"/><meta property="og:type" content="website"/><meta property="og:url" content="https://zio.github.io/zio-metrics/"/><meta property="og:description" content="ZIO Metrics StatsD/DogStatsD ZIO client is based on the `Censorinus` client, but"/><meta name="twitter:card" content="summary"/><link rel="shortcut icon" href="/zio-metrics/img/favicon.png"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css"/><script type="text/javascript" src="https://buttons.github.io/buttons.js"></script><script src="https://unpkg.com/vanilla-back-to-top@7.1.14/dist/vanilla-back-to-top.min.js"></script><script>
+        document.addEventListener('DOMContentLoaded', function() {
+          addBackToTop(
+            {"zIndex":100,"cornerOffset":100}
+          )
+        });
+        </script><script src="/zio-metrics/js/scrollSpy.js"></script><link rel="stylesheet" href="/zio-metrics/css/main.css"/><script src="/zio-metrics/js/codetabs.js"></script></head><body class="sideNavVisible separateOnPageNav"><div class="fixedHeaderContainer"><div class="headerWrapper wrapper"><header><a href="/zio-metrics/"><img class="logo" src="/zio-metrics/img/navbar_brand2x.png" alt="ZIO Metrics"/><h2 class="headerTitleWithLogo">ZIO Metrics</h2></a><div class="navigationWrapper navigationSlider"><nav class="slidingNav"><ul class="nav-site nav-site-internal"><li class=""><a href="/zio-metrics/docs/essentials/essentials_index" target="_self">Documentation</a></li></ul></nav></div></header></div></div><div class="navPusher"><div class="docMainWrapper wrapper"><div class="container mainContainer docsContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1 id="__docusaurus" class="postHeaderTitle">StatsD/DogStatsD Pure ZIO Client</h1></header><article><div><span><p>ZIO Metrics StatsD/DogStatsD ZIO client is based on the <code>Censorinus</code> client, but
+uses ZIO's concurrency toolbox such as <code>Queue</code>, <code>Stream</code>, <code>Schedule</code> as well as
+<a href="https://zio.github.io/zio-nio/">ZIO-NIO</a> for UDP channels.</p>
+<p>Its main components, besides the <code>Metrics</code> themselves are the <code>Encoder</code> module
+with instances for StatsD and DogStatsD and the <code>Client</code> itself, which is not a
+module but has separate instances for StatsD and DogStatsD.</p>
+<h1><a class="anchor" aria-hidden="true" id="metrics"></a><a href="#metrics" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Metrics</h1>
+<h2><a class="anchor" aria-hidden="true" id="statsd-metrics"></a><a href="#statsd-metrics" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>StatsD Metrics</h2>
+<p>We're gonna need the following import:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">import</span> zio.metrics._
+</code></pre>
+<p>Although each metric can be created directly, th preferred way is to di it
+through the <code>StatsDClient</code> which has helper methods for all metrics.</p>
+<h3><a class="anchor" aria-hidden="true" id="gauge"></a><a href="#gauge" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Gauge</h3>
+<p>A gauge is a value calculated by the client, the value is simply sent to
+StatsD for reporting without any processing involved. You can create it directly so:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> gauge = <span class="hljs-type">Gauge</span>(<span class="hljs-string">"name"</span>, <span class="hljs-number">34.0</span>, <span class="hljs-type">Seq</span>.empty[<span class="hljs-type">Tag</span>])
+</code></pre>
+<p>Note that:</p>
+<ol>
+<li>the second argument is a <code>Double</code> and</li>
+<li>StatsD does NOT support tags but DogStatsD does and since the
+same <code>Gauge</code> class is used for both then setting a value for <code>tags</code> has no
+effect whatsoever, its just ignored by <code>StatsDEncoder</code>.</li>
+</ol>
+<p>If we use the client instead we save ourselves issues as with <code>tags</code> above:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">import</span> zio.metrics.statsd._
+  <span class="hljs-keyword">import</span> zio.<span class="hljs-type">Queue</span>
+  
+  <span class="hljs-keyword">val</span> uioQueue = <span class="hljs-type">Queue</span>.bounded[<span class="hljs-type">Metric</span>](<span class="hljs-number">100</span>)   <span class="hljs-comment">// details on Client Section</span>
+  <span class="hljs-keyword">val</span> client = <span class="hljs-type">StatsDClient</span>()
+  uioQueue &gt;&gt;= (q =&gt; 
+    client.gauge(<span class="hljs-string">"name"</span>, <span class="hljs-number">34.0</span>)(q)
+  )
+</code></pre>
+<p>Also note, this methods are asynchronous by default, we'll talk more about that
+later.</p>
+<h3><a class="anchor" aria-hidden="true" id="counter"></a><a href="#counter" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Counter</h3>
+<p>A count is a gauge calculated at the server, that is, you can increment or
+decrement a value by one or, alternatively, pass the value that should be
+increases/decreased. It may also have a <code>sampleRate</code> which is represented as a
+Double between 0 and 1, as such, a sampleRate of <code>0.5</code> means that roughly 50% of
+the values will be actually sent the StatsD server. A sampleRate of 1.0 (or
+above) ensures that all values are sent.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  uioQueue &gt;&gt;= (queue =&gt; {
+    <span class="hljs-keyword">implicit</span> <span class="hljs-keyword">val</span> q = queue                    <span class="hljs-comment">// make it implicit so we don't pass it everytime</span>
+    client.counter(<span class="hljs-string">"counterName"</span>, <span class="hljs-number">3.0</span>)        <span class="hljs-comment">// no sample rate</span>
+    client .counter(<span class="hljs-string">"counterName"</span>, <span class="hljs-number">2.0</span>, <span class="hljs-number">0.75</span>) <span class="hljs-comment">// 75% sample rate</span>
+    client.increment(<span class="hljs-string">"counterName"</span>)
+    client.decrement(<span class="hljs-string">"counterName"</span>, <span class="hljs-number">0.9</span>)      <span class="hljs-comment">// 90% sample rate</span>
+  })
+</code></pre>
+<h3><a class="anchor" aria-hidden="true" id="timers"></a><a href="#timers" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Timers</h3>
+<p>The number of milliseconds between a start and end time.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">import</span> java.util.concurrent.<span class="hljs-type">TimeUnit</span>
+  <span class="hljs-keyword">import</span> zio.clock.<span class="hljs-type">Clock</span>
+  <span class="hljs-keyword">import</span> zio.duration.<span class="hljs-type">Duration</span>
+  
+  <span class="hljs-keyword">for</span> {
+      q  &lt;- uioQueue
+      t1 &lt;- <span class="hljs-type">Clock</span>.<span class="hljs-type">Live</span>.clock.currentTime(<span class="hljs-type">TimeUnit</span>.<span class="hljs-type">MILLISECONDS</span>)
+      _  &lt;- <span class="hljs-type">Clock</span>.<span class="hljs-type">Live</span>.clock.sleep(<span class="hljs-type">Duration</span>(<span class="hljs-number">75</span>, <span class="hljs-type">TimeUnit</span>.<span class="hljs-type">MILLISECONDS</span>))
+      t2 &lt;- <span class="hljs-type">Clock</span>.<span class="hljs-type">Live</span>.clock.currentTime(<span class="hljs-type">TimeUnit</span>.<span class="hljs-type">MILLISECONDS</span>)
+      _  &lt;- client.timer(<span class="hljs-string">"zmetrics.timer"</span>, (t2 - t1).toDouble, <span class="hljs-number">0.9</span>)(q)
+  } <span class="hljs-keyword">yield</span> ()
+</code></pre>
+<h3><a class="anchor" aria-hidden="true" id="meter"></a><a href="#meter" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Meter</h3>
+<p>Measures the rate of events over time, calculated at the server.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">for</span> {
+    q  &lt;- uioQueue
+    _  &lt;- client.meter(<span class="hljs-string">"zmetrics.meter"</span>, <span class="hljs-number">2.5</span>)(q)
+  } <span class="hljs-keyword">yield</span> ()
+</code></pre>
+<h3><a class="anchor" aria-hidden="true" id="set"></a><a href="#set" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Set</h3>
+<p>Counts the number of unique occurrences of events over a period of time.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">for</span> {
+    q  &lt;- uioQueue
+    _  &lt;- client.set(<span class="hljs-string">"zmetrics.meter"</span>, <span class="hljs-string">"ocurrence"</span>)(q)
+  } <span class="hljs-keyword">yield</span> ()
+</code></pre>
+<h2><a class="anchor" aria-hidden="true" id="dogstatsd-metrics"></a><a href="#dogstatsd-metrics" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>DogStatsD Metrics</h2>
+<p>As stated earlier, StatsD shares its <code>Metrics</code> type with DogStatsD. Besides
+supporting <code>Tag</code>s for every type, DogStatsD also adds a <code>Histogram</code> metric and an
+<code>Event</code> and <code>ServiceCheck</code> types.</p>
+<h3><a class="anchor" aria-hidden="true" id="histogram"></a><a href="#histogram" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Histogram</h3>
+<p>Allows you to measure the statistical distribution of a set of values.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">import</span> zio.metrics.dogstatsd._
+  
+  <span class="hljs-keyword">val</span> dogClient = <span class="hljs-type">DogStatsDClient</span>()
+  <span class="hljs-keyword">for</span> {
+    q  &lt;- uioQueue
+    _  &lt;- dogClient.histogram(
+        <span class="hljs-string">"zmetrics.hist"</span>, 
+        <span class="hljs-number">2.5</span>,                        <span class="hljs-comment">// value</span>
+        <span class="hljs-number">0.9</span>,                        <span class="hljs-comment">// sample rate</span>
+        <span class="hljs-type">Seq</span>(<span class="hljs-type">Tag</span>(<span class="hljs-string">"key1"</span>,<span class="hljs-string">"val1"</span>), <span class="hljs-type">Tag</span>(<span class="hljs-string">"key2"</span>,<span class="hljs-string">"val2"</span>))
+        )(q)
+  } <span class="hljs-keyword">yield</span> ()
+</code></pre>
+<h3><a class="anchor" aria-hidden="true" id="servicecheck"></a><a href="#servicecheck" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>ServiceCheck</h3>
+<p>Allow you to characterize the status of a service in order to monitor it within Datadog.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">for</span> {
+    q  &lt;- uioQueue
+    _  &lt;- dogClient.serviceCheck(
+        <span class="hljs-string">"zmetrics.checks"</span>, 
+        <span class="hljs-type">ServiceCheckOk</span>,
+        <span class="hljs-type">None</span>,                       <span class="hljs-comment">// defaults to current time</span>
+        <span class="hljs-type">None</span>,                       <span class="hljs-comment">// optional hostname</span>
+        <span class="hljs-type">Some</span>(<span class="hljs-string">"Check custom message"</span>),
+        <span class="hljs-type">Seq</span>(<span class="hljs-type">Tag</span>(<span class="hljs-string">"key1"</span>,<span class="hljs-string">"val1"</span>)),
+        <span class="hljs-literal">true</span>                        <span class="hljs-comment">// use synchronous version</span>
+        )(q)                        <span class="hljs-comment">// don't forget the queue</span>
+  } <span class="hljs-keyword">yield</span> ()
+</code></pre>
+<h3><a class="anchor" aria-hidden="true" id="event"></a><a href="#event" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Event</h3>
+<p>Events are limited to 4000 characters. If an event is sent out with a message
+containing more than 4000 characters only the 4000 first characters are
+displayed.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> tagEnv = <span class="hljs-type">Tag</span>(<span class="hljs-string">"env"</span>, <span class="hljs-string">"prod"</span>)
+  <span class="hljs-keyword">val</span> tagVersion = <span class="hljs-type">Tag</span>(<span class="hljs-string">"version"</span>, <span class="hljs-string">"0.1.0"</span>)
+  <span class="hljs-keyword">for</span> {
+    q  &lt;- uioQueue
+    _  &lt;- dogClient.event(
+      <span class="hljs-string">"zmetrics.dog.event"</span>,         <span class="hljs-comment">// name</span>
+      <span class="hljs-string">"something amazing happened"</span>, <span class="hljs-comment">// event text/message</span>
+      <span class="hljs-type">None</span>,                         <span class="hljs-comment">// timestamp, encoder defaults to 'now'</span>
+      <span class="hljs-type">Some</span>(<span class="hljs-string">"hostname"</span>),
+      <span class="hljs-type">Some</span>(<span class="hljs-string">"aggregationKey"</span>),       <span class="hljs-comment">//  to group events with same key</span>
+      <span class="hljs-type">Some</span>(<span class="hljs-type">EventPriorityLow</span>),       <span class="hljs-comment">// 'None' defaults to 'normal'</span>
+      <span class="hljs-type">Some</span>(<span class="hljs-string">"sourceType"</span>),
+      <span class="hljs-type">Some</span>(<span class="hljs-type">EventAlertError</span>),        <span class="hljs-comment">// 'None' defaults to 'info'</span>
+      <span class="hljs-type">Seq</span>(tagEnv, tagVersion),
+      <span class="hljs-literal">false</span>                         <span class="hljs-comment">// use asynchronous version</span>
+      )(q)                          <span class="hljs-comment">// alternatively we could have an 'implicit' queue</span>
+  } <span class="hljs-keyword">yield</span> ()
+</code></pre>
+<h1><a class="anchor" aria-hidden="true" id="client"></a><a href="#client" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Client</h1>
+<p>The base class for the clients is <code>zio.metrics.Client</code> which has sub-clases
+<code>StatsDClient</code> and <code>DogStatsDClient</code>. Each of them takes 3 parameters but
+provides also constructors with default values for each such that:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-type">Client</span>() == <span class="hljs-type">Client</span>(<span class="hljs-number">5</span>, <span class="hljs-number">5000</span>, <span class="hljs-number">100</span>, <span class="hljs-type">None</span>, <span class="hljs-type">None</span>)
+</code></pre>
+<p>The first two parameters (<code>bufferSize</code> and <code>timeout</code>) define how to agregate each
+batch of metrics sent to the StatsD server. The third parameters (<code>queueCapacity</code>)
+determines the size of the internal queue used to batch said metrics. Before
+going into detail let's see how a <code>Client</code> looks like. <strong>NOTE</strong> however that
+this is a base client, ZIO-Metrics-StatsD also provide <code>StatsD</code> and a
+<code>DogStatsD</code> specialized clients.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">import</span> zio.{ <span class="hljs-type">RIO</span>, <span class="hljs-type">Runtime</span>, <span class="hljs-type">Task</span> }
+  <span class="hljs-keyword">import</span> zio.clock.<span class="hljs-type">Clock</span>
+  <span class="hljs-keyword">import</span> zio.console._
+  <span class="hljs-keyword">import</span> zio.internal.<span class="hljs-type">PlatformLive</span>
+  <span class="hljs-keyword">import</span> zio.metrics.statsd._
+  <span class="hljs-keyword">import</span> zio.<span class="hljs-type">Chunk</span>
+  <span class="hljs-keyword">import</span> zio.metrics.statsd.<span class="hljs-type">StatsDEncoder</span>
+
+  <span class="hljs-comment">// Provide a runtime</span>
+  <span class="hljs-keyword">val</span> rt = <span class="hljs-type">Runtime</span>(
+    <span class="hljs-keyword">new</span> <span class="hljs-type">StatsDEncoder</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Console</span>.<span class="hljs-type">Live</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Clock</span>.<span class="hljs-type">Live</span>,
+    <span class="hljs-type">PlatformLive</span>.<span class="hljs-type">Default</span>
+  )
+
+  <span class="hljs-keyword">val</span> program = {
+    <span class="hljs-keyword">val</span> messages = <span class="hljs-type">List</span>(<span class="hljs-number">1.0</span>, <span class="hljs-number">2.2</span>, <span class="hljs-number">3.4</span>, <span class="hljs-number">4.6</span>, <span class="hljs-number">5.1</span>, <span class="hljs-number">6.0</span>, <span class="hljs-number">7.9</span>)
+    <span class="hljs-keyword">val</span> client   = <span class="hljs-type">Client</span>()
+    client.queue &gt;&gt;= (queue =&gt; {
+      <span class="hljs-keyword">implicit</span> <span class="hljs-keyword">val</span> q = queue
+      <span class="hljs-keyword">for</span> {
+        z &lt;- client.listen          <span class="hljs-comment">// uses implicit 'q'</span>
+        opt &lt;- <span class="hljs-type">RIO</span>.traverse(messages)(d =&gt; <span class="hljs-type">Task</span>(<span class="hljs-type">Counter</span>(<span class="hljs-string">"clientbar"</span>, d, <span class="hljs-number">1.0</span>, <span class="hljs-type">Seq</span>.empty[<span class="hljs-type">Tag</span>])))
+        _   &lt;- <span class="hljs-type">RIO</span>.sequence(opt.map(m =&gt; client.send(q)(m)))
+      } <span class="hljs-keyword">yield</span> z
+    })
+  }
+</code></pre>
+<p><code>client.queue</code> is the client's internal queue, however, this been a <code>zio.Queue</code>
+the actual type for queue is <code>UIO[Queue[Metric]]</code> which  is why we need to
+<code>flatmap</code> it (aka <code>&gt;&gt;=</code>) to obtain the actual <code>Queue[Metric]</code>. In this example I
+have cerated a <code>q</code> value just to make it implicit, this is for demonstrating it
+can be done, you can just passed it explicitly to <code>client.listen</code> instead.</p>
+<p>Since the client was created with default values, <code>client.queue</code> is a <a href="https://zio.dev/docs/datatypes/datatypes_queue">back-pressured bounded
+queue</a> with a maximum capacity
+for a 100 items. This means that any fiber that offers items when thew queue is
+full, will be suspended until the queue is able to add the item.</p>
+<h2><a class="anchor" aria-hidden="true" id="batching"></a><a href="#batching" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Batching</h2>
+<p>The next relevant bit is <code>client.listen</code> which will batch items based on the
+constructor values for <code>bufferSize</code> and <code>timeout</code>. Essentially, items in the
+queue will be processed once <code>bufferSize</code> is reached or the <code>timeout</code> (in
+milliseconds) expires, whichever happens first. So for the default values of 5
+and 5000, items in the queue will be processed either when 5 items are collected
+or after 5 seconds have passed.</p>
+<p><code>client.listen</code> will use the default message processor which will sample metrics
+according to their defined <code>sampleRate</code> (Counter, Timer and Histogram only),
+then it encodes each Metric according to the provided <code>Encoder</code> and then sends
+them to the specified UDP StatsD server. In this case, the default uses
+<code>localhost</code> at port <code>8125</code>.</p>
+<h2><a class="anchor" aria-hidden="true" id="synchronous-vs-asynchronous-delivery"></a><a href="#synchronous-vs-asynchronous-delivery" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Synchronous vs Asynchronous Delivery</h2>
+<p>The next line in the sample client creates 7 <code>Counter</code>s with a <code>sampleRate</code> of
+<code>1.0</code>, ensuring every metric will be encoded and sent to the StatsD server. The
+last line in the sample client is the one that actually <code>sends/offer</code> the metric
+to the queue. There are two variation sto this method <code>send: Queue[Metric] =&gt; Metric =&gt; Task[Unit]</code> and <code>sendAsync: Queue[Metric] =&gt; Metric =&gt; Task[Unit]</code>.
+The asynchronous version, <a href="https://zio.dev/docs/datatypes/datatypes_fiber">forks a
+fiber</a> and returns immediately.
+The synchronous one offers the metric in the same fiber the rest of the program
+has running, while this operation is normally almost as fast as the
+asynchronous, issues may arise in case of a full queue since the fiber will
+block until ther is space to add more items to the queue. In such a case, the
+asynchronous version comes in handy since the main execution of our <code>program</code>
+will not block, the risk for this scenario is that we keep creating and
+suspending fibers which might become a memory leak.</p>
+<p>We can now run our sample client so:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">main</span></span>(args: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">Unit</span> = {
+    rt.unsafeRun(program &gt;&gt;= (lst =&gt; putStrLn(<span class="hljs-string">s"Main: <span class="hljs-subst">$lst</span>"</span>).provideSome(_ =&gt; <span class="hljs-type">Console</span>.<span class="hljs-type">Live</span>)))
+    <span class="hljs-type">Thread</span>.sleep(<span class="hljs-number">10000</span>)
+  }
+</code></pre>
+<h2><a class="anchor" aria-hidden="true" id="custom-message-processor"></a><a href="#custom-message-processor" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Custom Message Processor</h2>
+<p>As explained earlier, the sample client uses the default message processor which
+samples the metrics, encodes them and sends them to StatsD using <code>UDPClient</code>.
+Here is a similar processor that performs NO sampling, encodes the message,
+prints the encoded message to console and then uses the default host and port
+from <code>UDPClient</code>.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> myudp: <span class="hljs-type">List</span>[<span class="hljs-type">Metric</span>] =&gt; <span class="hljs-type">RIO</span>[<span class="hljs-type">Encoder</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Console</span>, <span class="hljs-type">List</span>[<span class="hljs-type">Long</span>]] = msgs =&gt;
+    <span class="hljs-keyword">for</span> {
+      sde &lt;- <span class="hljs-type">RIO</span>.environment[<span class="hljs-type">Encoder</span>]
+      opt &lt;- <span class="hljs-type">RIO</span>.traverse(msgs)(sde.encoder.encode(_))
+      _   &lt;- putStrLn(<span class="hljs-string">s"udp: <span class="hljs-subst">$opt</span>"</span>)
+      l   &lt;- <span class="hljs-type">RIO</span>.sequence(opt.flatten.map(s =&gt; <span class="hljs-type">UDPClient</span>.clientM.use(_.write(<span class="hljs-type">Chunk</span>.fromArray(s.getBytes())))))
+    } <span class="hljs-keyword">yield</span> l
+</code></pre>
+<p>and we can use this instead of the default changing the <code>client.listen</code> call so:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> messages = <span class="hljs-type">List</span>(<span class="hljs-number">1.0</span>, <span class="hljs-number">2.2</span>, <span class="hljs-number">3.4</span>, <span class="hljs-number">4.6</span>, <span class="hljs-number">5.1</span>, <span class="hljs-number">6.0</span>, <span class="hljs-number">7.9</span>)
+  client.queue &gt;&gt;= (queue =&gt; {
+      <span class="hljs-keyword">implicit</span> <span class="hljs-keyword">val</span> q = queue
+      <span class="hljs-keyword">for</span> {
+        z &lt;- client.listen[<span class="hljs-type">List</span>, <span class="hljs-type">Long</span>](
+              myudp(_).provideSome[<span class="hljs-type">Encoder</span>](
+                env =&gt;
+                  <span class="hljs-keyword">new</span> <span class="hljs-type">StatsDEncoder</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Console</span>.<span class="hljs-type">Live</span> {
+                    <span class="hljs-keyword">override</span> <span class="hljs-keyword">val</span> encoder = env.encoder
+                  }
+              )
+            )
+        opt &lt;- <span class="hljs-type">RIO</span>.traverse(messages)(d =&gt; <span class="hljs-type">Task</span>(<span class="hljs-type">Counter</span>(<span class="hljs-string">"clientbar"</span>, d, <span class="hljs-number">1.0</span>, <span class="hljs-type">Seq</span>.empty[<span class="hljs-type">Tag</span>])))
+        _   &lt;- <span class="hljs-type">RIO</span>.sequence(opt.map(m =&gt; client.send(q)(m)))
+      } <span class="hljs-keyword">yield</span> z
+    })
+</code></pre>
+<p>A message processor is defined as: <code>List[Metric] =&gt; RIO[Encoder, F[A]]</code>, since
+<code>myudp</code> requires <code>Encoder with Console</code> which is NOT the same type as just
+<code>Encoder</code>, we need to prove to the compiler our encoding capabilities using <code>provideSome</code>.</p>
+<h2><a class="anchor" aria-hidden="true" id="statsd-client"></a><a href="#statsd-client" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>StatsD Client</h2>
+<p>Most of the client's functionality is provided by <code>Client</code>, you won't normally use
+it though since ypu can use <code>StatsDClient</code> instead which has methods to help
+create and offer/send metrics to the queue. Here's a sample of how it's used.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">import</span> zio.<span class="hljs-type">Schedule</span>
+  
+  <span class="hljs-keyword">val</span> schd = <span class="hljs-type">Schedule</span>.recurs(<span class="hljs-number">10</span>)    <span class="hljs-comment">// optional, used to send more samples to StatsD</span>
+  <span class="hljs-keyword">val</span> statsDClient = <span class="hljs-type">StatsDClient</span>()       <span class="hljs-comment">// StatsD default client</span>
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">program</span></span>(r: <span class="hljs-type">Long</span>)(<span class="hljs-keyword">implicit</span> queue: <span class="hljs-type">Queue</span>[<span class="hljs-type">Metric</span>]) =
+    <span class="hljs-keyword">for</span> {
+      _  &lt;- statsDClient.listen
+      t1 &lt;- <span class="hljs-type">Clock</span>.<span class="hljs-type">Live</span>.clock.currentTime(<span class="hljs-type">TimeUnit</span>.<span class="hljs-type">MILLISECONDS</span>)
+      _  &lt;- statsDClient.increment(<span class="hljs-string">"zmetrics.counter"</span>, <span class="hljs-number">0.9</span>)
+      _  &lt;- putStrLn(<span class="hljs-string">s"waiting for <span class="hljs-subst">$r</span> ms"</span>) *&gt; <span class="hljs-type">Clock</span>.<span class="hljs-type">Live</span>.clock.sleep(<span class="hljs-type">Duration</span>(r, <span class="hljs-type">TimeUnit</span>.<span class="hljs-type">MILLISECONDS</span>))
+      t2 &lt;- <span class="hljs-type">Clock</span>.<span class="hljs-type">Live</span>.clock.currentTime(<span class="hljs-type">TimeUnit</span>.<span class="hljs-type">MILLISECONDS</span>)
+      _  &lt;- statsDClient.timer(<span class="hljs-string">"zmetrics.timer"</span>, (t2 - t1).toDouble, <span class="hljs-number">0.9</span>)
+    } <span class="hljs-keyword">yield</span> ()
+</code></pre>
+<p>We can reuse <code>rt</code>, the runtime created earlier to run our <code>program</code>:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">main1</span></span>(args: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">Unit</span> = {
+    <span class="hljs-keyword">val</span> timeouts = <span class="hljs-type">Seq</span>(<span class="hljs-number">34</span>L, <span class="hljs-number">76</span>L, <span class="hljs-number">52</span>L)
+    rt.unsafeRun(
+      statsDClient .queue &gt;&gt;= (
+        q =&gt;
+          <span class="hljs-type">RIO</span>
+            .traverse(timeouts)(l =&gt; program(l)(q))
+            .repeat(schd)
+        )
+    )
+    <span class="hljs-type">Thread</span>.sleep(<span class="hljs-number">10000</span>)             <span class="hljs-comment">// wait for all messages to be consumed</span>
+  }
+</code></pre>
+<h2><a class="anchor" aria-hidden="true" id="dogstatsd-client"></a><a href="#dogstatsd-client" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>DogStatsD Client</h2>
+<p>Just like the <code>StatsDClient</code>, except that the <code>DogStatsDClient</code> has methods to
+help you create and send histograms, service checks and events which are not
+supported by StatsD.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> dogStatsDClient = <span class="hljs-type">DogStatsDClient</span>()
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">dogProgram</span></span>(r: <span class="hljs-type">Long</span>)(<span class="hljs-keyword">implicit</span> queue: <span class="hljs-type">Queue</span>[<span class="hljs-type">Metric</span>]) =
+    <span class="hljs-keyword">for</span> {
+      _  &lt;- dogStatsDClient.listen
+      t1 &lt;- <span class="hljs-type">Clock</span>.<span class="hljs-type">Live</span>.clock.currentTime(<span class="hljs-type">TimeUnit</span>.<span class="hljs-type">MILLISECONDS</span>)
+      _  &lt;- dogStatsDClient.increment(<span class="hljs-string">"zmetrics.dog.counter"</span>, <span class="hljs-number">0.9</span>)
+      _  &lt;- putStrLn(<span class="hljs-string">s"waiting for <span class="hljs-subst">$r</span> ms"</span>) *&gt; <span class="hljs-type">Clock</span>.<span class="hljs-type">Live</span>.clock.sleep(<span class="hljs-type">Duration</span>(r, <span class="hljs-type">TimeUnit</span>.<span class="hljs-type">MILLISECONDS</span>))
+      t2 &lt;- <span class="hljs-type">Clock</span>.<span class="hljs-type">Live</span>.clock.currentTime(<span class="hljs-type">TimeUnit</span>.<span class="hljs-type">MILLISECONDS</span>)
+      d  = (t2 - t1).toDouble
+      _  &lt;- dogStatsDClient.timer(<span class="hljs-string">"zmetrics.dog.timer"</span>, d, <span class="hljs-number">0.9</span>)
+      _  &lt;- dogStatsDClient.histogram(<span class="hljs-string">"zmetrics.dog.hist"</span>, d)
+      _  &lt;- dogStatsDClient.serviceCheck(<span class="hljs-string">"zmetrics.dog.check"</span>, <span class="hljs-type">ServiceCheckOk</span>)
+      _  &lt;- dogStatsDClient.event(<span class="hljs-string">"zmetrics.dog.event"</span>, <span class="hljs-string">"something amazing happened"</span>)
+    } <span class="hljs-keyword">yield</span> ()
+</code></pre>
+<p>Since we need a different <code>Encoder</code> for DogStatsD than for StatsD, we'll have to
+create a new runtime to support it.</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> rtDog = <span class="hljs-type">Runtime</span>(
+    <span class="hljs-keyword">new</span> <span class="hljs-type">DogStatsDEncoder</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Console</span>.<span class="hljs-type">Live</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Clock</span>.<span class="hljs-type">Live</span>,
+    <span class="hljs-type">PlatformLive</span>.<span class="hljs-type">Default</span>
+  )
+  
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">main2</span></span>(args: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">Unit</span> = {
+    <span class="hljs-keyword">val</span> timeouts = <span class="hljs-type">Seq</span>(<span class="hljs-number">34</span>L, <span class="hljs-number">76</span>L, <span class="hljs-number">52</span>L)
+    rtDog.unsafeRun(
+      dogStatsDClient .queue &gt;&gt;= (
+        q =&gt;
+          <span class="hljs-type">RIO</span>
+            .traverse(timeouts)(l =&gt; program(l)(q))
+            .repeat(schd)
+        )
+    )
+    <span class="hljs-type">Thread</span>.sleep(<span class="hljs-number">10000</span>)
+  }
+
+</code></pre>
+</span></div></article></div><div class="docLastUpdate"><em>Last updated on 2/9/2020 by toxicafunk</em></div><div class="docs-prevnext"></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#statsd-metrics">StatsD Metrics</a><ul class="toc-headings"><li><a href="#gauge">Gauge</a></li><li><a href="#counter">Counter</a></li><li><a href="#timers">Timers</a></li><li><a href="#meter">Meter</a></li><li><a href="#set">Set</a></li></ul></li><li><a href="#dogstatsd-metrics">DogStatsD Metrics</a><ul class="toc-headings"><li><a href="#histogram">Histogram</a></li><li><a href="#servicecheck">ServiceCheck</a></li><li><a href="#event">Event</a></li></ul></li><li><a href="#batching">Batching</a></li><li><a href="#synchronous-vs-asynchronous-delivery">Synchronous vs Asynchronous Delivery</a></li><li><a href="#custom-message-processor">Custom Message Processor</a></li><li><a href="#statsd-client">StatsD Client</a></li><li><a href="#dogstatsd-client">DogStatsD Client</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section><div><div class="gitter-open-chat-button">Open Chat</div><script type="text/javascript">
+        ((window.gitter = {}).chat = {}).options = {
+          showChatByDefault: false,
+          activationElement: '.gitter-open-chat-button',
+          room: 'zio/zio-metrics'
+        };
+      </script><script src="https://sidecar.gitter.im/dist/sidecar.v1.js" async="" defer=""></script></div></section><section class="sitemap"><a href="/zio-metrics/" class="nav-home"><img src="/zio-metrics/img/sidebar_brand2x.png" alt="ZIO Metrics"/></a><div><h5>GitHub</h5><a class="github-button" href="https://github.com/zio/zio-metrics" data-icon="octicon-star" data-count-href="/zio/zio-metrics/stargazers" data-show-count="true" data-count-aria-label="# stargazers on GitHub" aria-label="Star this project on GitHub">Star</a></div><div><h5>Chat with us on Discord</h5><a href="https://discord.gg/2ccFBr4"><img src="/zio-metrics/img/discord.png" width="120" alt="discord"/></a></div><div><h5>Additional resources</h5><a href="https://javadoc.io/doc/dev.zio/zio_2.12/">Scaladoc of ZIO</a></div></section><section class="copyright">Copyright © 2020 ZIO Maintainers</section></footer></div></body></html>
