@@ -1,8 +1,8 @@
 package zio.metrics.dropwizard.typeclasses
 
 //import cats.Monoid
-import argonaut.Json
-import argonaut.Argonaut.jEmptyObject
+import io.circe.Json
+import io.circe._
 
 trait Monoid[A] { //extends Semigroup[A] {
   def empty: A
@@ -23,9 +23,9 @@ object Monoid {
   }
 
   implicit val jsonMonoid: Monoid[Json] = new Monoid[Json] {
-    def combine(j1: Json, j2: Json) = j1.deepmerge(j2)
+    def combine(j1: Json, j2: Json) = j1.deepMerge(j2)
 
-    def empty = jEmptyObject
+    def empty = Json.fromJsonObject(JsonObject.empty)
   }
 
   implicit val stringMonoid: Monoid[String] = new Monoid[String] {

@@ -24,6 +24,7 @@ val zioVersion        = "1.0.0-RC17"
 val interopVersion    = "2.0.0.0-RC10" // "1.3.1.0-RC3"
 val prometheusVersion = "0.7.0"
 val dropwizardVersion = "4.0.1"
+val circeVersion      = "0.12.3"
 
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
@@ -92,7 +93,7 @@ lazy val dropwizardDependencies = Seq(
   "io.dropwizard.metrics" % "metrics-healthchecks" % dropwizardVersion,
   "io.dropwizard.metrics" % "metrics-jmx"          % dropwizardVersion,
   "io.dropwizard.metrics" % "metrics-graphite"     % dropwizardVersion,
-  "io.argonaut"           %% "argonaut"            % "6.2.2"
+  "io.circe"              %% "circe-core"          % circeVersion
 )
 
 lazy val statsdDependencies = Seq(
@@ -116,19 +117,17 @@ lazy val docs = project
 lazy val settings = Seq(
   scalacOptions ++= (CrossVersion.partialVersion(scalaBinaryVersion.value) match {
     case Some((2, 11)) => Seq("-Ypartial-unification", "-Ywarn-value-discard", "-target:jvm-1.8")
+    case Some((2, 13)) => Seq("-Ywarn-value-discard", "-target:jvm-1.8")
     case _             => Seq("-Ypartial-unification", "-Ywarn-value-discard")
   })
 )
 
 lazy val http4s = Seq(
-  "org.http4s"    %% "http4s-argonaut"     % http4sVersion,
+  "org.http4s"    %% "http4s-circe"        % http4sVersion,
   "org.http4s"    %% "http4s-blaze-server" % http4sVersion,
   "org.http4s"    %% "http4s-dsl"          % http4sVersion,
-  "org.typelevel" %% "cats-effect"         % "2.0.0", //% Optional,
-  "io.argonaut"   %% "argonaut-cats"       % "6.2.2"
+  "org.typelevel" %% "cats-effect"         % "2.0.0" //% Optional,
 )
-
-addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7")
 
 // TODO: enforce scalazzi dialect through the scalaz-plugin
 // addCompilerPlugin("org.scalaz" % "scalaz-plugin_2.12.4" % "0.0.7")

@@ -1,8 +1,7 @@
 package zio.metrics.dropwizard
 
-import argonaut.Argonaut.jSingleObject
-import argonaut.Json
-import org.http4s.argonaut._
+import io.circe.Json
+import org.http4s.circe._
 import org.http4s.dsl.impl.Root
 import org.http4s.dsl.io._
 import org.http4s.{ HttpRoutes, Response }
@@ -17,7 +16,9 @@ trait DropwizardMetricsService extends MetricsService {
       HttpRoutes.of[Server.HttpTask] {
         case GET -> Root / filter => {
           val optFilter = if (filter == "ALL") None else Some(filter)
-          RegistryPrinter.report[DropwizardRegistry, List, Json](registry, optFilter)(jSingleObject) >>=
+          RegistryPrinter.report[DropwizardRegistry, List, Json](registry, optFilter)(
+            (k: String, v: Json) => Json.obj((k, v))
+          ) >>=
             (m => RIO(Response[Server.HttpTask](Ok).withEntity(m)))
         }
       }

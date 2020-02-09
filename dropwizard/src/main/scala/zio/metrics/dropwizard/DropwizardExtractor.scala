@@ -5,8 +5,8 @@ import com.codahale.metrics.Snapshot
 
 import scala.collection.JavaConverters._
 
-import argonaut.Argonaut.{ jNumber, jSingleObject, jString }
-import argonaut.Json
+import io.circe._
+import io.circe.Json
 
 object DropwizardExtractor {
 
@@ -21,7 +21,7 @@ object DropwizardExtractor {
             } yield
               r.getCounters(metricFilter)
                 .asScala
-                .map(entry => jSingleObject(entry._1, jNumber(entry._2.getCount)))
+                .map(entry => Json.obj((entry._1, Json.fromLong(entry._2.getCount))))
                 .toList
           }
 
@@ -34,22 +34,22 @@ object DropwizardExtractor {
             } yield
               r.getGauges(metricFilter)
                 .asScala
-                .map(entry => jSingleObject(entry._1, jString(entry._2.getValue.toString)))
+                .map(entry => Json.obj((entry._1, Json.fromString(entry._2.getValue.toString))))
                 .toList
           }
 
       def extractSnapshot(name: String, snapshot: Snapshot): Json =
-        Json(
-          s"${name}_max"    -> jNumber(snapshot.getMax),
-          s"${name}_min"    -> jNumber(snapshot.getMin),
-          s"${name}_mean"   -> jNumber(snapshot.getMean),
-          s"${name}_median" -> jNumber(snapshot.getMedian),
-          s"${name}_stdDev" -> jNumber(snapshot.getStdDev),
-          s"${name}_75th"   -> jNumber(snapshot.get75thPercentile()),
-          s"${name}_95th"   -> jNumber(snapshot.get95thPercentile()),
-          s"${name}_98th"   -> jNumber(snapshot.get98thPercentile()),
-          s"${name}_99th"   -> jNumber(snapshot.get99thPercentile()),
-          s"${name}_999th"  -> jNumber(snapshot.get999thPercentile())
+        Json.obj(
+          (s"${name}_max", Json.fromLong(snapshot.getMax)),
+          (s"${name}_min", Json.fromLong(snapshot.getMin)),
+          (s"${name}_mean", Json.fromDoubleOrNull(snapshot.getMean)),
+          (s"${name}_median", Json.fromDoubleOrNull(snapshot.getMedian)),
+          (s"${name}_stdDev", Json.fromDoubleOrNull(snapshot.getStdDev)),
+          (s"${name}_75th", Json.fromDoubleOrNull(snapshot.get75thPercentile())),
+          (s"${name}_95th", Json.fromDoubleOrNull(snapshot.get95thPercentile())),
+          (s"${name}_98th", Json.fromDoubleOrNull(snapshot.get98thPercentile())),
+          (s"${name}_99th", Json.fromDoubleOrNull(snapshot.get99thPercentile())),
+          (s"${name}_999th", Json.fromDoubleOrNull(snapshot.get999thPercentile()))
         )
 
       override val extractTimers: DropwizardRegistry => Filter => Task[List[Json]] =
@@ -62,13 +62,15 @@ object DropwizardExtractor {
               r.getTimers(metricFilter)
                 .asScala
                 .map(entry => {
-                  Json(
-                    s"${entry._1}_count"          -> jNumber(entry._2.getCount),
-                    s"${entry._1}_meanRate"       -> jNumber(entry._2.getMeanRate),
-                    s"${entry._1}_oneMinRate"     -> jNumber(entry._2.getOneMinuteRate),
-                    s"${entry._1}_fiveMinRate"    -> jNumber(entry._2.getFiveMinuteRate),
-                    s"${entry._1}_fifteenMinRate" -> jNumber(entry._2.getFifteenMinuteRate)
-                  ).deepmerge(extractSnapshot(entry._1, entry._2.getSnapshot))
+                  val j1 = Json.obj(
+                    (s"${entry._1}_count", Json.fromLong(entry._2.getCount)),
+                    (s"${entry._1}_meanRate", Json.fromDoubleOrNull(entry._2.getMeanRate)),
+                    (s"${entry._1}_oneMinRate", Json.fromDoubleOrNull(entry._2.getOneMinuteRate)),
+                    (s"${entry._1}_fiveMinRate", Json.fromDoubleOrNull(entry._2.getFiveMinuteRate)),
+                    (s"${entry._1}_fifteenMinRate", Json.fromDoubleOrNull(entry._2.getFifteenMinuteRate))
+                  ) //.deepmerge(extractSnapshot(entry._1, entry._2.getSnapshot))
+                  val j2 = extractSnapshot(entry._1, entry._2.getSnapshot)
+                  j1.deepMerge(j2)
                 })
                 .toList
           }
@@ -83,8 +85,12 @@ object DropwizardExtractor {
               r.getHistograms(metricFilter)
                 .asScala
                 .map(entry => {
-                  (s"${entry._1}_count" -> jNumber(entry._2.getCount)) ->:
-                    extractSnapshot(entry._1, entry._2.getSnapshot)
+                  val jObj: JsonObject = extractSnapshot(
+                    entry._1,
+                    entry._2.getSnapshot
+                  ).asObject.getOrElse(JsonObject.empty)
+
+                  Json.fromJsonObject((s"${entry._1}_count", Json.fromLong(entry._2.getCount)) +: jObj)
                 })
                 .toList
           }
@@ -99,12 +105,12 @@ object DropwizardExtractor {
               r.getMeters(metricFilter)
                 .asScala
                 .map(entry => {
-                  Json(
-                    s"${entry._1}_count"          -> jNumber(entry._2.getCount),
-                    s"${entry._1}_meanRate"       -> jNumber(entry._2.getMeanRate),
-                    s"${entry._1}_oneMinRate"     -> jNumber(entry._2.getOneMinuteRate),
-                    s"${entry._1}_fiveMinRate"    -> jNumber(entry._2.getFiveMinuteRate),
-                    s"${entry._1}_fifteenMinRate" -> jNumber(entry._2.getFifteenMinuteRate)
+                  Json.obj(
+                    (s"${entry._1}_count", Json.fromLong(entry._2.getCount)),
+                    (s"${entry._1}_meanRate", Json.fromDoubleOrNull(entry._2.getMeanRate)),
+                    (s"${entry._1}_oneMinRate", Json.fromDoubleOrNull(entry._2.getOneMinuteRate)),
+                    (s"${entry._1}_fiveMinRate", Json.fromDoubleOrNull(entry._2.getFiveMinuteRate)),
+                    (s"${entry._1}_fifteenMinRate", Json.fromDoubleOrNull(entry._2.getFifteenMinuteRate))
                   )
                 })
                 .toList
@@ -120,7 +126,9 @@ object DropwizardExtractor {
     dwr =>
       filter =>
         for {
-          j <- RegistryPrinter.report[DropwizardRegistry, List, Json](dwr, filter)(jSingleObject)
+          j <- RegistryPrinter.report[DropwizardRegistry, List, Json](dwr, filter)(
+                (k: String, v: Json) => Json.obj((k, v))
+              )
         } yield j
 
 }
