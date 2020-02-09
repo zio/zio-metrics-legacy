@@ -1,10 +1,10 @@
-package zio.metrics.dropwizard.typeclasses
+package zio.metrics.dropwizard
 
-//import cats.Monoid
+import cats.Monoid
 import io.circe.Json
 import io.circe._
 
-trait Monoid[A] { //extends Semigroup[A] {
+/*trait Monoid[A] { //extends Semigroup[A] {
   def empty: A
 
   def combine(x: A, y: A): A
@@ -34,8 +34,22 @@ object Monoid {
     def empty = ""
   }
 }
+ */
+object typeclasses {
+  implicit val jsonMonoid: Monoid[Json] = new Monoid[Json] {
+    def combine(j1: Json, j2: Json) = j1.deepMerge(j2)
 
-trait Foldable[F[_]] {
+    def empty = Json.fromJsonObject(JsonObject.empty)
+  }
+
+  implicit val stringMonoid: Monoid[String] = new Monoid[String] {
+    def combine(j1: String, j2: String) = s"$j1\n$j2"
+
+    def empty = ""
+  }
+}
+
+/*trait Foldable[F[_]] {
   def foldMap[A, B](fa: F[A])(f: A => B)(implicit F: Monoid[B]): B // map-reduce
   def fold[A](fa: F[A])(z: A)(f: (A, A) => A): A
   /*def foldLeft[A, B](fa: F[A], z: B)(f: (A, B) => B): B
@@ -57,6 +71,7 @@ object Foldable {
     def fold[A](fa: Array[A])(z: A)(f: (A, A) => A): A = fa.fold(z)(f)
 
     def foldMap[A, B](fa: Array[A])(f: A => B)(implicit F: Monoid[B]): B =
-      fa.map(f).fold(Monoid[B].empty)(Monoid[B].combine)
+      fa.map(f).fold(Monoid[B].empty)(Monoid[B].combine(_,_))
   }
 }
+ */

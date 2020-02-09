@@ -7,8 +7,9 @@ import org.http4s.dsl.io._
 import org.http4s.{ HttpRoutes, Response }
 import zio.RIO
 import zio.interop.catz._
-import zio.metrics.dropwizard.typeclasses.Monoid.jsonMonoid
+import zio.metrics.dropwizard.typeclasses._
 import zio.metrics.dropwizard.DropwizardExtractor._
+import cats.instances.list._
 
 trait DropwizardMetricsService extends MetricsService {
   val service = new MetricsService.Service[DropwizardRegistry] {

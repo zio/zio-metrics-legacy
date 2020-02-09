@@ -3,7 +3,7 @@ package zio.metrics.dropwizard
 import zio.Task
 import com.codahale.metrics.Snapshot
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 import io.circe._
 import io.circe.Json
@@ -117,7 +117,8 @@ object DropwizardExtractor {
           }
     }
 
-//  import cats.instances.list._
+  import cats.instances.list._
+  import zio.metrics.dropwizard.typeclasses._
   import zio.metrics.dropwizard.RegistryPrinter
 
   type Filter = Option[String]
