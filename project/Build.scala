@@ -3,7 +3,7 @@ import sbt.Keys._
 
 object Build {
   def stdSettings(prjName: String) = Seq(
-    name := s"$prjName",
+    name := s"zio-$prjName",
     scalacOptions := stdOptions,
     crossScalaVersions := Seq(Scala212, Scala213),
     scalaVersion in ThisBuild := Scala212,
