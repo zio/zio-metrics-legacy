@@ -1,5 +1,5 @@
 ---
-id: essentials_files
+id: essentials_prometheus
 title:  "Prometheus ZIO Wrapper"
 ---
 

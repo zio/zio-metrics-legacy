@@ -1,5 +1,5 @@
 ---
-id: essentials_sockets
+id: essentials_dropwizard
 title:  "Dropwizard ZIO WSrapper"
 ---
 

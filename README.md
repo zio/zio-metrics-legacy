@@ -5,7 +5,7 @@
 | [![Build Status][Badge-Circle]][Link-Circle] | [![Release Artifacts][Badge-SonatypeReleases]][Link-SonatypeReleases] | [![Snapshot Artifacts][Badge-SonatypeSnapshots]][Link-SonatypeSnapshots] | [![Badge-Discord]][Link-Discord] |
 
 [Badge-SonatypeReleases]: https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-metrics_2.12.svg "Sonatype Releases"
-[Badge-SonatypeSnapshots]: https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio_metrics_2.12.svg "Sonatype Snapshots"
+[Badge-SonatypeSnapshots]: https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-metrics_2.12.svg "Sonatype Snapshots"
 [Badge-Discord]: https://img.shields.io/discord/629491597070827530?logo=discord "chat on discord"
 [Badge-Discord]: https://img.shields.io/discord/629491597070827530?logo=discord "chat on discord"
 [Badge-Circle]: https://circleci.com/gh/zio/zio-metrics.svg?style=svg "circleci"
