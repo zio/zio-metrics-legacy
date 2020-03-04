@@ -36,8 +36,8 @@ class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int, ho
     for {
       sde  <- RIO.environment[Encoder]
       flt  <- sample(metrics)
-      msgs <- RIO.traverse(flt)(sde.encoder.encode(_))
-      lngs <- RIO.sequence(msgs.flatten.map(s => udpClient.use(_.write(Chunk.fromArray(s.getBytes())))))
+      msgs <- RIO.foreach(flt)(sde.get.encode(_))
+      lngs <- RIO.collectAll(msgs.flatten.map(s => udpClient.use(_.write(Chunk.fromArray(s.getBytes())))))
     } yield lngs
 
   def listen(implicit queue: Queue[Metric]): URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
