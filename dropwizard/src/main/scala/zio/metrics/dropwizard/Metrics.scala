@@ -18,9 +18,9 @@ class Counter(private val dwCounter: DWCounter) extends Metric {
 }
 
 object Counter {
-  def apply(name: String, labels: Array[String]): RIO[DropwizardRegistry, Counter] =
+  def apply(name: String, labels: Array[String]): RIO[Registry, Counter] =
     for {
-      c <- registry.registerCounter(name, labels)
+      c <- registerCounter(name, labels)
     } yield new Counter(c)
 }
 
@@ -30,9 +30,9 @@ class Gauge(private val dwGauge: DWGauge[_]) extends Metric {
 }
 
 object Gauge {
-  def apply[A](name: String, labels: Array[String], f: () => A): RIO[DropwizardRegistry, Gauge] =
+  def apply[A](name: String, labels: Array[String], f: () => A): RIO[Registry, Gauge] =
     for {
-      g <- registry.registerGauge[A](name, labels, f)
+      g <- registerGauge[A](name, labels, f)
     } yield new Gauge(g)
 }
 
@@ -45,9 +45,9 @@ class Timer(private val dwTimer: DWTimer) extends Metric {
 }
 
 object Timer {
-  def apply(name: String, labels: Array[String]): RIO[DropwizardRegistry, Timer] =
+  def apply(name: String, labels: Array[String]): RIO[Registry, Timer] =
     for {
-      t <- registry.registerTimer(name, labels)
+      t <- registerTimer(name, labels)
     } yield new Timer(t)
 }
 
@@ -60,9 +60,9 @@ class Meter(private val dwMeter: DWMeter) extends Metric {
 }
 
 object Meter {
-  def apply(name: String, labels: Array[String]): RIO[DropwizardRegistry, Meter] =
+  def apply(name: String, labels: Array[String]): RIO[Registry, Meter] =
     for {
-      m <- registry.registerMeter(name, labels)
+      m <- registerMeter(name, labels)
     } yield new Meter(m)
 }
 
@@ -72,8 +72,8 @@ class Histogram(private val dwHistogram: DWHistogram) extends Metric {
 }
 
 object Histogram {
-  def apply(name: String, labels: Array[String], reservoir: Reservoir): RIO[DropwizardRegistry, Histogram] =
+  def apply(name: String, labels: Array[String], reservoir: Reservoir): RIO[Registry, Histogram] =
     for {
-      h <- registry.registerHistogram(name, labels, reservoir)
+      h <- registerHistogram(name, labels, reservoir)
     } yield new Histogram(h)
 }

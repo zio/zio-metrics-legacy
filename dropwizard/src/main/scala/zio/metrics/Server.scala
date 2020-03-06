@@ -13,6 +13,16 @@ import zio.console.Console
 import zio.random.Random
 import zio.blocking.Blocking
 import zio.interop.catz._
+import io.circe.Json
+import org.http4s.circe._
+import org.http4s.dsl.impl.Root
+import org.http4s.dsl.io._
+import org.http4s.{ HttpRoutes, Response }
+import zio.RIO
+import zio.interop.catz._
+import zio.metrics.dropwizard.typeclasses._
+import zio.metrics.dropwizard.DropwizardExtractor._
+import cats.instances.list._
 
 object Server {
   val port: Int = envOrNone("HTTP_PORT").fold(9090)(_.toInt)
@@ -22,10 +32,10 @@ object Server {
 
   type KleisliApp = Kleisli[HttpTask, Request[HttpTask], Response[HttpTask]]
 
-  type HttpApp[R <: Registry] = R => KleisliApp
+  //type HttpApp[R <: Registry] = R => KleisliApp
 
   def builder[Ctx]: KleisliApp => HttpTask[Unit] =
-    (app: Kleisli[HttpTask, Request[HttpTask], Response[HttpTask]]) =>
+    (app: KleisliApp) =>
       ZIO
         .runtime[HttpEnvironment]
         .flatMap { implicit rts =>
@@ -36,4 +46,16 @@ object Server {
             .compile
             .drain
         }
+
+  def serveMetrics: HttpRoutes[Server.HttpTask] =
+    HttpRoutes.of[Server.HttpTask] {
+      case GET -> Root / filter => {
+        val optFilter = if (filter == "ALL") None else Some(filter)
+        RegistryPrinter
+          .report[List, Json](optFilter)(
+            (k: String, v: Json) => Json.obj((k, v))
+          )
+          .map(m => Response[Server.HttpTask](Ok).withEntity(m))
+      }
+    }
 }

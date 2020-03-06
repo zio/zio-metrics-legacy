@@ -3,26 +3,26 @@ package zio.metrics.dropwizard
 import cats.Monoid
 import cats.Foldable
 import cats.syntax.semigroup._
-import zio.Task
+import zio.{ RIO, Task }
 //import zio.metrics.dropwizard.typeclasses._
 //import zio.metrics.dropwizard.typeclasses.{ Foldable, Monoid }
 
-trait Extractor[R <: Registry, F[_], A] {
+trait Extractor[F[_], A] {
 
   type Filter = Option[String]
 
-  def extractCounters: R => Filter => Task[F[A]]
-  def extractGauges: R => Filter => Task[F[A]]
-  def extractTimers: R => Filter => Task[F[A]]
-  def extractHistograms: R => Filter => Task[F[A]]
-  def extractMeters: R => Filter => Task[F[A]]
+  val extractCounters: Filter => RIO[Registry, F[A]]
+  val extractGauges: Filter => RIO[Registry, F[A]]
+  val extractTimers: Filter => RIO[Registry, F[A]]
+  val extractHistograms: Filter => RIO[Registry, F[A]]
+  val extractMeters: Filter => RIO[Registry, F[A]]
 
 }
 
 object RegistryPrinter {
-  def report[R <: Registry, F[_], A](r: R, filter: Option[String])(
+  def report[F[_], A](filter: Option[String])(
     cons: (String, A) => A
-  )(implicit M: Monoid[A], L: Foldable[F], E: Extractor[R, F, A]): Task[A] = {
+  )(implicit M: Monoid[A], L: Foldable[F], E: Extractor[F, A]): Task[A] = {
 
     val fs = Seq(
       ("counters", E.extractCounters),
@@ -32,11 +32,11 @@ object RegistryPrinter {
       ("meters", E.extractMeters)
     )
 
-    fs.foldLeft(Task(M.empty))(
+    fs.foldLeft(RIO(M.empty))(
       (accT, f) =>
         for {
           acc <- accT
-          m   <- f._2(r)(filter)
+          m   <- f._2(filter).provideLayer(Registry.live)
         } yield acc |+| L.foldMap(m)(a => cons(f._1, a))
     )
   }

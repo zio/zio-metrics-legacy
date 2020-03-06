@@ -21,7 +21,7 @@ inThisBuild(
 
 val http4sVersion     = "0.21.0-M5"
 val zioVersion        = "1.0.0-RC18-1"
-val interopVersion    = "2.0.0.0-RC10" // "1.3.1.0-RC3"
+val interopVersion    = "2.0.0.0-RC11" // "1.3.1.0-RC3"
 val prometheusVersion = "0.8.1"
 val dropwizardVersion = "4.1.2"
 val circeVersion      = "0.12.3"
