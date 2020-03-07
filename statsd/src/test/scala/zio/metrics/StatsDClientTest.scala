@@ -18,12 +18,12 @@ object StatsDClientTest {
   def program(r: Long)(implicit queue: Queue[Metric]) =
     for {
       clock <- RIO.environment[Clock]
-      _  <- client.listen
-      t1 <- clock.get.currentTime(TimeUnit.MILLISECONDS)
-      _  <- client.increment("zmetrics.counter", 0.9)
-      _  <- putStrLn(s"waiting for $r ms") *> clock.get.sleep(Duration(r, TimeUnit.MILLISECONDS))
-      t2 <- clock.get.currentTime(TimeUnit.MILLISECONDS)
-      _  <- client.timer("zmetrics.timer", (t2 - t1).toDouble, 0.9)
+      _     <- client.listen
+      t1    <- clock.get.currentTime(TimeUnit.MILLISECONDS)
+      _     <- client.increment("zmetrics.counter", 0.9)
+      _     <- putStrLn(s"waiting for $r ms") *> clock.get.sleep(Duration(r, TimeUnit.MILLISECONDS))
+      t2    <- clock.get.currentTime(TimeUnit.MILLISECONDS)
+      _     <- client.timer("zmetrics.timer", (t2 - t1).toDouble, 0.9)
     } yield ()
 
   def main(args: Array[String]): Unit = {

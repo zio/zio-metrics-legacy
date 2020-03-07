@@ -41,9 +41,9 @@ object ServerTest extends App {
     } yield r
 
   val httpApp = (registry: MetricRegistry) =>
-      Router(
-        "/metrics" -> Server.serveMetrics(registry)
-      ).orNotFound
+    Router(
+      "/metrics" -> Server.serveMetrics(registry)
+    ).orNotFound
 
   override def run(args: List[String]) = {
     println("Starting tests")

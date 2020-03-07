@@ -16,7 +16,7 @@ object ClientTest {
       opt <- RIO.foreach(msgs)(sde.get.encode(_))
       _   <- putStrLn(s"udp: $opt")
       //l   <- RIO.collectAll(opt.flatten.map(s => UDPClient.clientM.use(_.write(Chunk.fromArray(s.getBytes())))))
-      l   <- RIO.collectAll(opt.flatten.map(s => Task(s.length().toLong)))
+      l <- RIO.collectAll(opt.flatten.map(s => Task(s.length().toLong)))
     } yield l
 
   val program = {
@@ -25,10 +25,10 @@ object ClientTest {
     client.queue >>= (queue => {
       implicit val q = queue
       for {
-        f <- client.listen[List, Long]{ l =>
-          val p = myudp(l).provideSomeLayer[Encoder](Console.live)
-          p
-        }
+        f <- client.listen[List, Long] { l =>
+              val p = myudp(l).provideSomeLayer[Encoder](Console.live)
+              p
+            }
         _   <- putStrLn(s"implicit queue: $q")
         opt <- RIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
         _   <- RIO.collectAll(opt.map(m => client.sendAsync(q)(m)))
@@ -38,8 +38,7 @@ object ClientTest {
     })
   }
 
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit =
     rt.unsafeRun(program >>= (q => q.shutdown *> putStrLn("Bye bye").provideSomeLayer(Console.live)))
-  }
 
 }

@@ -21,7 +21,7 @@ trait Extractor[F[_], A] {
 }
 
 object RegistryPrinter {
-  def report[F[_], A](r:MetricRegistry, filter: Option[String])(
+  def report[F[_], A](r: MetricRegistry, filter: Option[String])(
     cons: (String, A) => A
   )(implicit M: Monoid[A], L: Foldable[F], E: Extractor[F, A]): Task[A] = {
 

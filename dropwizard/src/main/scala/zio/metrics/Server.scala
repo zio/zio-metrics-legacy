@@ -48,15 +48,16 @@ object Server {
             .drain
         }
 
-  def serveMetrics: MetricRegistry => HttpRoutes[Server.HttpTask] = registry =>
-    HttpRoutes.of[Server.HttpTask] {
-      case GET -> Root / filter => {
-        val optFilter = if (filter == "ALL") None else Some(filter)
-        RegistryPrinter
-          .report[List, Json](registry, optFilter)(
-            (k: String, v: Json) => Json.obj((k, v))
-          )
-          .map(m => Response[Server.HttpTask](Ok).withEntity(m))
+  def serveMetrics: MetricRegistry => HttpRoutes[Server.HttpTask] =
+    registry =>
+      HttpRoutes.of[Server.HttpTask] {
+        case GET -> Root / filter => {
+          val optFilter = if (filter == "ALL") None else Some(filter)
+          RegistryPrinter
+            .report[List, Json](registry, optFilter)(
+              (k: String, v: Json) => Json.obj((k, v))
+            )
+            .map(m => Response[Server.HttpTask](Ok).withEntity(m))
+        }
       }
-    }
 }

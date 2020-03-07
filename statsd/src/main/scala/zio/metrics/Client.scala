@@ -10,7 +10,7 @@ import zio.duration.Duration
 
 class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int, host: Option[String], port: Option[Int]) {
 
-  val queue    = Queue.bounded[Metric](queueCapacity)
+  val queue                             = Queue.bounded[Metric](queueCapacity)
   private val duration: Duration.Finite = new DurationSyntax(timeout).millis
 
   val udpClient = (host, port) match {
@@ -47,13 +47,13 @@ class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int, ho
     f: List[Metric] => RIO[Encoder, F[A]]
   )(implicit queue: Queue[Metric]): URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
     putStrLn("Listening...") *>
-    ZStream
-      .fromQueue(queue)
-      .groupedWithin(bufferSize, duration)
-      .tap(l => putStrLn(s"Selected: $l"))
-      .mapM(l => f(l))
-      .runDrain
-      .fork
+      ZStream
+        .fromQueue(queue)
+        .groupedWithin(bufferSize, duration)
+        .tap(l => putStrLn(s"Selected: $l"))
+        .mapM(l => f(l))
+        .runDrain
+        .fork
 
   val send: Queue[Metric] => Metric => Task[Unit] = q =>
     metric =>
