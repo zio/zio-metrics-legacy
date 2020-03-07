@@ -1,40 +1,34 @@
 package zio.metrics.dropwizard
 
 import zio.{ RIO, Task }
-import zio.metrics.dropwizard.helpers._
 import com.codahale.metrics.Snapshot
 
 import scala.jdk.CollectionConverters._
 
 import io.circe._
 import io.circe.Json
+import com.codahale.metrics.MetricRegistry
 
 object DropwizardExtractor {
 
   implicit val jsonDWExtractor: Extractor[List, Json] =
     new Extractor[List, Json] {
-      override val extractCounters: Filter => RIO[Registry, List[Json]] =
+      override val extractCounters: MetricRegistry => Filter => RIO[Registry, List[Json]] = registry =>
         (filter: Filter) => {
           val metricFilter = Registry.makeFilter(filter)
-          for {
-            r <- getCurrentRegistry()
-          } yield
-            r.getCounters(metricFilter)
+          Task(registry.getCounters(metricFilter)
               .asScala
               .map(entry => Json.obj((entry._1, Json.fromLong(entry._2.getCount))))
-              .toList
+              .toList)
         }
 
-      override val extractGauges: Filter => RIO[Registry, List[Json]] =
+      override val extractGauges: MetricRegistry => Filter => RIO[Registry, List[Json]] = registry =>
         (filter: Filter) => {
           val metricFilter = Registry.makeFilter(filter)
-          for {
-            r <- getCurrentRegistry()
-          } yield
-            r.getGauges(metricFilter)
+          Task(registry.getGauges(metricFilter)
               .asScala
               .map(entry => Json.obj((entry._1, Json.fromString(entry._2.getValue.toString))))
-              .toList
+              .toList)
         }
 
       def extractSnapshot(name: String, snapshot: Snapshot): Json =
@@ -51,13 +45,10 @@ object DropwizardExtractor {
           (s"${name}_999th", Json.fromDoubleOrNull(snapshot.get999thPercentile()))
         )
 
-      override val extractTimers: Filter => RIO[Registry, List[Json]] =
+      override val extractTimers: MetricRegistry => Filter => RIO[Registry, List[Json]] = registry =>
         (filter: Filter) => {
           val metricFilter = Registry.makeFilter(filter)
-          for {
-            r <- getCurrentRegistry()
-          } yield
-            r.getTimers(metricFilter)
+         Task(registry.getTimers(metricFilter)
               .asScala
               .map(entry => {
                 val j1 = Json.obj(
@@ -70,16 +61,13 @@ object DropwizardExtractor {
                 val j2 = extractSnapshot(entry._1, entry._2.getSnapshot)
                 j1.deepMerge(j2)
               })
-              .toList
+              .toList)
         }
 
-      override val extractHistograms: Filter => RIO[Registry, List[Json]] =
+      override val extractHistograms: MetricRegistry => Filter => RIO[Registry, List[Json]] = registry =>
         (filter: Filter) => {
           val metricFilter = Registry.makeFilter(filter)
-          for {
-            r <- getCurrentRegistry()
-          } yield
-            r.getHistograms(metricFilter)
+          Task(registry.getHistograms(metricFilter)
               .asScala
               .map(entry => {
                 val jObj: JsonObject = extractSnapshot(
@@ -89,16 +77,13 @@ object DropwizardExtractor {
 
                 Json.fromJsonObject((s"${entry._1}_count", Json.fromLong(entry._2.getCount)) +: jObj)
               })
-              .toList
+              .toList)
         }
 
-      override val extractMeters: Filter => RIO[Registry, List[Json]] =
+      override val extractMeters: MetricRegistry => Filter => RIO[Registry, List[Json]] = registry =>
         (filter: Filter) => {
           val metricFilter = Registry.makeFilter(filter)
-          for {
-            r <- getCurrentRegistry()
-          } yield
-            r.getMeters(metricFilter)
+          Task(registry.getMeters(metricFilter)
               .asScala
               .map(entry => {
                 Json.obj(
@@ -109,7 +94,7 @@ object DropwizardExtractor {
                   (s"${entry._1}_fifteenMinRate", Json.fromDoubleOrNull(entry._2.getFifteenMinuteRate))
                 )
               })
-              .toList
+              .toList)
         }
     }
 
@@ -119,10 +104,10 @@ object DropwizardExtractor {
 
   type Filter = Option[String]
 
-  val writeJson: Filter => Task[Json] =
+  val writeJson: MetricRegistry => Filter => Task[Json] = registry =>
       filter =>
         for {
-          j <- RegistryPrinter.report[List, Json](filter)(
+          j <- RegistryPrinter.report[List, Json](registry, filter)(
                 (k: String, v: Json) => Json.obj((k, v))
               )
         } yield j

@@ -23,6 +23,7 @@ import zio.interop.catz._
 import zio.metrics.dropwizard.typeclasses._
 import zio.metrics.dropwizard.DropwizardExtractor._
 import cats.instances.list._
+import com.codahale.metrics.MetricRegistry
 
 object Server {
   val port: Int = envOrNone("HTTP_PORT").fold(9090)(_.toInt)
@@ -47,12 +48,12 @@ object Server {
             .drain
         }
 
-  def serveMetrics: HttpRoutes[Server.HttpTask] =
+  def serveMetrics: MetricRegistry => HttpRoutes[Server.HttpTask] = registry =>
     HttpRoutes.of[Server.HttpTask] {
       case GET -> Root / filter => {
         val optFilter = if (filter == "ALL") None else Some(filter)
         RegistryPrinter
-          .report[List, Json](optFilter)(
+          .report[List, Json](registry, optFilter)(
             (k: String, v: Json) => Json.obj((k, v))
           )
           .map(m => Response[Server.HttpTask](Ok).withEntity(m))

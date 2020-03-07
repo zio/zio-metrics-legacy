@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 import zio.console._
 import zio.duration.Duration
+import com.codahale.metrics.MetricRegistry
 
 object ReportersTest extends App {
 
@@ -17,7 +18,7 @@ object ReportersTest extends App {
 
   val tests: RIO[
     Registry with Reporters,
-    Unit
+    MetricRegistry
   ] =
     for {
       r   <- getCurrentRegistry()
@@ -35,11 +36,11 @@ object ReportersTest extends App {
               Thread.sleep(1200L)
             )
           )(_ => t.stop(ctx))
-    } yield ()
+    } yield r
 
   override def run(args: List[String]) = {
     println("Starting tests")
-    val json = rt.unsafeRun(tests.provideLayer(dropwizardLayer) *> DropwizardExtractor.writeJson(None))
+    val json = rt.unsafeRun(tests.provideLayer(dropwizardLayer) >>= (r => DropwizardExtractor.writeJson(r)(None)))
     RIO.sleep(Duration.fromScala(30.seconds))
     putStrLn(json.spaces2).map(_ => 0)
   }

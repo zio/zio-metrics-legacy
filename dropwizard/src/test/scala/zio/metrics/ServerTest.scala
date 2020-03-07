@@ -11,6 +11,7 @@ import scala.util.Properties.envOrNone
 import zio.interop.catz._
 import org.http4s.implicits._
 import org.http4s.server.Router
+import com.codahale.metrics.MetricRegistry
 
 object ServerTest extends App {
 
@@ -19,7 +20,7 @@ object ServerTest extends App {
 
   val testServer: RIO[
     Registry with Reporters,
-    Unit
+    MetricRegistry
   ] =
     for {
       r   <- getCurrentRegistry()
@@ -37,18 +38,18 @@ object ServerTest extends App {
               Thread.sleep(1200L)
             )
           )(_ => t.stop(ctx))
-    } yield ()
+    } yield r
 
-  val httpApp =
+  val httpApp = (registry: MetricRegistry) =>
       Router(
-        "/metrics" -> Server.serveMetrics
+        "/metrics" -> Server.serveMetrics(registry)
       ).orNotFound
 
   override def run(args: List[String]) = {
     println("Starting tests")
 
     val kApp: Task[KleisliApp] = testServer
-      .map(_ => httpApp)
+      .map(r => httpApp(r))
       .provideLayer(Registry.live ++ Reporters.live)
 
     val app: RIO[HttpEnvironment, Unit] = kApp >>= builder

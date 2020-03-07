@@ -194,7 +194,8 @@ object DropwizardTest {
       },
       test("Report printer is consistent") { () =>
         val program = for {
-          j   <- DropwizardExtractor.writeJson(None)
+          r   <- getCurrentRegistry()
+          j   <- DropwizardExtractor.writeJson(r)(None)
           _   <- putStrLn(j.spaces2)
         } yield ()
 
