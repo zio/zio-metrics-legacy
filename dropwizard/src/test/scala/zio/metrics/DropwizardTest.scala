@@ -13,9 +13,7 @@ import java.util.concurrent.TimeUnit
 
 object DropwizardTest {
 
-  val rt = Runtime.default
-
-  val dropwizardLayer = Registry.live ++ Console.live
+  val rt = Runtime.unsafeFromLayer(Registry.live ++ Console.live)
 
   val tester: () => Long = () => System.nanoTime()
 
@@ -98,21 +96,21 @@ object DropwizardTest {
     section(
       test("counter increases by `inc` amount") { () =>
         val name = MetricRegistry.name(Show.fixClassName(DropwizardTest.getClass()), Array("test", "counter"): _*)
-        val r    = rt.unsafeRun(testCounter.provideLayer(dropwizardLayer))
+        val r    = rt.unsafeRun(testCounter)
         val cs   = r.getCounters()
         val c    = if (cs.get(name) == null) 0 else cs.get(name).getCount
         assert(c == 3d)
       },
       test("gauge increases in time") { () =>
         val name = MetricRegistry.name("DropwizardGauge", Array("test", "gauge"): _*)
-        val r    = rt.unsafeRun(testGauge.provideLayer(dropwizardLayer))
+        val r    = rt.unsafeRun(testGauge)
         val gs   = r._1.getGauges()
         val g    = if (gs.get(name) == null) Long.MaxValue else gs.get(name).getValue().asInstanceOf[Long]
         assert(r._2 < g && g < tester())
       },
       test("histogram increases in time") { () =>
         val name = MetricRegistry.name("DropwizardHistogram", Array("test", "histogram"): _*)
-        val r    = rt.unsafeRun(testHistogram.provideLayer(dropwizardLayer))
+        val r    = rt.unsafeRun(testHistogram)
         val perc75th = r
           .getHistograms()
           .get(name)
@@ -123,7 +121,7 @@ object DropwizardTest {
       },
       test("customized uniform histogram increases in time") { () =>
         val name = MetricRegistry.name("DropwizardUniformHistogram", Array("uniform", "histogram"): _*)
-        val r    = rt.unsafeRun(testUniformHistogram.provideLayer(dropwizardLayer))
+        val r    = rt.unsafeRun(testUniformHistogram)
         val perc75th = r
           .getHistograms()
           .get(name)
@@ -134,7 +132,7 @@ object DropwizardTest {
       },
       test("exponential histogram increases in time") { () =>
         val name = MetricRegistry.name("DropwizardExponentialHistogram", Array("exponential", "histogram"): _*)
-        val r    = rt.unsafeRun(testExponentialHistogram.provideLayer(dropwizardLayer))
+        val r    = rt.unsafeRun(testExponentialHistogram)
         val perc75th = r
           .getHistograms()
           .get(name)
@@ -145,7 +143,7 @@ object DropwizardTest {
       },
       test("sliding time window histogram increases in time") { () =>
         val name = MetricRegistry.name("DropwizardSlidingHistogram", Array("sliding", "histogram"): _*)
-        val r    = rt.unsafeRun(testSlidingTimeWindowHistogram.provideLayer(dropwizardLayer))
+        val r    = rt.unsafeRun(testSlidingTimeWindowHistogram)
         val perc75th = r
           .getHistograms()
           .get(name)
@@ -156,7 +154,7 @@ object DropwizardTest {
       },
       test("Meter count and mean rate are within bounds") { () =>
         val name = MetricRegistry.name("DropwizardMeter", Array("test", "meter"): _*)
-        val r    = rt.unsafeRun(testMeter.provideLayer(dropwizardLayer))
+        val r    = rt.unsafeRun(testMeter)
         val count = r
           .getMeters()
           .get(name)
@@ -168,11 +166,11 @@ object DropwizardTest {
           .getMeanRate
 
         println(s"count: $count, meanRate: $meanRate")
-        assert(count == 15 && meanRate > 300 && meanRate < 2000)
+        assert(count == 15 && meanRate > 300 && meanRate < 3000)
       },
       test("Timer called 3 times") { () =>
         val name = MetricRegistry.name("DropwizardTimer", Array("test", "timer"): _*)
-        val r    = rt.unsafeRun(testTimer.provideLayer(dropwizardLayer))
+        val r    = rt.unsafeRun(testTimer)
         val count = r._1
           .getTimers()
           .get(name)
@@ -184,7 +182,7 @@ object DropwizardTest {
       },
       test("Timer mean rate for 6 calls within bounds") { () =>
         val name = MetricRegistry.name("DropwizardTimer", Array("test", "timer"): _*)
-        val r    = rt.unsafeRun(testTimer.provideLayer(dropwizardLayer))
+        val r    = rt.unsafeRun(testTimer)
         val meanRate = r._1
           .getTimers()
           .get(name)
@@ -199,7 +197,7 @@ object DropwizardTest {
           _ <- putStrLn(j.spaces2)
         } yield ()
 
-        rt.unsafeRun(program.provideLayer(dropwizardLayer))
+        rt.unsafeRun(program)
 
         assert(true)
 
