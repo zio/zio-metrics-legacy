@@ -1,17 +1,17 @@
 package zio.metrics
 
-import zio.{ Chunk, Fiber, Queue, RIO, Schedule, Task, URIO }
+import zio.{ Chunk, Fiber, Queue, RIO, Task, URIO }
 import zio.clock.Clock
-import zio.console.Console
+import zio.console._
 import zio.duration.DurationSyntax
-import zio.stream.{ Sink, ZStream }
+import zio.stream.ZStream
 import java.util.concurrent.ThreadLocalRandom
+import zio.duration.Duration
 
 class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int, host: Option[String], port: Option[Int]) {
 
   val queue    = Queue.bounded[Metric](queueCapacity)
-  val everyNms = Schedule.spaced(new DurationSyntax(timeout).millis)
-  val sink     = Sink.collectAllN[Metric](bufferSize)
+  private val duration: Duration.Finite = new DurationSyntax(timeout).millis
 
   val udpClient = (host, port) match {
     case (None, None)       => UDPClient.clientM
@@ -46,10 +46,11 @@ class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int, ho
   def listen[F[_], A](
     f: List[Metric] => RIO[Encoder, F[A]]
   )(implicit queue: Queue[Metric]): URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
+    putStrLn("Listening...") *>
     ZStream
       .fromQueue(queue)
-      .aggregateAsyncWithin(sink, everyNms)
-      //.tap(l => putStrLn(s"Selected: $l"))
+      .groupedWithin(bufferSize, duration)
+      .tap(l => putStrLn(s"Selected: $l"))
       .mapM(l => f(l))
       .runDrain
       .fork
@@ -57,12 +58,13 @@ class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int, ho
   val send: Queue[Metric] => Metric => Task[Unit] = q =>
     metric =>
       for {
-        _ <- q.offer(metric) //.fork
+        _ <- q.offer(metric)
       } yield ()
 
   val sendAsync: Queue[Metric] => Metric => Task[Unit] = q =>
     metric =>
       for {
+        _ <- putStrLn(s"Sending... $q").provideLayer(Console.live)
         _ <- q.offer(metric).fork
       } yield ()
 }

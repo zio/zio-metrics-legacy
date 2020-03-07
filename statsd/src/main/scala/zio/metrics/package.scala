@@ -30,7 +30,7 @@ package object metrics {
       case _            => ""
     }
 
-    val statsdEncoder: ZLayer.NoDeps[Nothing, Encoder] = ZLayer.succeed(new Service[Metric] {
+    val statsd: ZLayer.NoDeps[Nothing, Encoder] = ZLayer.succeed(new Service[Metric] {
 
       private def encode(metric: Metric, sampleRate: Option[Double]): String =
         sampleRate.foldLeft(s"${metric.name}:${getValue(metric)}|${getMetricType(metric)}")(
@@ -54,7 +54,7 @@ package object metrics {
       }
     })
 
-    val dostatsdEncoder: ZLayer.NoDeps[Nothing, Encoder] = ZLayer.succeed(new Service[Metric] {
+    val dogstatsd: ZLayer.NoDeps[Nothing, Encoder] = ZLayer.succeed(new Service[Metric] {
 
       private def encode(metric: Metric, sampleRate: Option[Double], tags: Seq[Tag]): String = {
         val tagString = if (tags.isEmpty) "" else "|#" + tags.mkString(",")

@@ -97,7 +97,7 @@ lazy val dropwizardDependencies = Seq(
 )
 
 lazy val statsdDependencies = Seq(
-  "dev.zio" %% "zio-nio" % "1.0.0-RC2"
+  "dev.zio" %% "zio-nio" % "1.0.0-RC4"
 )
 
 lazy val docs = project
