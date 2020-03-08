@@ -264,8 +264,7 @@ We can now run our sample client so:
 
 ```scala mdoc:silent
   def main(args: Array[String]): Unit = {
-    rt.unsafeRun(program >>= (lst => putStrLn(s"Main: $lst").provideSome(_ => Console.Live)))
-    Thread.sleep(10000)
+    rt.unsafeRun(program >>= (lst => putStrLn(s"Main: $lst").provideSomeLayer(Console.live)))
   }
 ```
 
@@ -293,9 +292,9 @@ and we can use this instead of the default changing the `client.listen` call so:
   client.queue >>= (queue => {
       implicit val q = queue
       for {
-        z <- client.listen[List, Long](
+        z <- client.listen[List, Long]{ l =>
               myudp(l).provideSomeLayer[Encoder](Console.live)
-            )
+            }
         opt <- RIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
         _   <- RIO.collectAll(opt.map(m => client.send(q)(m)))
       } yield z
@@ -320,6 +319,7 @@ create and offer/send metrics to the queue. Here's a sample of how it's used.
   def program(r: Long)(implicit queue: Queue[Metric]) =
     for {
       _  <- statsDClient.listen
+      clock <- RIO.environment[Clock]
       t1 <- clock.get.currentTime(TimeUnit.MILLISECONDS)
       _  <- statsDClient.increment("zmetrics.counter", 0.9)
       _  <- putStrLn(s"waiting for $r ms") *> clock.get.sleep(Duration(r, TimeUnit.MILLISECONDS))
@@ -373,10 +373,7 @@ Since we need a different `Encoder` for DogStatsD than for StatsD, we'll have to
 create a new runtime to support it.
 
 ```scala mdoc:silent
-  val rtDog = Runtime(
-    new DogStatsDEncoder with Console.Live with Clock.Live,
-    PlatformLive.Default
-  )
+  val rtDog = Runtime.unsafeFromLayer(Encoder.dogstatsd ++ Console.live ++ Clock.live)
   
   def main2(args: Array[String]): Unit = {
     val timeouts = Seq(34L, 76L, 52L)
