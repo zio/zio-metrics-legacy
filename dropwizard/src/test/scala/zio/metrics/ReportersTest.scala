@@ -12,9 +12,7 @@ import com.codahale.metrics.MetricRegistry
 
 object ReportersTest extends App {
 
-  val rt = Runtime.default
-
-  val dropwizardLayer = Registry.live ++ Reporters.live
+  val rt = Runtime.unsafeFromLayer(Registry.live ++ Reporters.live)
 
   val tests: RIO[
     Registry with Reporters,
@@ -40,7 +38,7 @@ object ReportersTest extends App {
 
   override def run(args: List[String]) = {
     println("Starting tests")
-    val json = rt.unsafeRun(tests.provideLayer(dropwizardLayer) >>= (r => DropwizardExtractor.writeJson(r)(None)))
+    val json = rt.unsafeRun(tests >>= (r => DropwizardExtractor.writeJson(r)(None)))
     RIO.sleep(Duration.fromScala(30.seconds))
     putStrLn(json.spaces2).map(_ => 0)
   }

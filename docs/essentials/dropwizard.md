@@ -10,11 +10,11 @@ Required imports for presented snippets:
 
 ```scala mdoc:silent
 import zio.{ RIO, Runtime, Task }
-import zio.internal.PlatformLive
 import com.codahale.metrics.{ MetricRegistry, Counter => DWCounter }
 import zio.metrics.{ Label => ZLabel, Show }
 import zio.metrics.dropwizard._
 import zio.metrics.dropwizard.helpers._
+import zio.metrics.dropwizard.reporters._
 import com.codahale.metrics.UniformReservoir
 import com.codahale.metrics.ExponentiallyDecayingReservoir
 import com.codahale.metrics.SlidingTimeWindowArrayReservoir
@@ -28,13 +28,11 @@ import scala.concurrent.duration._
 import zio.duration.Duration
 ```
 
-We will also provide our own `Runtime`:
+We will also provide our own `Runtime` which will use ZIOMetric Dropwizard's
+`Registry` layer  plus its Reporters layer plus ZIO's `Console` layer:
 
 ```scala mdoc:silent
-  val rt = Runtime(
-    new DropwizardRegistry with DropwizardReporters with Console.Live,
-    PlatformLive.Default
-  )
+  val rt = Runtime.unsafeFromLayer(Registry.live ++ Reporters.live ++ Console.live)
 ```
 
 We will assume the reader has working knowledge for Prometheus already, if
@@ -54,15 +52,15 @@ zio-metrics
 methods. We'll start using environmental effects until the `Helper` methods are introduced:
 
 ```scala mdoc:silent
-  val testRegistry: RIO[DropwizardRegistry, (MetricRegistry, Counter)] = for {
-    dwr <- RIO.environment[DropwizardRegistry]
-    dwc <- dwr.registry.registerCounter(ZLabel("DropwizardTests", Array("test", "counter")))
+  val testRegistry: RIO[Registry, (MetricRegistry, Counter)] = for {
+    dwr <- RIO.environment[Registry]
+    dwc <- dwr.get.registerCounter(ZLabel("DropwizardTests", Array("test", "counter")))
     c   <- Task(new Counter(dwc))
-    r   <- dwr.registry.getCurrent()
+    r   <- dwr.get.getCurrent()
   } yield (r, c)
 ```
 
-All `register*` methods in `DropwizardRegistry` require a `Label` object  (some
+All `register*` methods in `Registry` require a `Label` object  (some
 may require more parameters). A label is composed of a name and an array of
 labels which may be empty in the case where no labels are required.
 
@@ -77,9 +75,9 @@ returns the `MetricsRegistry` which is needed by all `Reporters`.
 
 Using the registry helper the above function becomes:
 ```scala mdoc:silent
-  val testRegistryHelper: RIO[DropwizardRegistry, (MetricRegistry, DWCounter)] = for {
-    c   <- registry.registerCounter("DropwizardRegistryHelper", Array("test", "counter"))
-    r   <- registry.getCurrent()
+  val testRegistryHelper: RIO[Registry, (MetricRegistry, DWCounter)] = for {
+    c   <- registerCounter("RegistryHelper", Array("test", "counter"))
+    r   <- getCurrentRegistry()
   } yield (r, c)
 ```
 
@@ -88,22 +86,22 @@ Counter has methods to increase a counter by 1 or by an arbitrary double
 passed as a parameter along with optional labels.
 
 ```scala mdoc:silent
-  val testCounter: RIO[DropwizardRegistry, MetricRegistry] = for {
+  val testCounter: RIO[Registry, MetricRegistry] = for {
     c   <- counter.register("DropwizardCounter")
     _   <- c.inc()
     _   <- c.inc(2.0)
-    r   <- registry.getCurrent()
+    r   <- getCurrentRegistry()
   } yield r
 ```
 
 Or with labels:
 
 ```scala mdoc:silent
-  val testLabeledCounter: RIO[DropwizardRegistry, MetricRegistry] = for {
+  val testLabeledCounter: RIO[Registry, MetricRegistry] = for {
     c   <- counter.register("DropwizardCounterHelper", Array("test", "counter"))
     _   <- c.inc()
     _   <- c.inc(2.0)
-    r   <- registry.getCurrent()
+    r   <- getCurrentRegistry()
   } yield r
 ```
 
@@ -130,9 +128,9 @@ long-running) function `() => A` such as `def currentTemperature(): Double` or
 ```scala mdoc:silent
   val tester: () => Long = () => System.nanoTime()
   
-  val testGauge: RIO[DropwizardRegistry, (MetricRegistry, Long)] = for {
+  val testGauge: RIO[Registry, (MetricRegistry, Long)] = for {
     g <- gauge.register("DropwizardGauge", Array("test", "gauge"), tester)
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
     l <- g.getValue[Long]()
   } yield (r, l)
 ```
@@ -151,11 +149,12 @@ results:
 
 ```scala mdoc:silent
   val str = for {
-    dwr <- RIO.environment[DropwizardRegistry]
-    j   <- DropwizardExtractor.writeJson(dwr)(None)
-  } yield j.spaces2
+    r <- getCurrentRegistry()
+    j <- DropwizardExtractor.writeJson(r)(None)
+    _ <- putStrLn(j.spaces2)
+  } yield ()
 
-  rt.unsafeRun(str >>= putStrLn)
+  rt.unsafeRun(str)
 ```
 
 Let's discuss `Reporters` next.
@@ -179,14 +178,13 @@ Let's combine a couple of them:
 
 ```scala mdoc:silent
   val tests: RIO[
-    DropwizardRegistry with DropwizardReporters,
-    DropwizardRegistry
+    Registry with Reporters,
+    MetricRegistry
   ] =
     for {
-      dwr <- RIO.environment[DropwizardRegistry]
-      r   <- dwr.registry.getCurrent()
-      _   <- reporters.jmx(r)  // JMX reporter
-      _   <- reporters.console(r, 2, TimeUnit.SECONDS)  // Console reporter
+      r   <- getCurrentRegistry()
+      _   <- jmx(r)  // JMX reporter
+      _   <- console(r, 2, TimeUnit.SECONDS)  // Console reporter
       c   <- counter.register("DropwizardTestsReporter", Array("test", "counter"))
       _   <- c.inc()
       _   <- c.inc(2.0)
@@ -199,12 +197,11 @@ Let's combine a couple of them:
               Thread.sleep(1200L)
             )
           )(_ => t.stop(ctx))
-    } yield dwr
+    } yield r
 
   def run(args: List[String]) = {
-    println("Starting tests")
-    val json = rt.unsafeRun(tests >>= (dwr =>
-    DropwizardExtractor.writeJson(dwr)(None))) // JSON Registry Printer
+    val json = rt.unsafeRun(tests >>= (r =>
+    DropwizardExtractor.writeJson(r)(None))) // JSON Registry Printer
     RIO.sleep(Duration.fromScala(60.seconds))
     putStrLn(json.spaces2).map(_ => 0)
   }
@@ -216,7 +213,7 @@ whatever), and then prints the registry as JSON.
 
 Also note that the second parameter of `writeJson` is a `filter` of type
 `Option[String]`. `None` as we used here, means `no filter` and is equivalent to
-Dropwizard's `MetricFilter.ALL`. You can use `DropwizardRegistry.makeFilter` to
+Dropwizard's `MetricFilter.ALL`. You can use `Registry.makeFilter` to
 defines different filters.
 
 ## Histogram
@@ -228,10 +225,10 @@ histograms](https://metrics.dropwizard.io/4.0.0/manual/core.html#histograms),
 based on the `Reservoir` type with `Uniform Reservoir` being the default type.
 
 ```scala mdoc:silent
-  val testHistogram: RIO[DropwizardRegistry, MetricRegistry] = for {
+  val testHistogram: RIO[Registry, MetricRegistry] = for {
     h <- histogram.register("DropwizardHistogram", Array("test", "histogram"))
     _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 ```
 
@@ -241,10 +238,10 @@ course you can pass your customized `Reservoir`, here we specify a sample size
 of 512:
 
 ```scala mdoc:silent
-  val testUniformHistogram: RIO[DropwizardRegistry, MetricRegistry] = for {
+  val testUniformHistogram: RIO[Registry, MetricRegistry] = for {
     h <- histogram.register("DropwizardUniformHistogram", Array("uniform", "histogram"), new UniformReservoir(512))
     _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 ```
 
@@ -255,20 +252,20 @@ margin of error (assuming a normal distribution) and heavily biases the
 reservoir to the past 5 minutes of measurements:
 
 ```scala mdoc:silent
-  val testExponentialHistogram: RIO[DropwizardRegistry, MetricRegistry] = for {
+  val testExponentialHistogram: RIO[Registry, MetricRegistry] = for {
     h <- histogram.register("DropwizardExponentialHistogram", Array("exponential", "histogram"), new ExponentiallyDecayingReservoir)
     _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 ```
 
 Here's an example of a customized  `SlidingTimeWindowArrayReservoir`:
 
 ```scala mdoc:silent
-  val testSlidingTimeWindowHistogram: RIO[DropwizardRegistry, MetricRegistry] = for {
+  val testSlidingTimeWindowHistogram: RIO[Registry, MetricRegistry] = for {
     h <- histogram.register("DropwizardSlidingHistogram", Array("sliding", "histogram"), new SlidingTimeWindowArrayReservoir(30, TimeUnit.SECONDS))
     _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 ```
 
@@ -280,10 +277,10 @@ which stores only the emasurements made in the las 30 seconds.
 Measures the rate at which a set of events occur:
 
 ```scala mdoc:silent
-  val testMeter: RIO[DropwizardRegistry, MetricRegistry] = for {
+  val testMeter: RIO[Registry, MetricRegistry] = for {
     m <- meter.register("DropwizardMeter", Array("test", "meter"))
     _ <- RIO.foreach(Seq(1L, 2L, 3L, 4L, 5L))(m.mark(_))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 ```
 
@@ -294,8 +291,8 @@ A `Timer` is basically a `histogram` of the duration of a type of event and a `m
 of the rate of its occurrence.
 
 ```scala mdoc:silent
-  val testTimer: RIO[DropwizardRegistry, (MetricRegistry, List[Long])] = for {
-    r   <- registry.getCurrent()
+  val testTimer: RIO[Registry, (MetricRegistry, List[Long])] = for {
+    r   <- getCurrentRegistry()
     t   <- timer.register("DropwizardTimer", Array("test", "timer"))
     ctx <- t.start()
     l <- RIO.foreach(
@@ -333,7 +330,7 @@ support Scala 2.11 use `Cats 1.x` but the current `zio-interop-cats` uses `Cats
 ZIo-Metrics defines the `Server.builder` method and a `MetricsService` module.
 Between the two, you get a basic Http Server and the functionality to receive a
 `filter` and obtain the curent contents of a `MetricRegistry` as JSON. All you
-have to do is define a function that takes a `DropWizardRegistry` module and
+have to do is define a function that takes a `MetricRegistry` and
 returns an http4s`Router` object:
 
 ```scala mdoc:silent
@@ -341,33 +338,25 @@ returns an http4s`Router` object:
   import org.http4s.implicits._
   import org.http4s.server.Router
   import zio.metrics.dropwizard.Server._
-  import zio.metrics.dropwizard.DropwizardMetricsService.service
 
   val httpApp =
-    (registry: DropwizardRegistry) =>
+    (registry: MetricRegistry) =>
       Router(
-        "/metrics" -> service.serveMetrics(registry)
+        "/metrics" -> Server.serveMetrics(registry)
       ).orNotFound
 ```
 
 For measuring, we can reuse our testing function from the `Reporters` section:
 
 ```scala mdoc:silent
-
-  import zio.clock.Clock
-  import zio.random.Random
-  import zio.blocking.Blocking
-  import zio.system.System
-
   val testServer: RIO[
-    DropwizardRegistry with DropwizardReporters,
-    DropwizardRegistry
+    Registry with Reporters,
+    MetricRegistry
   ] =
     for {
-      dwr <- RIO.environment[DropwizardRegistry]
-      r   <- dwr.registry.getCurrent()
-      _   <- reporters.jmx(r)
-      _   <- reporters.console(r, 30, TimeUnit.SECONDS)
+      r   <- getCurrentRegistry()
+      _   <- jmx(r)
+      _   <- helpers.console(r, 30, TimeUnit.SECONDS) // to differentiate from zio.console
       c   <- counter.register("DropwizardServerTests", Array("test", "counter"))
       _   <- c.inc()
       _   <- c.inc(2.0)
@@ -380,30 +369,21 @@ For measuring, we can reuse our testing function from the `Reporters` section:
               Thread.sleep(1200L)
             )
           )(_ => t.stop(ctx))
-    } yield dwr
+    } yield r
 ```
 
 finally, we just have to call `Server.builder` and provide the environment:
 
 ```scala mdoc:silent
   def runServer(args: List[String]) = {
-    val kApp: Task[KleisliApp] = testServer.map(r => httpApp(r)).provideSome(_ => {
-      new DropwizardRegistry with DropwizardReporters
-    })
+    val kApp: Task[KleisliApp] = testServer
+      .map(r => httpApp(r))
+      .provideLayer(Registry.live ++ Reporters.live)
 
     val app: RIO[HttpEnvironment, Unit] = kApp >>= builder
 
     app
       .catchAll(t => putStrLn(s"$t"))
-      .provideSome[HttpEnvironment] { rt =>
-        new Clock with Console with System with Random with Blocking {
-          override val clock: Clock.Service[Any]       = rt.clock
-          override val console: Console.Service[Any]   = rt.console
-          override val system: System.Service[Any]     = rt.system
-          override val random: Random.Service[Any]     = rt.random
-          override val blocking: Blocking.Service[Any] = rt.blocking
-        }
-      }
       .run
       .map(r => { println(s"Exiting $r"); 0})
   }
