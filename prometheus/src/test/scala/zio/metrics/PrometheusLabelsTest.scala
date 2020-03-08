@@ -16,9 +16,8 @@ import zio.clock.Clock
 
 object PrometheusLabelsTest {
 
-  val rt = Runtime.default
-
-  val prometheusLayer = Registry.live ++ Exporters.live ++ Console.live ++ Clock.live
+  val rt = Runtime
+    .unsafeFromLayer(Registry.live ++ Exporters.live ++ Console.live ++ Clock.live)
 
   val testCounter: RIO[Registry, CollectorRegistry] = for {
     c <- Counter("simple_counter", Array("method", "resource"))
