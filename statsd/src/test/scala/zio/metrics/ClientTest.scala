@@ -3,24 +3,19 @@ package zio.metrics
 import zio.{ RIO, Runtime, Task }
 import zio.clock.Clock
 import zio.console._
-import zio.internal.PlatformLive
-import zio.metrics.statsd._
+import zio.metrics.encoders._
 import zio.Chunk
-import zio.metrics.statsd.StatsDEncoder
 
 object ClientTest {
 
-  val rt = Runtime(
-    new StatsDEncoder with Console.Live with Clock.Live,
-    PlatformLive.Default
-  )
+  val rt = Runtime.unsafeFromLayer(Encoder.statsd ++ Console.live ++ Clock.live)
 
   val myudp: List[Metric] => RIO[Encoder with Console, List[Long]] = msgs =>
     for {
       sde <- RIO.environment[Encoder]
-      opt <- RIO.traverse(msgs)(sde.encoder.encode(_))
+      opt <- RIO.foreach(msgs)(sde.get.encode(_))
       _   <- putStrLn(s"udp: $opt")
-      l   <- RIO.sequence(opt.flatten.map(s => UDPClient.clientM.use(_.write(Chunk.fromArray(s.getBytes())))))
+      l   <- RIO.collectAll(opt.flatten.map(s => UDPClient.clientM.use(_.write(Chunk.fromArray(s.getBytes())))))
     } yield l
 
   val program = {
@@ -29,24 +24,18 @@ object ClientTest {
     client.queue >>= (queue => {
       implicit val q = queue
       for {
-        z <- client.listen[List, Long](
-              myudp(_).provideSome[Encoder](
-                env =>
-                  new StatsDEncoder with Console.Live {
-                    override val encoder = env.encoder
-                  }
-              )
-            )
+        f <- client.listen[List, Long] { l =>
+              myudp(l).provideSomeLayer[Encoder](Console.live)
+            }
         _   <- putStrLn(s"implicit queue: $q")
-        opt <- RIO.traverse(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
-        _   <- RIO.sequence(opt.map(m => client.send(q)(m)))
-      } yield z
+        opt <- RIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
+        _   <- RIO.collectAll(opt.map(m => client.sendAsync(q)(m)))
+        _   <- f.join
+      } yield queue
     })
   }
 
-  def main(args: Array[String]): Unit = {
-    rt.unsafeRun(program >>= (lst => putStrLn(s"Main: $lst").provideSome(_ => Console.Live)))
-    Thread.sleep(10000)
-  }
+  def main(args: Array[String]): Unit =
+    rt.unsafeRun(program >>= (q => q.shutdown *> putStrLn("Bye bye").provideSomeLayer(Console.live)))
 
 }

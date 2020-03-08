@@ -4,41 +4,36 @@ import testz.{ assert, Harness, PureHarness }
 
 import zio.{ RIO, Runtime }
 import zio.console._
-import zio.internal.PlatformLive
-
-import zio.metrics.statsd._
+import zio.metrics.encoders._
 
 object StatsDEncoderTest {
 
-  val rt = Runtime(
-    new StatsDEncoder with Console.Live,
-    PlatformLive.Default
-  )
+  val rt = Runtime.unsafeFromLayer(Encoder.statsd ++ Console.live)
 
-  val encode: Metric => RIO[StatsDEncoder, Option[String]] = metric =>
+  val encode: Metric => RIO[Encoder, Option[String]] = metric =>
     for {
-      sde   <- RIO.environment[StatsDEncoder]
-      coded <- sde.encoder.encode(metric)
+      sde   <- RIO.environment[Encoder]
+      coded <- sde.get.encode(metric)
     } yield coded
 
-  val testCounter: RIO[StatsDEncoder, (Option[String], Option[String])] = for {
+  val testCounter: RIO[Encoder, (Option[String], Option[String])] = for {
     enc1 <- encode(Counter("foobar", 1.0, 1.0, Seq.empty[Tag]))
     enc2 <- encode(Counter("foobar", 1.0, sampleRate = 0.5, Seq.empty[Tag]))
   } yield (enc1, enc2)
 
-  val testGauge: RIO[StatsDEncoder, Option[String]] = for {
+  val testGauge: RIO[Encoder, Option[String]] = for {
     enc <- encode(Gauge(name = "foobar", value = 1.0, Seq.empty[Tag]))
   } yield enc
 
-  val testTimer: RIO[StatsDEncoder, Option[String]] = for {
+  val testTimer: RIO[Encoder, Option[String]] = for {
     enc <- encode(Timer(name = "foobar", value = 1.0, sampleRate = 1.0, Seq.empty[Tag]))
   } yield enc
 
-  val testMeter: RIO[StatsDEncoder, Option[String]] = for {
+  val testMeter: RIO[Encoder, Option[String]] = for {
     enc <- encode(Meter(name = "foobar", value = 1.0, Seq.empty[Tag]))
   } yield enc
 
-  val testSet: RIO[StatsDEncoder, Option[String]] = for {
+  val testSet: RIO[Encoder, Option[String]] = for {
     enc <- encode(Set(name = "foobar", value = "barfoo", Seq.empty[Tag]))
   } yield enc
 

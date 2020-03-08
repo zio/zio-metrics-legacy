@@ -1,10 +1,10 @@
 package zio.metrics.prometheus
 
 import zio.{ RIO, Task, UIO }
-import zio.metrics.prometheus.PrometheusRegistry.{ Percentile, Tolerance }
+import zio.metrics.prometheus.Registry.{ Percentile, Tolerance }
 import io.prometheus.client.{ Counter => PCounter, Gauge => PGauge }
 import io.prometheus.client.{ Histogram => PHistogram, Summary => PSummary }
-import zio.metrics.prometheus.helpers.registry
+import zio.metrics.prometheus.helpers._
 
 sealed trait Metric {}
 
@@ -21,9 +21,9 @@ class Counter(private val pCounter: PCounter) extends Metric {
 }
 
 object Counter {
-  def apply(name: String, labels: Array[String]): RIO[PrometheusRegistry, Counter] =
+  def apply(name: String, labels: Array[String]): RIO[Registry, Counter] =
     for {
-      c <- registry.registerCounter(name, labels)
+      c <- registerCounter(name, labels)
     } yield new Counter(c)
 }
 
@@ -85,9 +85,9 @@ class Gauge(private val pGauge: PGauge) extends Metric {
 }
 
 object Gauge {
-  def apply(name: String, labels: Array[String]): RIO[PrometheusRegistry, Gauge] =
+  def apply(name: String, labels: Array[String]): RIO[Registry, Gauge] =
     for {
-      g <- registry.registerGauge(name, labels)
+      g <- registerGauge(name, labels)
     } yield new Gauge(g)
 }
 
@@ -136,9 +136,9 @@ class Histogram(private val pHistogram: PHistogram) extends Metric {
 }
 
 object Histogram {
-  def apply(name: String, labels: Array[String], buckets: Buckets): RIO[PrometheusRegistry, Histogram] =
+  def apply(name: String, labels: Array[String], buckets: Buckets): RIO[Registry, Histogram] =
     for {
-      h <- registry.registerHistogram(name, labels, buckets)
+      h <- registerHistogram(name, labels, buckets)
     } yield new Histogram(h)
 }
 
@@ -192,8 +192,8 @@ object Summary {
     name: String,
     labels: Array[String],
     percentiles: List[(Percentile, Tolerance)]
-  ): RIO[PrometheusRegistry, Summary] =
+  ): RIO[Registry, Summary] =
     for {
-      s <- registry.registerSummary(name, labels, percentiles)
+      s <- registerSummary(name, labels, percentiles)
     } yield new Summary(s)
 }

@@ -1,17 +1,19 @@
 package zio.metrics
 
-import zio.{ Chunk, Fiber, Queue, RIO, Schedule, Task, URIO }
+import zio.{ Chunk, Fiber, Queue, RIO, Task, URIO }
 import zio.clock.Clock
-import zio.console.Console
+import zio.console._
 import zio.duration.DurationSyntax
-import zio.stream.{ Sink, ZStream }
+import zio.stream.ZStream
+import zio.duration.Duration
+import zio.metrics.encoders._
+
 import java.util.concurrent.ThreadLocalRandom
 
 class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int, host: Option[String], port: Option[Int]) {
 
-  val queue    = Queue.bounded[Metric](queueCapacity)
-  val everyNms = Schedule.spaced(new DurationSyntax(timeout).millis)
-  val sink     = Sink.collectAllN[Metric](bufferSize)
+  val queue                             = Queue.bounded[Metric](queueCapacity)
+  private val duration: Duration.Finite = new DurationSyntax(timeout).millis
 
   val udpClient = (host, port) match {
     case (None, None)       => UDPClient.clientM
@@ -36,8 +38,8 @@ class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int, ho
     for {
       sde  <- RIO.environment[Encoder]
       flt  <- sample(metrics)
-      msgs <- RIO.traverse(flt)(sde.encoder.encode(_))
-      lngs <- RIO.sequence(msgs.flatten.map(s => udpClient.use(_.write(Chunk.fromArray(s.getBytes())))))
+      msgs <- RIO.foreach(flt)(sde.get.encode(_))
+      lngs <- RIO.collectAll(msgs.flatten.map(s => udpClient.use(_.write(Chunk.fromArray(s.getBytes())))))
     } yield lngs
 
   def listen(implicit queue: Queue[Metric]): URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
@@ -46,23 +48,25 @@ class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int, ho
   def listen[F[_], A](
     f: List[Metric] => RIO[Encoder, F[A]]
   )(implicit queue: Queue[Metric]): URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
-    ZStream
-      .fromQueue(queue)
-      .aggregateAsyncWithin(sink, everyNms)
-      //.tap(l => putStrLn(s"Selected: $l"))
-      .mapM(l => f(l))
-      .runDrain
-      .fork
+    putStrLn("Listening...") *>
+      ZStream
+        .fromQueue(queue)
+        .groupedWithin(bufferSize, duration)
+        .tap(l => putStrLn(s"Selected: $l"))
+        .mapM(l => f(l))
+        .runDrain
+        .fork
 
   val send: Queue[Metric] => Metric => Task[Unit] = q =>
     metric =>
       for {
-        _ <- q.offer(metric) //.fork
+        _ <- q.offer(metric)
       } yield ()
 
   val sendAsync: Queue[Metric] => Metric => Task[Unit] = q =>
     metric =>
       for {
+        _ <- putStrLn(s"Sending... $q").provideLayer(Console.live)
         _ <- q.offer(metric).fork
       } yield ()
 }

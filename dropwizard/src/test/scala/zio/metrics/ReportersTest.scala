@@ -2,29 +2,26 @@ package zio.metrics
 
 import zio.metrics.dropwizard._
 import zio.metrics.dropwizard.helpers._
+import zio.metrics.dropwizard.reporters._
 import zio.{ App, RIO, Runtime }
-import zio.internal.PlatformLive
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 import zio.console._
 import zio.duration.Duration
+import com.codahale.metrics.MetricRegistry
 
 object ReportersTest extends App {
 
-  val rt = Runtime(
-    new DropwizardRegistry with DropwizardReporters,
-    PlatformLive.Default
-  )
+  val rt = Runtime.unsafeFromLayer(Registry.live ++ Reporters.live)
 
   val tests: RIO[
-    DropwizardRegistry with DropwizardReporters,
-    DropwizardRegistry
+    Registry with Reporters,
+    MetricRegistry
   ] =
     for {
-      dwr <- RIO.environment[DropwizardRegistry]
-      r   <- dwr.registry.getCurrent()
-      _   <- reporters.jmx(r)
-      _   <- reporters.console(r, 2, TimeUnit.SECONDS)
+      r   <- getCurrentRegistry()
+      _   <- jmx(r)
+      _   <- console(r, 2, TimeUnit.SECONDS)
       c   <- counter.register(Show.fixClassName(DropwizardTest.getClass()), Array("test", "counter"))
       _   <- c.inc()
       _   <- c.inc(2.0)
@@ -37,11 +34,11 @@ object ReportersTest extends App {
               Thread.sleep(1200L)
             )
           )(_ => t.stop(ctx))
-    } yield dwr
+    } yield r
 
   override def run(args: List[String]) = {
     println("Starting tests")
-    val json = rt.unsafeRun(tests >>= (dwr => DropwizardExtractor.writeJson(dwr)(None)))
+    val json = rt.unsafeRun(tests >>= (r => DropwizardExtractor.writeJson(r)(None)))
     RIO.sleep(Duration.fromScala(30.seconds))
     putStrLn(json.spaces2).map(_ => 0)
   }

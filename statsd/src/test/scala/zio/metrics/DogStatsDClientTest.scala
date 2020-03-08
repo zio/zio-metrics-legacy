@@ -3,17 +3,14 @@ package zio.metrics
 import zio.{ Queue, RIO, Runtime, Schedule }
 import zio.clock.Clock
 import zio.console._
-import zio.internal.PlatformLive
 import java.util.concurrent.TimeUnit
 import zio.duration.Duration
 import zio.metrics.dogstatsd._
+import zio.metrics.encoders._
 
 object DogStatsDClientTest {
 
-  val rt = Runtime(
-    new DogStatsDEncoder with Console.Live with Clock.Live,
-    PlatformLive.Default
-  )
+  val rt = Runtime.unsafeFromLayer(Encoder.dogstatsd ++ Console.live ++ Clock.live)
 
   val schd = Schedule.recurs(10)
 
@@ -21,16 +18,17 @@ object DogStatsDClientTest {
 
   def program(r: Long)(implicit queue: Queue[Metric]) =
     for {
-      _  <- client.listen
-      t1 <- Clock.Live.clock.currentTime(TimeUnit.MILLISECONDS)
-      _  <- client.increment("zmetrics.dog.counter", 0.9)
-      _  <- putStrLn(s"waiting for $r ms") *> Clock.Live.clock.sleep(Duration(r, TimeUnit.MILLISECONDS))
-      t2 <- Clock.Live.clock.currentTime(TimeUnit.MILLISECONDS)
-      d  = (t2 - t1).toDouble
-      _  <- client.timer("zmetrics.dog.timer", d, 0.9)
-      _  <- client.histogram("zmetrics.dog.hist", d)
-      _  <- client.serviceCheck("zmetrics.dog.check", ServiceCheckOk)
-      _  <- client.event("zmetrics.dog.event", "something amazing happened")
+      clock <- RIO.environment[Clock]
+      _     <- client.listen
+      t1    <- clock.get.currentTime(TimeUnit.MILLISECONDS)
+      _     <- client.increment("zmetrics.dog.counter", 0.9)
+      _     <- putStrLn(s"waiting for $r ms") *> clock.get.sleep(Duration(r, TimeUnit.MILLISECONDS))
+      t2    <- clock.get.currentTime(TimeUnit.MILLISECONDS)
+      d     = (t2 - t1).toDouble
+      _     <- client.timer("zmetrics.dog.timer", d, 0.9)
+      _     <- client.histogram("zmetrics.dog.hist", d)
+      _     <- client.serviceCheck("zmetrics.dog.check", ServiceCheckOk)
+      _     <- client.event("zmetrics.dog.event", "something amazing happened")
     } yield ()
 
   def main(args: Array[String]): Unit = {
@@ -39,7 +37,7 @@ object DogStatsDClientTest {
       client.queue >>= (
         q =>
           RIO
-            .traverse(timeouts)(l => program(l)(q))
+            .foreach(timeouts)(l => program(l)(q))
             .repeat(schd)
         )
     )

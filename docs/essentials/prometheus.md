@@ -11,10 +11,10 @@ Required imports for presented snippets:
 ```scala mdoc:silent
 import zio.{ RIO, Runtime }
 import io.prometheus.client.CollectorRegistry
-import zio.internal.PlatformLive
 import zio.metrics.{ Label => ZLabel, Show }
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.helpers._
+import zio.metrics.prometheus.exporters._
 
 // also for printing debug messages to the console
 import zio.console.{ Console, putStrLn }
@@ -29,10 +29,8 @@ import java.util
 We will also provide our own `Runtime`:
 
 ```scala mdoc:silent
-  val rt = Runtime(
-    new PrometheusRegistry with PrometheusExporters with Console.Live with Clock.Live,
-    PlatformLive.Default
-  )
+  val rt = Runtime
+    .unsafeFromLayer(Registry.live ++ Exporters.live ++ Console.live ++ Clock.live)
 ```
 
 We include ALL 5 metrics in the `runtime` since we will see examples for each, normally you
@@ -55,14 +53,14 @@ zio-metrics
 methods. We'll start using environmental effects until the `Helper` methods are introduced:
 
 ```scala mdoc:silent
-  val testRegistry: RIO[PrometheusRegistry, CollectorRegistry] = for {
-    pr <- RIO.environment[PrometheusRegistry]
-    _  <- pr.registry.registerCounter(ZLabel("simple_counter", Array("method")))
-    r  <- pr.registry.getCurrent()
+  val testRegistry: RIO[Registry, CollectorRegistry] = for {
+    pr <- RIO.environment[Registry]
+    _  <- pr.get.registerCounter(ZLabel("simple_counter", Array("method")))
+    r  <- pr.get.getCurrent()
   } yield r
 ```
 
-All `register*` methods in `PrometheusRegistry` require a `Label` object  (some
+All `register*` methods in `Registry` require a `Label` object  (some
 may require more parameters). A label is composed of a name and an array of
 labels which may be empty in the case where no labels are required.
 
@@ -78,9 +76,9 @@ returns the `CollectorRegistry` which is needed by all `Exporters`.
 Using the registry helper the above function becomes:
 
 ```scala mdoc:silent
-  val testRegistryHelper: RIO[PrometheusRegistry, CollectorRegistry] = for {
-    _  <- registry.registerCounter("simple_counter", Array("method"))
-    r  <- registry.getCurrent()
+  val testRegistryHelper: RIO[Registry, CollectorRegistry] = for {
+    _  <- registerCounter("simple_counter", Array("method"))
+    r  <- getCurrentRegistry()
   } yield r
 ```
 
@@ -89,11 +87,11 @@ Counter has methods to increase a counter by 1 or by an arbitrary double
 passed as a parameter along with optional labels.
 
 ```scala mdoc:silent
-  val testCounter: RIO[PrometheusRegistry, CollectorRegistry] = for {
+  val testCounter: RIO[Registry, CollectorRegistry] = for {
     c <- Counter("simple_counter", Array.empty[String])
     _ <- c.inc()
     _ <- c.inc(2.0)
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 ```
 
@@ -101,11 +99,11 @@ If the counter is registered with labels, then you need to increase the counter
   passing the same number of labels when registered.
 
 ```scala mdoc:silent
-  val testLabeledCounter: RIO[PrometheusRegistry, CollectorRegistry] = for {
+  val testLabeledCounter: RIO[Registry, CollectorRegistry] = for {
     c  <- Counter("simple_counter_labeled", Array("method", "resource"))
     _  <- c.inc(Array("get", "users"))
     _  <- c.inc(2.0, Array("get", "users"))
-    r  <- registry.getCurrent()
+    r  <- getCurrentRegistry()
   } yield r
 ```
 
@@ -135,11 +133,11 @@ and gives us easy-to-use functions. Using them out `testCounter` example above
 becomes:
 
 ```scala mdoc:silent
-  val testCounterHelper: RIO[PrometheusRegistry, CollectorRegistry] = for {
+  val testCounterHelper: RIO[Registry, CollectorRegistry] = for {
     c <- counter.register("PrometheusTestHelper")
     _ <- c.inc()
     _ <- c.inc(2.0)
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 ```
 
@@ -158,13 +156,13 @@ Besides increasing, a gauge may also decrease and has methods to `set` and `get`
 values as well as to `setToTime` and `setToCurrentTime`. 
 
 ```scala mdoc:silent
-  val testGauge: RIO[PrometheusRegistry, (CollectorRegistry, Double)] = for {
+  val testGauge: RIO[Registry, (CollectorRegistry, Double)] = for {
     g  <- gauge.register("simple_gauge")
     _  <- g.inc()
     _  <- g.inc(2.0)
     _  <- g.dec(1.0)
     d  <- g.getValue()
-    r  <- registry.getCurrent()
+    r  <- getCurrentRegistry()
   } yield (r, d)
 ```
 
@@ -175,13 +173,13 @@ method](https://github.com/zio/zio-metrics/blob/master/prometheus/src/main/scala
 With labels it looks like this:
 
 ```scala mdoc:silent
-  val testLabeledGauge: RIO[PrometheusRegistry, (CollectorRegistry, Double)] = for {
+  val testLabeledGauge: RIO[Registry, (CollectorRegistry, Double)] = for {
     g  <- Gauge("simple_gauge", Array("method"))
     _  <- g.inc(Array("get"))
     _  <- g.inc(2.0, Array("get"))
     _  <- g.dec(1.0, Array("get"))
     d  <- g.getValue(Array("get"))
-    r  <- registry.getCurrent()
+    r  <- getCurrentRegistry()
   } yield (r, d)
 ```
 
@@ -225,19 +223,19 @@ given registry. Let's look at an example of how all this works.
   import io.prometheus.client.exporter.HTTPServer
   
   val exporterTest: RIO[
-    PrometheusRegistry with PrometheusExporters with Console,
+    Registry with Exporters with Console,
     HTTPServer
   ] =
     for {
-      r  <- registry.getCurrent()
-      _  <- exporters.initializeDefaultExports(r)
-      hs <- exporters.http(r, 9090)
+      r  <- getCurrentRegistry()
+      _  <- initializeDefaultExports(r)
+      hs <- http(r, 9090)
       c  <- Counter("ExportersTest", Array("exporter"))
       _  <- c.inc(Array("counter"))
       _  <- c.inc(2.0, Array("counter"))
       h  <- histogram.register("export_histogram", Array("exporter", "method"))
       _  <- h.time(() => Thread.sleep(2000), Array("histogram", "get"))
-      s  <- exporters.write004(r)
+      s  <- write004(r)
       _  <- putStrLn(s)
     } yield hs
 
@@ -265,10 +263,10 @@ Using a histogram to `time` a function is pretty much what was shown on the
 want to time:
 
 ```scala mdoc:silent
-  val testHistogramTimer: RIO[PrometheusRegistry, CollectorRegistry] = for {
+  val testHistogramTimer: RIO[Registry, CollectorRegistry] = for {
     h <- histogram.register("simple_histogram_timer", Array("method"))
     _ <- h.time(() => Thread.sleep(2000), Array("post"))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 ```
 
@@ -277,10 +275,10 @@ buckets](https://prometheus.github.io/client_java/io/prometheus/client/Histogram
 , for instance, we can use `Linear Buckets` with the function above:
 
 ```scala mdoc:silent
-  val testHistogramTimerHelper: RIO[PrometheusRegistry, CollectorRegistry] = for {
+  val testHistogramTimerHelper: RIO[Registry, CollectorRegistry] = for {
     h <- Histogram("simple_histogram_time_custom", Array("method"), LinearBuckets(1, 2, 5))
     _ <- h.time(() => Thread.sleep(2000), Array("post"))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 ```
 
@@ -298,15 +296,15 @@ You can, of course, verify the usual way:
 or simpler using our `exporters` helper:
 ```scala mdoc:silent
   val rhtE = rt.unsafeRun(testHistogramTimerHelper)
-  exporters.write004(rhtE)
+  write004(rhtE)
 ```
 
 If, instead, we want to measure arbitrary values:
 ```scala mdoc:silent
-  val testHistogram: RIO[PrometheusRegistry, CollectorRegistry] = for {
+  val testHistogram: RIO[Registry, CollectorRegistry] = for {
     h <- histogram.register("simple_histogram", Array("method"))
     _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.observe(_, Array("get")))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 ```
 
@@ -318,10 +316,10 @@ etc.) and `Array("get")` is the specic label for the current observation.
 We can override the `DefaultBuckets` so:
 
 ```scala mdoc:silent
-  val testHistogramBuckets: RIO[PrometheusRegistry, CollectorRegistry] = for {
+  val testHistogramBuckets: RIO[Registry, CollectorRegistry] = for {
     h <- histogram.register("simple_histogram", Array("method"), DefaultBuckets(Seq(10, 20, 30, 40, 50)))
     _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.observe(_, Array("get")))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 ```
 
@@ -336,7 +334,7 @@ when `startTimer` was called and each time we `observeDuration`.
     RIO.sleep(Duration.fromScala(n.millis)) *> putStrLn(s"n = $n")
   }
 
-  val testHistogramDuration: RIO[PrometheusRegistry with Console with Clock, CollectorRegistry] = for {
+  val testHistogramDuration: RIO[Registry with Console with Clock, CollectorRegistry] = for {
     h <- Histogram("duration_histogram", Array("method"), ExponentialBuckets(0.25, 2, 5))
     t <- h.startTimer(Array("time"))
     dl <- RIO.foreach(List(75L, 750L, 2000L))(
@@ -347,7 +345,7 @@ when `startTimer` was called and each time we `observeDuration`.
              } yield d
          )
     _ <- RIO.foreach(dl)(d => putStrLn(d.toString()))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 ```
 
@@ -365,16 +363,16 @@ aquisition, use and release of the timer and the task execution.
 ```scala mdoc:silent
   import zio.Task
   
-  val testHistogramTask: RIO[PrometheusRegistry, (CollectorRegistry, Double, String)] = for {
+  val testHistogramTask: RIO[Registry, (CollectorRegistry, Double, String)] = for {
     h     <- Histogram("task_histogram_timer", Array.empty[String], DefaultBuckets(Seq.empty[Double]))
     (d,s) <- h.time(Task{Thread.sleep(2000); "Success"})
-    r     <- registry.getCurrent()
+    r     <- getCurrentRegistry()
   } yield (r, d, s)
 
-  val testHistogramTask2: RIO[PrometheusRegistry, (CollectorRegistry, String)] = for {
+  val testHistogramTask2: RIO[Registry, (CollectorRegistry, String)] = for {
     h <- histogram.register("task_histogram_timer_")
     a <- h.time_(Task{Thread.sleep(2000); "Success"})
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield (r, a)
 ```
 
@@ -382,7 +380,7 @@ Now lets inspect our values by `tap`ping our `RIO`. Add ` with Clock.Live`
  to the runtime `rt` before executing the following code.
 
 ```scala mdoc:silent
-  rt.unsafeRun(testHistogramDuration.tap(r => exporters.write004(r).map(println)))
+  rt.unsafeRun(testHistogramDuration.tap(r => write004(r).map(println)))
 ```
 
 Please note there's no reason to use `tap` here, its just to demonstrate that we
@@ -391,7 +389,7 @@ might as well just use
 
 ```
   val rhd = rt.unsafeRun(testHistogramDuration)
-  exporters.write004(rhd)
+  write004(rhd)
 ```
 
 instead or any other way we've seen of observing our `CollectoRegistry`.
@@ -407,10 +405,10 @@ Percentile](https://prometheus.io/docs/practices/histograms/#quantiles)
 documentation for more information.
 
 ```scala mdoc:silent
-  val testSummary: RIO[PrometheusRegistry, CollectorRegistry] = for {
+  val testSummary: RIO[Registry, CollectorRegistry] = for {
     s  <- Summary("simple_summary", Array("method"), List((0.5, 0.05), (0.9, 0.01)))
     _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(s.observe(_, Array("put")))
-    r  <- registry.getCurrent()
+    r  <- getCurrentRegistry()
   } yield r
 ```
 
@@ -418,16 +416,16 @@ Just like `Histogram` it has methods `time` and `time_` that take a `Task` or
 `RIO` as input.
 
 ```scala mdoc:silent
-  val testSummaryTask: RIO[PrometheusRegistry, CollectorRegistry] = for {
+  val testSummaryTask: RIO[Registry, CollectorRegistry] = for {
     s <- summary.register("task_summary_timer")
     _ <- s.time(Task(Thread.sleep(2000)))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 
-  val testSummaryTask2: RIO[PrometheusRegistry, CollectorRegistry] = for {
+  val testSummaryTask2: RIO[Registry, CollectorRegistry] = for {
     s <- summary.register("task_summary_timer_")
     _ <- s.time_(Task(Thread.sleep(2000)))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 ```
 
