@@ -1,9 +1,11 @@
-package zio
+package zio.metrics
 
 import java.text.DecimalFormat
 import java.time.Instant
 
-package object metrics {
+import zio.{ Has, Task, ZLayer }
+
+object encoders {
 
   type Encoder = Has[Encoder.Service[Metric]]
 

@@ -77,7 +77,7 @@ object PrometheusLabelsTest {
       test("counter increases by `inc` amount") { () =>
         val set: util.Set[String] = new util.HashSet[String]()
         set.add("simple_counter")
-        val r = rt.unsafeRun(testCounter.provideLayer(prometheusLayer))
+        val r = rt.unsafeRun(testCounter)
         val counter = r
           .filteredMetricFamilySamples(set)
           .nextElement()
@@ -89,7 +89,7 @@ object PrometheusLabelsTest {
       test("gauge returns latest value") { () =>
         val set: util.Set[String] = new util.HashSet[String]()
         set.add("simple_gauge")
-        val r = rt.unsafeRun(testGauge.provideLayer(prometheusLayer))
+        val r = rt.unsafeRun(testGauge)
         val a1 = r._1
           .filteredMetricFamilySamples(set)
           .nextElement()
@@ -105,7 +105,7 @@ object PrometheusLabelsTest {
         set.add("simple_histogram_count")
         set.add("simple_histogram_sum")
 
-        val r     = rt.unsafeRun(testHistogram.provideLayer(prometheusLayer))
+        val r     = rt.unsafeRun(testHistogram)
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
         Result.combine(assert(count == 5.0), assert(sum == 163.3))
@@ -115,7 +115,7 @@ object PrometheusLabelsTest {
         set.add("simple_histogram_timer_count")
         set.add("simple_histogram_timer_sum")
 
-        val r     = rt.unsafeRun(testHistogramTimer.provideLayer(prometheusLayer))
+        val r     = rt.unsafeRun(testHistogramTimer)
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
 
@@ -126,7 +126,7 @@ object PrometheusLabelsTest {
         set.add("duration_histogram_count")
         set.add("duration_histogram_sum")
 
-        val r     = rt.unsafeRun(testHistogramDuration.provideLayer(prometheusLayer))
+        val r     = rt.unsafeRun(testHistogramDuration)
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
         Result.combine(assert(count == 3.0), assert(sum >= 4.1 && sum <= 5.0))
@@ -138,7 +138,7 @@ object PrometheusLabelsTest {
 
         val testExec = testSummary.tap(r => write004(r).map(println))
 
-        val r = rt.unsafeRun(testExec.provideLayer(prometheusLayer))
+        val r = rt.unsafeRun(testExec)
 
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value

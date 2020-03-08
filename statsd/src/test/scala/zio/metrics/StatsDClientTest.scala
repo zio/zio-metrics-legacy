@@ -3,9 +3,11 @@ package zio.metrics
 import zio.{ Queue, RIO, Runtime, Schedule }
 import zio.clock.Clock
 import zio.console._
+import zio.metrics.encoders._
 import zio.metrics.statsd._
-import java.util.concurrent.TimeUnit
 import zio.duration.Duration
+
+import java.util.concurrent.TimeUnit
 
 object StatsDClientTest {
 

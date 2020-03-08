@@ -76,15 +76,17 @@ The number of milliseconds between a start and end time.
 
 ```scala mdoc:silent
   import java.util.concurrent.TimeUnit
+  import zio.RIO
   import zio.clock.Clock
   import zio.duration.Duration
   
   for {
-      q  <- uioQueue
-      t1 <- Clock.Live.clock.currentTime(TimeUnit.MILLISECONDS)
-      _  <- Clock.Live.clock.sleep(Duration(75, TimeUnit.MILLISECONDS))
-      t2 <- Clock.Live.clock.currentTime(TimeUnit.MILLISECONDS)
-      _  <- client.timer("zmetrics.timer", (t2 - t1).toDouble, 0.9)(q)
+      q     <- uioQueue
+      clock <- RIO.environment[Clock]
+      t1    <- clock.get.currentTime(TimeUnit.MILLISECONDS)
+      _     <- clock.get.sleep(Duration(75, TimeUnit.MILLISECONDS))
+      t2    <- clock.get.currentTime(TimeUnit.MILLISECONDS)
+      _     <- client.timer("zmetrics.timer", (t2 - t1).toDouble, 0.9)(q)
   } yield ()
 ```
 
@@ -197,17 +199,12 @@ this is a base client, ZIO-Metrics-StatsD also provide `StatsD` and a
   import zio.{ RIO, Runtime, Task }
   import zio.clock.Clock
   import zio.console._
-  import zio.internal.PlatformLive
-  import zio.metrics.statsd._
   import zio.Chunk
-  import zio.metrics.statsd.StatsDEncoder
+  import zio.metrics.encoders._
 
   // Provide a runtime
-  val rt = Runtime(
-    new StatsDEncoder with Console.Live with Clock.Live,
-    PlatformLive.Default
-  )
-
+  val rt = Runtime.unsafeFromLayer(Encoder.statsd ++ Console.live ++ Clock.live)
+  
   val program = {
     val messages = List(1.0, 2.2, 3.4, 4.6, 5.1, 6.0, 7.9)
     val client   = Client()
@@ -215,8 +212,8 @@ this is a base client, ZIO-Metrics-StatsD also provide `StatsD` and a
       implicit val q = queue
       for {
         z <- client.listen          // uses implicit 'q'
-        opt <- RIO.traverse(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
-        _   <- RIO.sequence(opt.map(m => client.send(q)(m)))
+        opt <- RIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
+        _   <- RIO.collectAll(opt.map(m => client.send(q)(m)))
       } yield z
     })
   }
@@ -283,9 +280,9 @@ from `UDPClient`.
   val myudp: List[Metric] => RIO[Encoder with Console, List[Long]] = msgs =>
     for {
       sde <- RIO.environment[Encoder]
-      opt <- RIO.traverse(msgs)(sde.encoder.encode(_))
+      opt <- RIO.foreach(msgs)(sde.get.encode(_))
       _   <- putStrLn(s"udp: $opt")
-      l   <- RIO.sequence(opt.flatten.map(s => UDPClient.clientM.use(_.write(Chunk.fromArray(s.getBytes())))))
+      l   <- RIO.collectAll(opt.flatten.map(s => UDPClient.clientM.use(_.write(Chunk.fromArray(s.getBytes())))))
     } yield l
 ```
 
@@ -297,15 +294,10 @@ and we can use this instead of the default changing the `client.listen` call so:
       implicit val q = queue
       for {
         z <- client.listen[List, Long](
-              myudp(_).provideSome[Encoder](
-                env =>
-                  new StatsDEncoder with Console.Live {
-                    override val encoder = env.encoder
-                  }
-              )
+              myudp(l).provideSomeLayer[Encoder](Console.live)
             )
-        opt <- RIO.traverse(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
-        _   <- RIO.sequence(opt.map(m => client.send(q)(m)))
+        opt <- RIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
+        _   <- RIO.collectAll(opt.map(m => client.send(q)(m)))
       } yield z
     })
 ```
@@ -328,10 +320,10 @@ create and offer/send metrics to the queue. Here's a sample of how it's used.
   def program(r: Long)(implicit queue: Queue[Metric]) =
     for {
       _  <- statsDClient.listen
-      t1 <- Clock.Live.clock.currentTime(TimeUnit.MILLISECONDS)
+      t1 <- clock.get.currentTime(TimeUnit.MILLISECONDS)
       _  <- statsDClient.increment("zmetrics.counter", 0.9)
-      _  <- putStrLn(s"waiting for $r ms") *> Clock.Live.clock.sleep(Duration(r, TimeUnit.MILLISECONDS))
-      t2 <- Clock.Live.clock.currentTime(TimeUnit.MILLISECONDS)
+      _  <- putStrLn(s"waiting for $r ms") *> clock.get.sleep(Duration(r, TimeUnit.MILLISECONDS))
+      t2 <- clock.get.currentTime(TimeUnit.MILLISECONDS)
       _  <- statsDClient.timer("zmetrics.timer", (t2 - t1).toDouble, 0.9)
     } yield ()
 ```
@@ -345,7 +337,7 @@ We can reuse `rt`, the runtime created earlier to run our `program`:
       statsDClient .queue >>= (
         q =>
           RIO
-            .traverse(timeouts)(l => program(l)(q))
+            .foreach(timeouts)(l => program(l)(q))
             .repeat(schd)
         )
     )
@@ -364,10 +356,11 @@ supported by StatsD.
   def dogProgram(r: Long)(implicit queue: Queue[Metric]) =
     for {
       _  <- dogStatsDClient.listen
-      t1 <- Clock.Live.clock.currentTime(TimeUnit.MILLISECONDS)
+      clock <- RIO.environment[Clock]
+      t1 <- clock.get.currentTime(TimeUnit.MILLISECONDS)
       _  <- dogStatsDClient.increment("zmetrics.dog.counter", 0.9)
-      _  <- putStrLn(s"waiting for $r ms") *> Clock.Live.clock.sleep(Duration(r, TimeUnit.MILLISECONDS))
-      t2 <- Clock.Live.clock.currentTime(TimeUnit.MILLISECONDS)
+      _  <- putStrLn(s"waiting for $r ms") *> clock.get.sleep(Duration(r, TimeUnit.MILLISECONDS))
+      t2 <- clock.get.currentTime(TimeUnit.MILLISECONDS)
       d  = (t2 - t1).toDouble
       _  <- dogStatsDClient.timer("zmetrics.dog.timer", d, 0.9)
       _  <- dogStatsDClient.histogram("zmetrics.dog.hist", d)
@@ -391,7 +384,7 @@ create a new runtime to support it.
       dogStatsDClient .queue >>= (
         q =>
           RIO
-            .traverse(timeouts)(l => program(l)(q))
+            .foreach(timeouts)(l => program(l)(q))
             .repeat(schd)
         )
     )

@@ -5,8 +5,10 @@ import zio.clock.Clock
 import zio.console._
 import zio.duration.DurationSyntax
 import zio.stream.ZStream
-import java.util.concurrent.ThreadLocalRandom
 import zio.duration.Duration
+import zio.metrics.encoders._
+
+import java.util.concurrent.ThreadLocalRandom
 
 class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int, host: Option[String], port: Option[Int]) {
 

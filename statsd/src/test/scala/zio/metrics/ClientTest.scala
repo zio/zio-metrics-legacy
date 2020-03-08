@@ -3,7 +3,8 @@ package zio.metrics
 import zio.{ RIO, Runtime, Task }
 import zio.clock.Clock
 import zio.console._
-//import zio.Chunk
+import zio.metrics.encoders._
+import zio.Chunk
 
 object ClientTest {
 
@@ -11,12 +12,10 @@ object ClientTest {
 
   val myudp: List[Metric] => RIO[Encoder with Console, List[Long]] = msgs =>
     for {
-      _   <- putStrLn("Processing...``")
       sde <- RIO.environment[Encoder]
       opt <- RIO.foreach(msgs)(sde.get.encode(_))
       _   <- putStrLn(s"udp: $opt")
-      //l   <- RIO.collectAll(opt.flatten.map(s => UDPClient.clientM.use(_.write(Chunk.fromArray(s.getBytes())))))
-      l <- RIO.collectAll(opt.flatten.map(s => Task(s.length().toLong)))
+      l   <- RIO.collectAll(opt.flatten.map(s => UDPClient.clientM.use(_.write(Chunk.fromArray(s.getBytes())))))
     } yield l
 
   val program = {
@@ -26,14 +25,12 @@ object ClientTest {
       implicit val q = queue
       for {
         f <- client.listen[List, Long] { l =>
-              val p = myudp(l).provideSomeLayer[Encoder](Console.live)
-              p
+              myudp(l).provideSomeLayer[Encoder](Console.live)
             }
         _   <- putStrLn(s"implicit queue: $q")
         opt <- RIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
         _   <- RIO.collectAll(opt.map(m => client.sendAsync(q)(m)))
         _   <- f.join
-        _   <- putStrLn("Joined")
       } yield queue
     })
   }

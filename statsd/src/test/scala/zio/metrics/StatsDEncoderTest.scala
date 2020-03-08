@@ -4,6 +4,7 @@ import testz.{ assert, Harness, PureHarness }
 
 import zio.{ RIO, Runtime }
 import zio.console._
+import zio.metrics.encoders._
 
 object StatsDEncoderTest {
 

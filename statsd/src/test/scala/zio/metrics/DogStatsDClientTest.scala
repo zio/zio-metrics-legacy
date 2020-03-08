@@ -6,6 +6,7 @@ import zio.console._
 import java.util.concurrent.TimeUnit
 import zio.duration.Duration
 import zio.metrics.dogstatsd._
+import zio.metrics.encoders._
 
 object DogStatsDClientTest {
 

@@ -10,7 +10,7 @@ import zio.console.Console
 
 object ExportersTest {
 
-  val rt = Runtime.default
+  val rt = Runtime.unsafeFromLayer(Registry.live ++ Exporters.live ++ Console.live)
 
   val exporterTest: RIO[
     Registry with Exporters with Console,
@@ -32,5 +32,5 @@ object ExportersTest {
   val program = exporterTest >>= (server => putStrLn(s"Server port: ${server.getPort()}"))
 
   def main(args: Array[String]): Unit =
-    rt.unsafeRun(program.provideLayer(Registry.live ++ Exporters.live ++ Console.live))
+    rt.unsafeRun(program)
 }
