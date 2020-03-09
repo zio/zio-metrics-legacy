@@ -8,11 +8,11 @@
 reporters all connected through the <code>MetricRegistry</code>.</p>
 <p>Required imports for presented snippets:</p>
 <pre><code class="hljs css language-scala mdoc:silent"><span class="hljs-keyword">import</span> zio.{ <span class="hljs-type">RIO</span>, <span class="hljs-type">Runtime</span>, <span class="hljs-type">Task</span> }
-<span class="hljs-keyword">import</span> zio.internal.<span class="hljs-type">PlatformLive</span>
 <span class="hljs-keyword">import</span> com.codahale.metrics.{ <span class="hljs-type">MetricRegistry</span>, <span class="hljs-type">Counter</span> =&gt; <span class="hljs-type">DWCounter</span> }
 <span class="hljs-keyword">import</span> zio.metrics.{ <span class="hljs-type">Label</span> =&gt; <span class="hljs-type">ZLabel</span>, <span class="hljs-type">Show</span> }
 <span class="hljs-keyword">import</span> zio.metrics.dropwizard._
 <span class="hljs-keyword">import</span> zio.metrics.dropwizard.helpers._
+<span class="hljs-keyword">import</span> zio.metrics.dropwizard.reporters._
 <span class="hljs-keyword">import</span> com.codahale.metrics.<span class="hljs-type">UniformReservoir</span>
 <span class="hljs-keyword">import</span> com.codahale.metrics.<span class="hljs-type">ExponentiallyDecayingReservoir</span>
 <span class="hljs-keyword">import</span> com.codahale.metrics.<span class="hljs-type">SlidingTimeWindowArrayReservoir</span>
@@ -25,11 +25,9 @@ reporters all connected through the <code>MetricRegistry</code>.</p>
 <span class="hljs-keyword">import</span> scala.concurrent.duration._
 <span class="hljs-keyword">import</span> zio.duration.<span class="hljs-type">Duration</span>
 </code></pre>
-<p>We will also provide our own <code>Runtime</code>:</p>
-<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> rt = <span class="hljs-type">Runtime</span>(
-    <span class="hljs-keyword">new</span> <span class="hljs-type">DropwizardRegistry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">DropwizardReporters</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Console</span>.<span class="hljs-type">Live</span>,
-    <span class="hljs-type">PlatformLive</span>.<span class="hljs-type">Default</span>
-  )
+<p>We will also provide our own <code>Runtime</code> which will use ZIOMetric Dropwizard's
+<code>Registry</code> layer  plus its Reporters layer plus ZIO's <code>Console</code> layer:</p>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> rt = <span class="hljs-type">Runtime</span>.unsafeFromLayer(<span class="hljs-type">Registry</span>.live ++ <span class="hljs-type">Reporters</span>.live ++ <span class="hljs-type">Console</span>.live)
 </code></pre>
 <p>We will assume the reader has working knowledge for Prometheus already, if
 not then head over to <a href="https://metrics.dropwizard.io/4.0.0/manual/core.html">Dropwizard Metrics
@@ -44,14 +42,14 @@ obtain the current <code>CollectorRegistry</code></p>
 zio-metrics
 <a href="https://github.com/zio/zio-metrics/blob/master/dropwizard/src/main/scala/zio/metrics/dropwizard/Helpers.scala">Helper</a>
 methods. We'll start using environmental effects until the <code>Helper</code> methods are introduced:</p>
-<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testRegistry: <span class="hljs-type">RIO</span>[<span class="hljs-type">DropwizardRegistry</span>, (<span class="hljs-type">MetricRegistry</span>, <span class="hljs-type">Counter</span>)] = <span class="hljs-keyword">for</span> {
-    dwr &lt;- <span class="hljs-type">RIO</span>.environment[<span class="hljs-type">DropwizardRegistry</span>]
-    dwc &lt;- dwr.registry.registerCounter(<span class="hljs-type">ZLabel</span>(<span class="hljs-string">"DropwizardTests"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"test"</span>, <span class="hljs-string">"counter"</span>)))
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testRegistry: <span class="hljs-type">RIO</span>[<span class="hljs-type">Registry</span>, (<span class="hljs-type">MetricRegistry</span>, <span class="hljs-type">Counter</span>)] = <span class="hljs-keyword">for</span> {
+    dwr &lt;- <span class="hljs-type">RIO</span>.environment[<span class="hljs-type">Registry</span>]
+    dwc &lt;- dwr.get.registerCounter(<span class="hljs-type">ZLabel</span>(<span class="hljs-string">"DropwizardTests"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"test"</span>, <span class="hljs-string">"counter"</span>)))
     c   &lt;- <span class="hljs-type">Task</span>(<span class="hljs-keyword">new</span> <span class="hljs-type">Counter</span>(dwc))
-    r   &lt;- dwr.registry.getCurrent()
+    r   &lt;- dwr.get.getCurrent()
   } <span class="hljs-keyword">yield</span> (r, c)
 </code></pre>
-<p>All <code>register*</code> methods in <code>DropwizardRegistry</code> require a <code>Label</code> object  (some
+<p>All <code>register*</code> methods in <code>Registry</code> require a <code>Label</code> object  (some
 may require more parameters). A label is composed of a name and an array of
 labels which may be empty in the case where no labels are required.</p>
 <pre><code class="hljs css language-scala mdoc:silent"><span class="hljs-keyword">case</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Label</span>[<span class="hljs-type">A</span>: <span class="hljs-type">Show</span>](<span class="hljs-params">name: <span class="hljs-type">A</span>, labels: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]</span>)</span>
@@ -59,27 +57,27 @@ labels which may be empty in the case where no labels are required.</p>
 <p>Note that zio-metrics does not depend on either cats or scalaz so this Show is
 defined on ``typeclasses<code>with instances for String and Class[A]. Besides the</code>register*<code>functions, we also have</code>getCurrent()<code>that simply returns the</code>MetricsRegistry<code>which is needed by all</code>Reporters`.</p>
 <p>Using the registry helper the above function becomes:</p>
-<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testRegistryHelper: <span class="hljs-type">RIO</span>[<span class="hljs-type">DropwizardRegistry</span>, (<span class="hljs-type">MetricRegistry</span>, <span class="hljs-type">DWCounter</span>)] = <span class="hljs-keyword">for</span> {
-    c   &lt;- registry.registerCounter(<span class="hljs-string">"DropwizardRegistryHelper"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"test"</span>, <span class="hljs-string">"counter"</span>))
-    r   &lt;- registry.getCurrent()
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testRegistryHelper: <span class="hljs-type">RIO</span>[<span class="hljs-type">Registry</span>, (<span class="hljs-type">MetricRegistry</span>, <span class="hljs-type">DWCounter</span>)] = <span class="hljs-keyword">for</span> {
+    c   &lt;- registerCounter(<span class="hljs-string">"RegistryHelper"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"test"</span>, <span class="hljs-string">"counter"</span>))
+    r   &lt;- getCurrentRegistry()
   } <span class="hljs-keyword">yield</span> (r, c)
 </code></pre>
 <h2><a class="anchor" aria-hidden="true" id="counter"></a><a href="#counter" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Counter</h2>
 <p>Counter has methods to increase a counter by 1 or by an arbitrary double
 passed as a parameter along with optional labels.</p>
-<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testCounter: <span class="hljs-type">RIO</span>[<span class="hljs-type">DropwizardRegistry</span>, <span class="hljs-type">MetricRegistry</span>] = <span class="hljs-keyword">for</span> {
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testCounter: <span class="hljs-type">RIO</span>[<span class="hljs-type">Registry</span>, <span class="hljs-type">MetricRegistry</span>] = <span class="hljs-keyword">for</span> {
     c   &lt;- counter.register(<span class="hljs-string">"DropwizardCounter"</span>)
     _   &lt;- c.inc()
     _   &lt;- c.inc(<span class="hljs-number">2.0</span>)
-    r   &lt;- registry.getCurrent()
+    r   &lt;- getCurrentRegistry()
   } <span class="hljs-keyword">yield</span> r
 </code></pre>
 <p>Or with labels:</p>
-<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testLabeledCounter: <span class="hljs-type">RIO</span>[<span class="hljs-type">DropwizardRegistry</span>, <span class="hljs-type">MetricRegistry</span>] = <span class="hljs-keyword">for</span> {
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testLabeledCounter: <span class="hljs-type">RIO</span>[<span class="hljs-type">Registry</span>, <span class="hljs-type">MetricRegistry</span>] = <span class="hljs-keyword">for</span> {
     c   &lt;- counter.register(<span class="hljs-string">"DropwizardCounterHelper"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"test"</span>, <span class="hljs-string">"counter"</span>))
     _   &lt;- c.inc()
     _   &lt;- c.inc(<span class="hljs-number">2.0</span>)
-    r   &lt;- registry.getCurrent()
+    r   &lt;- getCurrentRegistry()
   } <span class="hljs-keyword">yield</span> r
 </code></pre>
 <p>Note that unlike with <code>Prometheus</code>, we don't need to add labels to our method
@@ -99,9 +97,9 @@ long-running) function <code>() =&gt; A</code> such as <code>def currentTemperat
 <code>def currentNumberOfConcurrentUsers(): Long</code>, etc. For instance:</p>
 <pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> tester: () =&gt; <span class="hljs-type">Long</span> = () =&gt; <span class="hljs-type">System</span>.nanoTime()
   
-  <span class="hljs-keyword">val</span> testGauge: <span class="hljs-type">RIO</span>[<span class="hljs-type">DropwizardRegistry</span>, (<span class="hljs-type">MetricRegistry</span>, <span class="hljs-type">Long</span>)] = <span class="hljs-keyword">for</span> {
+  <span class="hljs-keyword">val</span> testGauge: <span class="hljs-type">RIO</span>[<span class="hljs-type">Registry</span>, (<span class="hljs-type">MetricRegistry</span>, <span class="hljs-type">Long</span>)] = <span class="hljs-keyword">for</span> {
     g &lt;- gauge.register(<span class="hljs-string">"DropwizardGauge"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"test"</span>, <span class="hljs-string">"gauge"</span>), tester)
-    r &lt;- registry.getCurrent()
+    r &lt;- getCurrentRegistry()
     l &lt;- g.getValue[<span class="hljs-type">Long</span>]()
   } <span class="hljs-keyword">yield</span> (r, l)
 </code></pre>
@@ -114,11 +112,12 @@ long-running) function <code>() =&gt; A</code> such as <code>def currentTemperat
 <p><code>ZIO-Metrics</code> offers a <code>JSON Registry Printer</code> that can also be used to verify
 results:</p>
 <pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> str = <span class="hljs-keyword">for</span> {
-    dwr &lt;- <span class="hljs-type">RIO</span>.environment[<span class="hljs-type">DropwizardRegistry</span>]
-    j   &lt;- <span class="hljs-type">DropwizardExtractor</span>.writeJson(dwr)(<span class="hljs-type">None</span>)
-  } <span class="hljs-keyword">yield</span> j.spaces2
+    r &lt;- getCurrentRegistry()
+    j &lt;- <span class="hljs-type">DropwizardExtractor</span>.writeJson(r)(<span class="hljs-type">None</span>)
+    _ &lt;- putStrLn(j.spaces2)
+  } <span class="hljs-keyword">yield</span> ()
 
-  rt.unsafeRun(str &gt;&gt;= putStrLn)
+  rt.unsafeRun(str)
 </code></pre>
 <p>Let's discuss <code>Reporters</code> next.</p>
 <h2><a class="anchor" aria-hidden="true" id="reporters"></a><a href="#reporters" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Reporters</h2>
@@ -136,14 +135,13 @@ metrics</a>.</p>
 </ol>
 <p>Let's combine a couple of them:</p>
 <pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> tests: <span class="hljs-type">RIO</span>[
-    <span class="hljs-type">DropwizardRegistry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">DropwizardReporters</span>,
-    <span class="hljs-type">DropwizardRegistry</span>
+    <span class="hljs-type">Registry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Reporters</span>,
+    <span class="hljs-type">MetricRegistry</span>
   ] =
     <span class="hljs-keyword">for</span> {
-      dwr &lt;- <span class="hljs-type">RIO</span>.environment[<span class="hljs-type">DropwizardRegistry</span>]
-      r   &lt;- dwr.registry.getCurrent()
-      _   &lt;- reporters.jmx(r)  <span class="hljs-comment">// JMX reporter</span>
-      _   &lt;- reporters.console(r, <span class="hljs-number">2</span>, <span class="hljs-type">TimeUnit</span>.<span class="hljs-type">SECONDS</span>)  <span class="hljs-comment">// Console reporter</span>
+      r   &lt;- getCurrentRegistry()
+      _   &lt;- jmx(r)  <span class="hljs-comment">// JMX reporter</span>
+      _   &lt;- console(r, <span class="hljs-number">2</span>, <span class="hljs-type">TimeUnit</span>.<span class="hljs-type">SECONDS</span>)  <span class="hljs-comment">// Console reporter</span>
       c   &lt;- counter.register(<span class="hljs-string">"DropwizardTestsReporter"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"test"</span>, <span class="hljs-string">"counter"</span>))
       _   &lt;- c.inc()
       _   &lt;- c.inc(<span class="hljs-number">2.0</span>)
@@ -156,12 +154,11 @@ metrics</a>.</p>
               <span class="hljs-type">Thread</span>.sleep(<span class="hljs-number">1200</span>L)
             )
           )(_ =&gt; t.stop(ctx))
-    } <span class="hljs-keyword">yield</span> dwr
+    } <span class="hljs-keyword">yield</span> r
 
   <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]) = {
-    println(<span class="hljs-string">"Starting tests"</span>)
-    <span class="hljs-keyword">val</span> json = rt.unsafeRun(tests &gt;&gt;= (dwr =&gt;
-    <span class="hljs-type">DropwizardExtractor</span>.writeJson(dwr)(<span class="hljs-type">None</span>))) <span class="hljs-comment">// JSON Registry Printer</span>
+    <span class="hljs-keyword">val</span> json = rt.unsafeRun(tests &gt;&gt;= (r =&gt;
+    <span class="hljs-type">DropwizardExtractor</span>.writeJson(r)(<span class="hljs-type">None</span>))) <span class="hljs-comment">// JSON Registry Printer</span>
     <span class="hljs-type">RIO</span>.sleep(<span class="hljs-type">Duration</span>.fromScala(<span class="hljs-number">60.</span>seconds))
     putStrLn(json.spaces2).map(_ =&gt; <span class="hljs-number">0</span>)
   }
@@ -171,7 +168,7 @@ seconds, starts a counter and a timer, waits for you (60 seconds) to verify the 
 whatever), and then prints the registry as JSON.</p>
 <p>Also note that the second parameter of <code>writeJson</code> is a <code>filter</code> of type
 <code>Option[String]</code>. <code>None</code> as we used here, means <code>no filter</code> and is equivalent to
-Dropwizard's <code>MetricFilter.ALL</code>. You can use <code>DropwizardRegistry.makeFilter</code> to
+Dropwizard's <code>MetricFilter.ALL</code>. You can use <code>Registry.makeFilter</code> to
 defines different filters.</p>
 <h2><a class="anchor" aria-hidden="true" id="histogram"></a><a href="#histogram" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Histogram</h2>
 <p><code>Histogram</code> metrics allow you to measure not just easy things like the min,
@@ -179,20 +176,20 @@ mean, max, and standard deviation of values, but also quantiles like the median
 or 95th percentile. <code>Dropwizard</code> offers <a href="https://metrics.dropwizard.io/4.0.0/manual/core.html#histograms">4 different types of
 histograms</a>,
 based on the <code>Reservoir</code> type with <code>Uniform Reservoir</code> being the default type.</p>
-<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testHistogram: <span class="hljs-type">RIO</span>[<span class="hljs-type">DropwizardRegistry</span>, <span class="hljs-type">MetricRegistry</span>] = <span class="hljs-keyword">for</span> {
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testHistogram: <span class="hljs-type">RIO</span>[<span class="hljs-type">Registry</span>, <span class="hljs-type">MetricRegistry</span>] = <span class="hljs-keyword">for</span> {
     h &lt;- histogram.register(<span class="hljs-string">"DropwizardHistogram"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"test"</span>, <span class="hljs-string">"histogram"</span>))
     _ &lt;- <span class="hljs-type">RIO</span>.foreach(<span class="hljs-type">List</span>(<span class="hljs-number">10.5</span>, <span class="hljs-number">25.0</span>, <span class="hljs-number">50.7</span>, <span class="hljs-number">57.3</span>, <span class="hljs-number">19.8</span>))(h.update(_))
-    r &lt;- registry.getCurrent()
+    r &lt;- getCurrentRegistry()
   } <span class="hljs-keyword">yield</span> r
 </code></pre>
 <p>Here, <code>histogram</code> is a helper method that allows us to omit some parameter in
 favour of just using default values, in this example we omit the <code>Reservoir</code>. Of
 course you can pass your customized <code>Reservoir</code>, here we specify a sample size
 of 512:</p>
-<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testUniformHistogram: <span class="hljs-type">RIO</span>[<span class="hljs-type">DropwizardRegistry</span>, <span class="hljs-type">MetricRegistry</span>] = <span class="hljs-keyword">for</span> {
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testUniformHistogram: <span class="hljs-type">RIO</span>[<span class="hljs-type">Registry</span>, <span class="hljs-type">MetricRegistry</span>] = <span class="hljs-keyword">for</span> {
     h &lt;- histogram.register(<span class="hljs-string">"DropwizardUniformHistogram"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"uniform"</span>, <span class="hljs-string">"histogram"</span>), <span class="hljs-keyword">new</span> <span class="hljs-type">UniformReservoir</span>(<span class="hljs-number">512</span>))
     _ &lt;- <span class="hljs-type">RIO</span>.foreach(<span class="hljs-type">List</span>(<span class="hljs-number">10.5</span>, <span class="hljs-number">25.0</span>, <span class="hljs-number">50.7</span>, <span class="hljs-number">57.3</span>, <span class="hljs-number">19.8</span>))(h.update(_))
-    r &lt;- registry.getCurrent()
+    r &lt;- getCurrentRegistry()
   } <span class="hljs-keyword">yield</span> r
 </code></pre>
 <p>All dropwizard's <code>Reservoir</code>'s provide a default implementation, for
@@ -200,33 +197,33 @@ of 512:</p>
 with an alpha factor of 0.015 which offers a 99.9% confidence level with a 5%
 margin of error (assuming a normal distribution) and heavily biases the
 reservoir to the past 5 minutes of measurements:</p>
-<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testExponentialHistogram: <span class="hljs-type">RIO</span>[<span class="hljs-type">DropwizardRegistry</span>, <span class="hljs-type">MetricRegistry</span>] = <span class="hljs-keyword">for</span> {
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testExponentialHistogram: <span class="hljs-type">RIO</span>[<span class="hljs-type">Registry</span>, <span class="hljs-type">MetricRegistry</span>] = <span class="hljs-keyword">for</span> {
     h &lt;- histogram.register(<span class="hljs-string">"DropwizardExponentialHistogram"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"exponential"</span>, <span class="hljs-string">"histogram"</span>), <span class="hljs-keyword">new</span> <span class="hljs-type">ExponentiallyDecayingReservoir</span>)
     _ &lt;- <span class="hljs-type">RIO</span>.foreach(<span class="hljs-type">List</span>(<span class="hljs-number">10.5</span>, <span class="hljs-number">25.0</span>, <span class="hljs-number">50.7</span>, <span class="hljs-number">57.3</span>, <span class="hljs-number">19.8</span>))(h.update(_))
-    r &lt;- registry.getCurrent()
+    r &lt;- getCurrentRegistry()
   } <span class="hljs-keyword">yield</span> r
 </code></pre>
 <p>Here's an example of a customized  <code>SlidingTimeWindowArrayReservoir</code>:</p>
-<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testSlidingTimeWindowHistogram: <span class="hljs-type">RIO</span>[<span class="hljs-type">DropwizardRegistry</span>, <span class="hljs-type">MetricRegistry</span>] = <span class="hljs-keyword">for</span> {
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testSlidingTimeWindowHistogram: <span class="hljs-type">RIO</span>[<span class="hljs-type">Registry</span>, <span class="hljs-type">MetricRegistry</span>] = <span class="hljs-keyword">for</span> {
     h &lt;- histogram.register(<span class="hljs-string">"DropwizardSlidingHistogram"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"sliding"</span>, <span class="hljs-string">"histogram"</span>), <span class="hljs-keyword">new</span> <span class="hljs-type">SlidingTimeWindowArrayReservoir</span>(<span class="hljs-number">30</span>, <span class="hljs-type">TimeUnit</span>.<span class="hljs-type">SECONDS</span>))
     _ &lt;- <span class="hljs-type">RIO</span>.foreach(<span class="hljs-type">List</span>(<span class="hljs-number">10.5</span>, <span class="hljs-number">25.0</span>, <span class="hljs-number">50.7</span>, <span class="hljs-number">57.3</span>, <span class="hljs-number">19.8</span>))(h.update(_))
-    r &lt;- registry.getCurrent()
+    r &lt;- getCurrentRegistry()
   } <span class="hljs-keyword">yield</span> r
 </code></pre>
 <p>which stores only the emasurements made in the las 30 seconds.</p>
 <h2><a class="anchor" aria-hidden="true" id="meter"></a><a href="#meter" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Meter</h2>
 <p>Measures the rate at which a set of events occur:</p>
-<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testMeter: <span class="hljs-type">RIO</span>[<span class="hljs-type">DropwizardRegistry</span>, <span class="hljs-type">MetricRegistry</span>] = <span class="hljs-keyword">for</span> {
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testMeter: <span class="hljs-type">RIO</span>[<span class="hljs-type">Registry</span>, <span class="hljs-type">MetricRegistry</span>] = <span class="hljs-keyword">for</span> {
     m &lt;- meter.register(<span class="hljs-string">"DropwizardMeter"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"test"</span>, <span class="hljs-string">"meter"</span>))
     _ &lt;- <span class="hljs-type">RIO</span>.foreach(<span class="hljs-type">Seq</span>(<span class="hljs-number">1</span>L, <span class="hljs-number">2</span>L, <span class="hljs-number">3</span>L, <span class="hljs-number">4</span>L, <span class="hljs-number">5</span>L))(m.mark(_))
-    r &lt;- registry.getCurrent()
+    r &lt;- getCurrentRegistry()
   } <span class="hljs-keyword">yield</span> r
 </code></pre>
 <h2><a class="anchor" aria-hidden="true" id="timer"></a><a href="#timer" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Timer</h2>
 <p>A <code>Timer</code> is basically a <code>histogram</code> of the duration of a type of event and a <code>meter</code>
 of the rate of its occurrence.</p>
-<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testTimer: <span class="hljs-type">RIO</span>[<span class="hljs-type">DropwizardRegistry</span>, (<span class="hljs-type">MetricRegistry</span>, <span class="hljs-type">List</span>[<span class="hljs-type">Long</span>])] = <span class="hljs-keyword">for</span> {
-    r   &lt;- registry.getCurrent()
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testTimer: <span class="hljs-type">RIO</span>[<span class="hljs-type">Registry</span>, (<span class="hljs-type">MetricRegistry</span>, <span class="hljs-type">List</span>[<span class="hljs-type">Long</span>])] = <span class="hljs-keyword">for</span> {
+    r   &lt;- getCurrentRegistry()
     t   &lt;- timer.register(<span class="hljs-string">"DropwizardTimer"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"test"</span>, <span class="hljs-string">"timer"</span>))
     ctx &lt;- t.start()
     l &lt;- <span class="hljs-type">RIO</span>.foreach(
@@ -256,36 +253,28 @@ support Scala 2.11 use <code>Cats 1.x</code> but the current <code>zio-interop-c
 <p>ZIo-Metrics defines the <code>Server.builder</code> method and a <code>MetricsService</code> module.
 Between the two, you get a basic Http Server and the functionality to receive a
 <code>filter</code> and obtain the curent contents of a <code>MetricRegistry</code> as JSON. All you
-have to do is define a function that takes a <code>DropWizardRegistry</code> module and
+have to do is define a function that takes a <code>MetricRegistry</code> and
 returns an http4s<code>Router</code> object:</p>
 <pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">import</span> zio.interop.catz._
   <span class="hljs-keyword">import</span> org.http4s.implicits._
   <span class="hljs-keyword">import</span> org.http4s.server.<span class="hljs-type">Router</span>
   <span class="hljs-keyword">import</span> zio.metrics.dropwizard.<span class="hljs-type">Server</span>._
-  <span class="hljs-keyword">import</span> zio.metrics.dropwizard.<span class="hljs-type">DropwizardMetricsService</span>.service
 
   <span class="hljs-keyword">val</span> httpApp =
-    (registry: <span class="hljs-type">DropwizardRegistry</span>) =&gt;
+    (registry: <span class="hljs-type">MetricRegistry</span>) =&gt;
       <span class="hljs-type">Router</span>(
-        <span class="hljs-string">"/metrics"</span> -&gt; service.serveMetrics(registry)
+        <span class="hljs-string">"/metrics"</span> -&gt; <span class="hljs-type">Server</span>.serveMetrics(registry)
       ).orNotFound
 </code></pre>
 <p>For measuring, we can reuse our testing function from the <code>Reporters</code> section:</p>
-<pre><code class="hljs css language-scala mdoc:silent">
-  <span class="hljs-keyword">import</span> zio.clock.<span class="hljs-type">Clock</span>
-  <span class="hljs-keyword">import</span> zio.random.<span class="hljs-type">Random</span>
-  <span class="hljs-keyword">import</span> zio.blocking.<span class="hljs-type">Blocking</span>
-  <span class="hljs-keyword">import</span> zio.system.<span class="hljs-type">System</span>
-
-  <span class="hljs-keyword">val</span> testServer: <span class="hljs-type">RIO</span>[
-    <span class="hljs-type">DropwizardRegistry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">DropwizardReporters</span>,
-    <span class="hljs-type">DropwizardRegistry</span>
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> testServer: <span class="hljs-type">RIO</span>[
+    <span class="hljs-type">Registry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Reporters</span>,
+    <span class="hljs-type">MetricRegistry</span>
   ] =
     <span class="hljs-keyword">for</span> {
-      dwr &lt;- <span class="hljs-type">RIO</span>.environment[<span class="hljs-type">DropwizardRegistry</span>]
-      r   &lt;- dwr.registry.getCurrent()
-      _   &lt;- reporters.jmx(r)
-      _   &lt;- reporters.console(r, <span class="hljs-number">30</span>, <span class="hljs-type">TimeUnit</span>.<span class="hljs-type">SECONDS</span>)
+      r   &lt;- getCurrentRegistry()
+      _   &lt;- jmx(r)
+      _   &lt;- helpers.console(r, <span class="hljs-number">30</span>, <span class="hljs-type">TimeUnit</span>.<span class="hljs-type">SECONDS</span>) <span class="hljs-comment">// to differentiate from zio.console</span>
       c   &lt;- counter.register(<span class="hljs-string">"DropwizardServerTests"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"test"</span>, <span class="hljs-string">"counter"</span>))
       _   &lt;- c.inc()
       _   &lt;- c.inc(<span class="hljs-number">2.0</span>)
@@ -298,32 +287,23 @@ returns an http4s<code>Router</code> object:</p>
               <span class="hljs-type">Thread</span>.sleep(<span class="hljs-number">1200</span>L)
             )
           )(_ =&gt; t.stop(ctx))
-    } <span class="hljs-keyword">yield</span> dwr
+    } <span class="hljs-keyword">yield</span> r
 </code></pre>
 <p>finally, we just have to call <code>Server.builder</code> and provide the environment:</p>
 <pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">runServer</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]) = {
-    <span class="hljs-keyword">val</span> kApp: <span class="hljs-type">Task</span>[<span class="hljs-type">KleisliApp</span>] = testServer.map(r =&gt; httpApp(r)).provideSome(_ =&gt; {
-      <span class="hljs-keyword">new</span> <span class="hljs-type">DropwizardRegistry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">DropwizardReporters</span>
-    })
+    <span class="hljs-keyword">val</span> kApp: <span class="hljs-type">Task</span>[<span class="hljs-type">KleisliApp</span>] = testServer
+      .map(r =&gt; httpApp(r))
+      .provideLayer(<span class="hljs-type">Registry</span>.live ++ <span class="hljs-type">Reporters</span>.live)
 
     <span class="hljs-keyword">val</span> app: <span class="hljs-type">RIO</span>[<span class="hljs-type">HttpEnvironment</span>, <span class="hljs-type">Unit</span>] = kApp &gt;&gt;= builder
 
     app
       .catchAll(t =&gt; putStrLn(<span class="hljs-string">s"<span class="hljs-subst">$t</span>"</span>))
-      .provideSome[<span class="hljs-type">HttpEnvironment</span>] { rt =&gt;
-        <span class="hljs-keyword">new</span> <span class="hljs-type">Clock</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Console</span> <span class="hljs-keyword">with</span> <span class="hljs-type">System</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Random</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Blocking</span> {
-          <span class="hljs-keyword">override</span> <span class="hljs-keyword">val</span> clock: <span class="hljs-type">Clock</span>.<span class="hljs-type">Service</span>[<span class="hljs-type">Any</span>]       = rt.clock
-          <span class="hljs-keyword">override</span> <span class="hljs-keyword">val</span> console: <span class="hljs-type">Console</span>.<span class="hljs-type">Service</span>[<span class="hljs-type">Any</span>]   = rt.console
-          <span class="hljs-keyword">override</span> <span class="hljs-keyword">val</span> system: <span class="hljs-type">System</span>.<span class="hljs-type">Service</span>[<span class="hljs-type">Any</span>]     = rt.system
-          <span class="hljs-keyword">override</span> <span class="hljs-keyword">val</span> random: <span class="hljs-type">Random</span>.<span class="hljs-type">Service</span>[<span class="hljs-type">Any</span>]     = rt.random
-          <span class="hljs-keyword">override</span> <span class="hljs-keyword">val</span> blocking: <span class="hljs-type">Blocking</span>.<span class="hljs-type">Service</span>[<span class="hljs-type">Any</span>] = rt.blocking
-        }
-      }
       .run
       .map(r =&gt; { println(<span class="hljs-string">s"Exiting <span class="hljs-subst">$r</span>"</span>); <span class="hljs-number">0</span>})
   }
 </code></pre>
-</span></div></article></div><div class="docLastUpdate"><em>Last updated on 2/9/2020 by toxicafunk</em></div><div class="docs-prevnext"></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#registry">Registry</a></li><li><a href="#counter">Counter</a></li><li><a href="#gauge">Gauge</a></li><li><a href="#reporters">Reporters</a></li><li><a href="#histogram">Histogram</a></li><li><a href="#meter">Meter</a></li><li><a href="#timer">Timer</a></li><li><a href="#server">Server</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section><div><div class="gitter-open-chat-button">Open Chat</div><script type="text/javascript">
+</span></div></article></div><div class="docLastUpdate"><em>Last updated on 3/8/2020 by toxicafunk</em></div><div class="docs-prevnext"></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#registry">Registry</a></li><li><a href="#counter">Counter</a></li><li><a href="#gauge">Gauge</a></li><li><a href="#reporters">Reporters</a></li><li><a href="#histogram">Histogram</a></li><li><a href="#meter">Meter</a></li><li><a href="#timer">Timer</a></li><li><a href="#server">Server</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section><div><div class="gitter-open-chat-button">Open Chat</div><script type="text/javascript">
         ((window.gitter = {}).chat = {}).options = {
           showChatByDefault: false,
           activationElement: '.gitter-open-chat-button',
