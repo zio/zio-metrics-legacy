@@ -69,7 +69,7 @@ case class Label[A: Show](name: A, labels: Array[String])
 ```
 
 Note that zio-metrics does not depend on either cats or scalaz so this Show is
-defined on ``typeclasses` with instances for String and Class[A].
+defined on `typeclasses` with instances for String and Class[A].
 Besides the `register*` functions, we also have `getCurrent()` that simply
 returns the `CollectorRegistry` which is needed by all `Exporters`.
 
