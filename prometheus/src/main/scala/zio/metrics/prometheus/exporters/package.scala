@@ -1,6 +1,6 @@
 package zio.metrics.prometheus
 
-import zio.{ Has, Task }
+import zio.{ Has, Layer, Task, ZLayer }
 
 import io.prometheus.client.CollectorRegistry
 import io.prometheus.client.exporter.{ HTTPServer, PushGateway }
@@ -14,8 +14,6 @@ import java.net.InetSocketAddress
 import java.io.StringWriter
 
 package object exporters {
-
-  import zio.ZLayer
 
   type Exporters = Has[Exporters.Service]
 
@@ -40,7 +38,7 @@ package object exporters {
       def initializeDefaultExports(r: CollectorRegistry): Task[Unit]
     }
 
-    val live: ZLayer.NoDeps[Nothing, Exporters] = ZLayer.succeed(new Service {
+    val live: Layer[Nothing, Exporters] = ZLayer.succeed(new Service {
       def http(r: CollectorRegistry, port: Int): zio.Task[HTTPServer] =
         Task {
           new HTTPServer(new InetSocketAddress(port), r)

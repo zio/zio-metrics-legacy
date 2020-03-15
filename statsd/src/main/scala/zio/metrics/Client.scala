@@ -2,18 +2,17 @@ package zio.metrics
 
 import zio.{ Chunk, Fiber, Queue, RIO, Task, URIO }
 import zio.clock.Clock
-import zio.console._
-import zio.duration.DurationSyntax
+//import zio.console._
 import zio.stream.ZStream
-import zio.duration.Duration
+import zio.duration.Duration.Finite
 import zio.metrics.encoders._
 
 import java.util.concurrent.ThreadLocalRandom
 
 class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int, host: Option[String], port: Option[Int]) {
 
-  val queue                             = Queue.bounded[Metric](queueCapacity)
-  private val duration: Duration.Finite = new DurationSyntax(timeout).millis
+  val queue                    = Queue.bounded[Metric](queueCapacity)
+  private val duration: Finite = Finite(timeout)
 
   val udpClient = (host, port) match {
     case (None, None)       => UDPClient.clientM
@@ -48,14 +47,13 @@ class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int, ho
   def listen[F[_], A](
     f: List[Metric] => RIO[Encoder, F[A]]
   )(implicit queue: Queue[Metric]): URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
-    putStrLn("Listening...") *>
-      ZStream
-        .fromQueue(queue)
-        .groupedWithin(bufferSize, duration)
-        .tap(l => putStrLn(s"Selected: $l"))
-        .mapM(l => f(l))
-        .runDrain
-        .fork
+    ZStream
+      .fromQueue(queue)
+      .groupedWithin(bufferSize, duration)
+      //.tap(l => putStrLn(s"Selected: $l"))
+      .mapM(l => f(l))
+      .runDrain
+      .fork
 
   val send: Queue[Metric] => Metric => Task[Unit] = q =>
     metric =>
@@ -66,14 +64,13 @@ class Client(val bufferSize: Long, val timeout: Long, val queueCapacity: Int, ho
   val sendAsync: Queue[Metric] => Metric => Task[Unit] = q =>
     metric =>
       for {
-        _ <- putStrLn(s"Sending... $q").provideLayer(Console.live)
         _ <- q.offer(metric).fork
       } yield ()
 }
 
 object Client {
 
-  type ClientEnv = Encoder with Clock with Console
+  type ClientEnv = Encoder with Clock //with Console
 
   def apply(): Client = apply(5, 5000, 100, None, None)
 

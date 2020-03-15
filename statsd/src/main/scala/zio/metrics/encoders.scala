@@ -3,7 +3,7 @@ package zio.metrics
 import java.text.DecimalFormat
 import java.time.Instant
 
-import zio.{ Has, Task, ZLayer }
+import zio.{ Has, Layer, Task, ZLayer }
 
 object encoders {
 
@@ -32,7 +32,7 @@ object encoders {
       case _            => ""
     }
 
-    val statsd: ZLayer.NoDeps[Nothing, Encoder] = ZLayer.succeed(new Service[Metric] {
+    val statsd: Layer[Nothing, Encoder] = ZLayer.succeed(new Service[Metric] {
 
       private def encode(metric: Metric, sampleRate: Option[Double]): String =
         sampleRate.foldLeft(s"${metric.name}:${getValue(metric)}|${getMetricType(metric)}")(
@@ -56,7 +56,7 @@ object encoders {
       }
     })
 
-    val dogstatsd: ZLayer.NoDeps[Nothing, Encoder] = ZLayer.succeed(new Service[Metric] {
+    val dogstatsd: Layer[Nothing, Encoder] = ZLayer.succeed(new Service[Metric] {
 
       private def encode(metric: Metric, sampleRate: Option[Double], tags: Seq[Tag]): String = {
         val tagString = if (tags.isEmpty) "" else "|#" + tags.mkString(",")

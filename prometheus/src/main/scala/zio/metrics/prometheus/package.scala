@@ -1,6 +1,6 @@
 package zio.metrics
 
-import zio.{ Has, ZLayer }
+import zio.{ Has, Layer, ZLayer }
 import zio.{ Ref, Task, UIO }
 
 package object prometheus {
@@ -26,7 +26,7 @@ package object prometheus {
     type Percentile = Double
     type Tolerance  = Double
 
-    val live: ZLayer.NoDeps[Nothing, Registry] = ZLayer.succeed(new Service {
+    val live: Layer[Nothing, Registry] = ZLayer.succeed(new Service {
       val registryRef: UIO[Ref[CollectorRegistry]] = Ref.make(CollectorRegistry.defaultRegistry)
 
       def getCurrent(): UIO[CollectorRegistry] = registryRef >>= (_.get)

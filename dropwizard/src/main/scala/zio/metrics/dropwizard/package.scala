@@ -1,6 +1,6 @@
 package zio.metrics
 
-import zio.{ Has, ZLayer }
+import zio.{ Has, Layer, ZLayer }
 import zio.{ Ref, Task, UIO }
 
 package object dropwizard {
@@ -24,7 +24,7 @@ package object dropwizard {
       def registerTimer[L: Show](label: Label[L]): Task[DWTimer]
     }
 
-    val live: ZLayer.NoDeps[Nothing, Registry] = ZLayer.succeed(new Service {
+    val live: Layer[Nothing, Registry] = ZLayer.succeed(new Service {
 
       val registryRef: UIO[Ref[MetricRegistry]] = Ref.make(new MetricRegistry())
 

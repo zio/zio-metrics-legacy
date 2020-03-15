@@ -20,8 +20,9 @@ inThisBuild(
 )
 
 val http4sVersion     = "0.21.0-M5"
-val zioVersion        = "1.0.0-RC18-1"
-val interopVersion    = "2.0.0.0-RC11" // "1.3.1.0-RC3"
+val zioVersion        = "1.0.0-RC18-2"
+val interopVersion    = "2.0.0.0-RC12" // "1.3.1.0-RC3"
+val zioNIOVersion     = "1.0.0-RC5"
 val prometheusVersion = "0.8.1"
 val dropwizardVersion = "4.1.2"
 val circeVersion      = "0.12.3"
@@ -97,7 +98,7 @@ lazy val dropwizardDependencies = Seq(
 )
 
 lazy val statsdDependencies = Seq(
-  "dev.zio" %% "zio-nio" % "1.0.0-RC4"
+  "dev.zio" %% "zio-nio" % zioNIOVersion
 )
 
 lazy val docs = project
