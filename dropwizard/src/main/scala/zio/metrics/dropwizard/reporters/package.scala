@@ -1,6 +1,6 @@
 package zio.metrics.dropwizard
 
-import zio.{ Has, Task, ZLayer }
+import zio.{ Has, Layer, Task, ZLayer }
 import java.util.concurrent.TimeUnit
 import java.io.File
 import java.util.Locale
@@ -37,7 +37,7 @@ package object reporters {
       def graphite(r: MetricRegistry, host: String, port: Int, prefix: String): Task[GraphiteReporter]
     }
 
-    val live: ZLayer.NoDeps[Nothing, Reporters] = ZLayer.succeed(new Service {
+    val live: Layer[Nothing, Reporters] = ZLayer.succeed(new Service {
 
       def jmx(r: MetricRegistry): zio.Task[JmxReporter] = Task(JmxReporter.forRegistry(r).build())
 

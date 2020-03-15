@@ -52,6 +52,7 @@ object Server {
     registry =>
       HttpRoutes.of[Server.HttpTask] {
         case GET -> Root / filter => {
+          println(s"filter: $filter")
           val optFilter = if (filter == "ALL") None else Some(filter)
           RegistryPrinter
             .report[List, Json](registry, optFilter)(
