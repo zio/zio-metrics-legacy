@@ -76,8 +76,8 @@ lazy val statsd = project
 lazy val commonDependencies = Seq(
   "dev.zio"    %% "zio"              % zioVersion,
   "dev.zio"    %% "zio-interop-cats" % interopVersion,
-  "org.scalaz" % "testz-core_2.12"   % "0.0.5",
-  "org.scalaz" % "testz-stdlib_2.12" % "0.0.5"
+  "org.scalaz" % "testz-core_2.12"   % "0.0.5" % Test,
+  "org.scalaz" % "testz-stdlib_2.12" % "0.0.5" % Test
 )
 
 lazy val prometheusDependencies = Seq(
