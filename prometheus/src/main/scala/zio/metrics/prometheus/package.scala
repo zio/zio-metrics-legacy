@@ -27,7 +27,7 @@ package object prometheus {
     type Tolerance  = Double
 
     val live: Layer[Nothing, Registry] = ZLayer.succeed(new Service {
-      val registryRef: UIO[Ref[CollectorRegistry]] = Ref.make(CollectorRegistry.defaultRegistry)
+      private val registryRef: UIO[Ref[CollectorRegistry]] = Ref.make(CollectorRegistry.defaultRegistry)
 
       def getCurrent(): UIO[CollectorRegistry] = registryRef >>= (_.get)
 

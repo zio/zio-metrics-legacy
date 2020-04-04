@@ -31,6 +31,7 @@ If it can affect your code's business value, measure it. -- Coda Hale
 
 In order to know how well our *code* is generating *business value*, we need *metrics* -- also Coda Hale
 
+Usage and Docs can be found on [https://zio.github.io/zio-metrics/](https://zio.github.io/zio-metrics/)
 
 ## Competitors
 [Metrics Scala](https://github.com/erikvanoosten/metrics-scala)  

@@ -22,7 +22,7 @@ const users = [
 
 const siteConfig = {
   title: 'ZIO Metrics',
-  tagline: 'A thin wrapper over both Prometheus and Dropwizard intrumentation libraries allowing you to measure the behaviour of your application in a performant purely functional manner.',
+  tagline: 'A pure-ZIO StatsD/DogStatsD client and a thin wrapper over both Prometheus and Dropwizard intrumentation libraries allowing you to measure the behaviour of your application in a performant purely functional manner.',
   url: 'https://zio.github.io',
   baseUrl: '/zio-metrics/', // Base URL for your project */
 

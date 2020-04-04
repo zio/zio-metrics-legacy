@@ -429,3 +429,231 @@ Just like `Histogram` it has methods `time` and `time_` that take a `Task` or
   } yield r
 ```
 
+## Dependency Injection with ZLayers
+A common principle in functional programming is to execute the effects `at the
+end of the world` in your application. This basically means that you will write
+pure functions by wrapping your effectul code in ZIO and you execute them from
+your top-most functions, i.e. in `main` or as close as possible to `main`.
+Unfortunately, this has the effect (pun intended) of creating a tree-like
+structure of nested functions.
+
+Let's say, for instanc,e you have a `Router` which calls a `Service` which
+calls 2 different functions, `MeasuringPoint1` and `MeasuringPoint2` where you
+need to count something. If you `register` the counter in `MyRoutes` then you
+need to pass the counter downstream first to `MyService1` and then to the MeasuringPoint
+functions. 
+
+```
+MyRoutes
+  -> MyService1(counter)
+    -> MeasuringPoint1(counter)
+    -> MeasuringPoint2(counter)
+```
+
+The deeper such functions are, the more cumbersome this becomes. You could
+reduce the number of times you pass the counter by registering it immediately
+above where they're needed (in `MyService1`) but on one hand that means you will
+probably end up registering your metrics all over your code (instead of at a
+central location) and on the other it will not work if you also need the counter
+on, say, a `MyService2` service.
+
+One way to deal with this is using `ZLayer` to make your environment `R` carry
+your metrics for you. I'll present two ways to achieve this, each with its own
+advantages and drawbacks. The first is to create your own `Metrics` layer where
+you will register the exact metrics you need as private values and then you
+simply expose methods to use them in your `MeasuringPoints` through the Layer:
+
+```scala
+  type Env = Registry with Exporters with Console
+  val rtLayer = Runtime.unsafeFromLayer(Registry.live ++ Exporters.live ++ Console.live)
+
+  type Metrics = Has[Metrics.Service]
+
+  object Metrics {
+    trait Service {
+      def getRegistry(): Task[CollectorRegistry]
+
+      def inc(tags: Array[String]): Task[Unit]
+
+      def inc(amount: Double, tags: Array[String]): Task[Unit]
+
+      def time(f: () => Unit, tags: Array[String]): Task[Double]
+
+    }
+
+    val live: Layer[Nothing, Metrics] = ZLayer.succeed(new Service {
+
+      private val (myCounter, myHistogram) = rtLayer.unsafeRun(
+        for {
+          c <- counter.register("myCounter", Array("name", "method"))
+          h <- histogram.register("myHistogram", Array("name", "method"))
+        } yield (c, h)
+      )
+
+      def getRegistry(): Task[CollectorRegistry] =
+        getCurrentRegistry().provideLayer(Registry.live)
+
+      def inc(tags: Array[String]): zio.Task[Unit] =
+        inc(1.0, tags)
+
+      def inc(amount: Double, tags: Array[String]): Task[Unit] =
+        myCounter.inc(amount, tags)
+
+      def time(f: () => Unit, tags: Array[String]): Task[Double] =
+        myHistogram.time(f, tags)
+    })
+
+  }
+```
+
+And then we can use it so:
+
+```scala
+  val exporterTest: RIO[
+    Metrics with Exporters with Console,
+    HTTPServer
+  ] =
+    for {
+      m  <- RIO.environment[Metrics]
+      _  <- putStrLn("Exporters")
+      r  <- m.get.getRegistry()
+      _  <- initializeDefaultExports(r)
+      hs <- http(r, 9090)
+      _  <- m.get.inc(Array("RequestCounter", "get"))
+      _  <- m.get.inc(Array("RequestCounter", "post"))
+      _  <- m.get.inc(2.0, Array("LoginCounter", "login"))
+      _  <- m.get.time(() => Thread.sleep(2000), Array("histogram", "get"))
+      s  <- write004(r)
+      _  <- putStrLn(s)
+    } yield hs
+
+  val programL = exporterTest >>= (server => putStrLn(s"Server port: ${server.getPort()}"))
+
+  def main(args: Array[String]): Unit =
+    rtLayer.unsafeRun(programL.provideSomeLayer[Env](Metrics.live))
+```
+
+The key of this approach is that even if you register only one counter, you can
+in practice have as many counters (or any other metric) as you need by
+distinguishing them using the `name` tag. You can have as many different
+counters as combination of tags you can devise for your app. Your
+`MeasurinPoints` can be as nested as they need to be, you just need to declare
+`Metrics` as part of your environment in the function that will actually get to
+use it.
+
+The main drawback, as far as I can tell, is that you need that extra call to
+`unsafeRun` in order to extract and use the metrics themselves. If you don't,
+then every call to `inc` or `time` would attemp to re-register the metric which
+results in an Exception. This is because things wrapped up in `ZIO`s are
+descriptions of a program so flatmapping or folding on them causes them to
+start their execution flow from the beginning.
+
+Although the ideal is to call `unsafeRun` only once in your App, this is only an
+ideal and calling it a second (or even third) time is OK as long as you do not
+abuse its usage.
+
+The second approach is somewhat more generic and doesn't need extra calls to
+`unsafeRun` but it requires the use of `PartialFunction`s and keeping a private
+`Map` inside our custom Layer, here called `MetricsMap`:
+
+```scala
+  type MetricMap = Has[MetricMap.Service]
+
+  case class InvalidMetric(msg: String) extends Exception
+
+  object MetricMap {
+    trait Service {
+      def getRegistry(): Task[CollectorRegistry]
+
+      def put(name: String, metric: Metric): Task[Unit]
+
+      def getHistogram(name: String): IO[InvalidMetric, Histogram]
+
+      def getCounter(name: String): IO[InvalidMetric, Counter]
+    }
+
+    val live: Layer[Nothing, MetricMap] = ZLayer.succeed(new Service {
+
+      private var metricsMap: Map[String, Metric] = Map.empty[String, Metric]
+
+      def getRegistry(): Task[CollectorRegistry] =
+        getCurrentRegistry().provideLayer(Registry.live)
+
+      def put(key: String, metric: Metric): Task[Unit] =
+        Task(
+          this.metricsMap =
+            if (metricsMap.contains(key))
+              metricsMap.updated(key, metric)
+            else
+              metricsMap + (key -> metric)
+        ).unit
+
+      def getHistogram(name: String): IO[InvalidMetric, Histogram] =
+        metricsMap(name) match {
+          case h @ Histogram(_) => IO.succeed(h)
+          case _                => IO.fail(InvalidMetric("Metric is not a Histogram or doesn't exists!"))
+        }
+
+      def getCounter(name: String): IO[InvalidMetric, Counter] =
+        metricsMap(name) match {
+          case c @ Counter(_) => IO.succeed(c)
+          case _              => IO.fail(InvalidMetric("Metric is not a Counter or doesn't exists!"))
+        }
+    })
+  }
+  ```
+
+Simply put: the `MetricsMap` layer exposes methods to `get` and `put` metrics
+inside its private `Map`, overwriting the existing metric if the `key` is
+already registered. You only write to this `Map` when registering a metric NOT
+when actually using it, so the requirement for safe-concurrency are quite low.
+
+This technique aloows you to register all your metrics in one place:
+
+```scala
+  val startup: RIO[
+    MetricMap with Registry,
+    Unit
+  ] =
+    for {
+      m     <- RIO.environment[MetricMap]
+      name  = "ExportersTest"
+      c     <- Counter(name, Array("exporter"))
+      hname = "export_histogram"
+      h <- histogram
+            .register(hname, Array("exporter", "method"))
+            .provideLayer(Registry.live)
+      _ <- m.get.put(name, c)
+      _ <- m.get.put(hname, h)
+    } yield ()
+```
+
+and then usinig them downstream wherever you need:
+
+```scala
+  val rtMM = Runtime.unsafeFromLayer(MetricMap.live ++ Registry.live ++ Exporters.live ++ Console.live)
+
+  val exporterTest: RIO[
+    MetricMap with Exporters with Console,
+    HTTPServer
+  ] =
+    for {
+      m  <- RIO.environment[MetricMap]
+      _  <- putStrLn("Exporters")
+      r  <- m.get.getRegistry()
+      _  <- initializeDefaultExports(r)
+      hs <- http(r, 9090)
+      c  <- m.get.getCounter("ExportersTest")
+      _  <- c.inc(Array("counter"))
+      _  <- c.inc(2.0, Array("counter"))
+      h  <- m.get.getHistogram("export_histogram")
+      _  <- h.time(() => Thread.sleep(2000), Array("histogram", "get"))
+      s  <- write004(r)
+      _  <- putStrLn(s)
+    } yield hs
+
+  val programMM = startup *> exporterTest >>= (server => putStrLn(s"Server port: ${server.getPort()}"))
+
+  def main(args: Array[String]): Unit =
+    rt.unsafeRunMM(programMM)
+```

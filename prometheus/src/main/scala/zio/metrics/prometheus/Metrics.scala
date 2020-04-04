@@ -8,7 +8,7 @@ import zio.metrics.prometheus.helpers._
 
 sealed trait Metric {}
 
-class Counter(private val pCounter: PCounter) extends Metric {
+case class Counter(private val pCounter: PCounter) extends Metric {
   def inc(): Task[Unit] = inc(Array.empty[String])
 
   def inc(amount: Double): Task[Unit] = inc(amount, Array.empty[String])
@@ -27,7 +27,7 @@ object Counter {
     } yield new Counter(c)
 }
 
-class Gauge(private val pGauge: PGauge) extends Metric {
+case class Gauge(private val pGauge: PGauge) extends Metric {
   def getValue(): Task[Double] =
     getValue(Array.empty[String])
 
@@ -91,7 +91,7 @@ object Gauge {
     } yield new Gauge(g)
 }
 
-class Histogram(private val pHistogram: PHistogram) extends Metric {
+case class Histogram(private val pHistogram: PHistogram) extends Metric {
   type HistogramTimer = PHistogram.Timer
 
   def observe(amount: Double): Task[Unit] =
@@ -142,7 +142,7 @@ object Histogram {
     } yield new Histogram(h)
 }
 
-class Summary(private val pSummary: PSummary) extends Metric {
+case class Summary(private val pSummary: PSummary) extends Metric {
   type SummaryTimer = PSummary.Timer
 
   def observe(amount: Double): Task[Unit] =
