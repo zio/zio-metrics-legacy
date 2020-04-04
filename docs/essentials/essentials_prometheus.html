@@ -334,7 +334,211 @@ documentation for more information.</p>
     r &lt;- getCurrentRegistry()
   } <span class="hljs-keyword">yield</span> r
 </code></pre>
-</span></div></article></div><div class="docLastUpdate"><em>Last updated on 3/8/2020 by toxicafunk</em></div><div class="docs-prevnext"></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#registry">Registry</a></li><li><a href="#counter">Counter</a></li><li><a href="#helpers">Helpers</a></li><li><a href="#gauge">Gauge</a></li><li><a href="#exporters">Exporters</a></li><li><a href="#histogram">Histogram</a></li><li><a href="#summary">Summary</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section><div><div class="gitter-open-chat-button">Open Chat</div><script type="text/javascript">
+<h2><a class="anchor" aria-hidden="true" id="dependency-injection-with-zlayers"></a><a href="#dependency-injection-with-zlayers" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Dependency Injection with ZLayers</h2>
+<p>A common principle in functional programming is to execute the effects <code>at the end of the world</code> in your application. This basically means that you will write
+pure functions by wrapping your effectul code in ZIO and you execute them from
+your top-most functions, i.e. in <code>main</code> or as close as possible to <code>main</code>.
+Unfortunately, this has the effect (pun intended) of creating a tree-like
+structure of nested functions.</p>
+<p>Let's say, for instanc,e you have a <code>Router</code> which calls a <code>Service</code> which
+calls 2 different functions, <code>MeasuringPoint1</code> and <code>MeasuringPoint2</code> where you
+need to count something. If you <code>register</code> the counter in <code>MyRoutes</code> then you
+need to pass the counter downstream first to <code>MyService1</code> and then to the MeasuringPoint
+functions.</p>
+<pre><code class="hljs">MyRoutes<span class="hljs-function">
+  -&gt;</span> MyService1<span class="hljs-function"><span class="hljs-params">(counter)</span>
+    -&gt;</span> MeasuringPoint1<span class="hljs-function"><span class="hljs-params">(counter)</span>
+    -&gt;</span> MeasuringPoint2(counter)
+</code></pre>
+<p>The deeper such functions are, the more cumbersome this becomes. You could
+reduce the number of times you pass the counter by registering it immediately
+above where they're needed (in <code>MyService1</code>) but on one hand that means you will
+probably end up registering your metrics all over your code (instead of at a
+central location) and on the other it will not work if you also need the counter
+on, say, a <code>MyService2</code> service.</p>
+<p>One way to deal with this is using <code>ZLayer</code> to make your environment <code>R</code> carry
+your metrics for you. I'll present two ways to achieve this, each with its own
+advantages and drawbacks. The first is to create your own <code>Metrics</code> layer where
+you will register the exact metrics you need as private values and then you
+simply expose methods to use them in your <code>MeasuringPoints</code> through the Layer:</p>
+<pre><code class="hljs css language-scala">  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">Env</span> </span>= <span class="hljs-type">Registry</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Exporters</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Console</span>
+  <span class="hljs-keyword">val</span> rtLayer = <span class="hljs-type">Runtime</span>.unsafeFromLayer(<span class="hljs-type">Registry</span>.live ++ <span class="hljs-type">Exporters</span>.live ++ <span class="hljs-type">Console</span>.live)
+
+  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">Metrics</span> </span>= <span class="hljs-type">Has</span>[<span class="hljs-type">Metrics</span>.<span class="hljs-type">Service</span>]
+
+  <span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">Metrics</span> </span>{
+    <span class="hljs-class"><span class="hljs-keyword">trait</span> <span class="hljs-title">Service</span> </span>{
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">getRegistry</span></span>(): <span class="hljs-type">Task</span>[<span class="hljs-type">CollectorRegistry</span>]
+
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">inc</span></span>(tags: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">Task</span>[<span class="hljs-type">Unit</span>]
+
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">inc</span></span>(amount: <span class="hljs-type">Double</span>, tags: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">Task</span>[<span class="hljs-type">Unit</span>]
+
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">time</span></span>(f: () =&gt; <span class="hljs-type">Unit</span>, tags: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">Task</span>[<span class="hljs-type">Double</span>]
+
+    }
+
+    <span class="hljs-keyword">val</span> live: <span class="hljs-type">Layer</span>[<span class="hljs-type">Nothing</span>, <span class="hljs-type">Metrics</span>] = <span class="hljs-type">ZLayer</span>.succeed(<span class="hljs-keyword">new</span> <span class="hljs-type">Service</span> {
+
+      <span class="hljs-keyword">private</span> <span class="hljs-keyword">val</span> (myCounter, myHistogram) = rtLayer.unsafeRun(
+        <span class="hljs-keyword">for</span> {
+          c &lt;- counter.register(<span class="hljs-string">"myCounter"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"name"</span>, <span class="hljs-string">"method"</span>))
+          h &lt;- histogram.register(<span class="hljs-string">"myHistogram"</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"name"</span>, <span class="hljs-string">"method"</span>))
+        } <span class="hljs-keyword">yield</span> (c, h)
+      )
+
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">getRegistry</span></span>(): <span class="hljs-type">Task</span>[<span class="hljs-type">CollectorRegistry</span>] =
+        getCurrentRegistry().provideLayer(<span class="hljs-type">Registry</span>.live)
+
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">inc</span></span>(tags: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]): zio.<span class="hljs-type">Task</span>[<span class="hljs-type">Unit</span>] =
+        inc(<span class="hljs-number">1.0</span>, tags)
+
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">inc</span></span>(amount: <span class="hljs-type">Double</span>, tags: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">Task</span>[<span class="hljs-type">Unit</span>] =
+        myCounter.inc(amount, tags)
+
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">time</span></span>(f: () =&gt; <span class="hljs-type">Unit</span>, tags: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">Task</span>[<span class="hljs-type">Double</span>] =
+        myHistogram.time(f, tags)
+    })
+
+  }
+</code></pre>
+<p>And then we can use it so:</p>
+<pre><code class="hljs css language-scala">  <span class="hljs-keyword">val</span> exporterTest: <span class="hljs-type">RIO</span>[
+    <span class="hljs-type">Metrics</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Exporters</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Console</span>,
+    <span class="hljs-type">HTTPServer</span>
+  ] =
+    <span class="hljs-keyword">for</span> {
+      m  &lt;- <span class="hljs-type">RIO</span>.environment[<span class="hljs-type">Metrics</span>]
+      _  &lt;- putStrLn(<span class="hljs-string">"Exporters"</span>)
+      r  &lt;- m.get.getRegistry()
+      _  &lt;- initializeDefaultExports(r)
+      hs &lt;- http(r, <span class="hljs-number">9090</span>)
+      _  &lt;- m.get.inc(<span class="hljs-type">Array</span>(<span class="hljs-string">"RequestCounter"</span>, <span class="hljs-string">"get"</span>))
+      _  &lt;- m.get.inc(<span class="hljs-type">Array</span>(<span class="hljs-string">"RequestCounter"</span>, <span class="hljs-string">"post"</span>))
+      _  &lt;- m.get.inc(<span class="hljs-number">2.0</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"LoginCounter"</span>, <span class="hljs-string">"login"</span>))
+      _  &lt;- m.get.time(() =&gt; <span class="hljs-type">Thread</span>.sleep(<span class="hljs-number">2000</span>), <span class="hljs-type">Array</span>(<span class="hljs-string">"histogram"</span>, <span class="hljs-string">"get"</span>))
+      s  &lt;- write004(r)
+      _  &lt;- putStrLn(s)
+    } <span class="hljs-keyword">yield</span> hs
+
+  <span class="hljs-keyword">val</span> programL = exporterTest &gt;&gt;= (server =&gt; putStrLn(<span class="hljs-string">s"Server port: <span class="hljs-subst">${server.getPort()}</span>"</span>))
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">main</span></span>(args: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">Unit</span> =
+    rtLayer.unsafeRun(programL.provideSomeLayer[<span class="hljs-type">Env</span>](<span class="hljs-type">Metrics</span>.live))
+</code></pre>
+<p>The key of this approach is that even if you register only one counter, you can
+in practice have as many counters (or any other metric) as you need by
+distinguishing them using the <code>name</code> tag. You can have as many different
+counters as combination of tags you can devise for your app. Your
+<code>MeasurinPoints</code> can be as nested as they need to be, you just need to declare
+<code>Metrics</code> as part of your environment in the function that will actually get to
+use it.</p>
+<p>The main drawback, as far as I can tell, is that you need that extra call to
+<code>unsafeRun</code> in order to extract and use the metrics themselves. If you don't,
+then every call to <code>inc</code> or <code>time</code> would attemp to re-register the metric which
+results in an Exception. This is because things wrapped up in <code>ZIO</code>s are
+descriptions of a program so flatmapping or folding on them causes them to
+start their execution flow from the beginning.</p>
+<p>Although the ideal is to call <code>unsafeRun</code> only once in your App, this is only an
+ideal and calling it a second (or even third) time is OK as long as you do not
+abuse its usage.</p>
+<p>The second approach is somewhat more generic and doesn't need extra calls to
+<code>unsafeRun</code> but it requires the use of <code>PartialFunction</code>s and keeping a private
+<code>Map</code> inside our custom Layer, here called <code>MetricsMap</code>:</p>
+<pre><code class="hljs css language-scala">  <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">MetricMap</span> </span>= <span class="hljs-type">Has</span>[<span class="hljs-type">MetricMap</span>.<span class="hljs-type">Service</span>]
+
+  <span class="hljs-keyword">case</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">InvalidMetric</span>(<span class="hljs-params">msg: <span class="hljs-type">String</span></span>) <span class="hljs-keyword">extends</span> <span class="hljs-title">Exception</span></span>
+
+  <span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">MetricMap</span> </span>{
+    <span class="hljs-class"><span class="hljs-keyword">trait</span> <span class="hljs-title">Service</span> </span>{
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">getRegistry</span></span>(): <span class="hljs-type">Task</span>[<span class="hljs-type">CollectorRegistry</span>]
+
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">put</span></span>(name: <span class="hljs-type">String</span>, metric: <span class="hljs-type">Metric</span>): <span class="hljs-type">Task</span>[<span class="hljs-type">Unit</span>]
+
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">getHistogram</span></span>(name: <span class="hljs-type">String</span>): <span class="hljs-type">IO</span>[<span class="hljs-type">InvalidMetric</span>, <span class="hljs-type">Histogram</span>]
+
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">getCounter</span></span>(name: <span class="hljs-type">String</span>): <span class="hljs-type">IO</span>[<span class="hljs-type">InvalidMetric</span>, <span class="hljs-type">Counter</span>]
+    }
+
+    <span class="hljs-keyword">val</span> live: <span class="hljs-type">Layer</span>[<span class="hljs-type">Nothing</span>, <span class="hljs-type">MetricMap</span>] = <span class="hljs-type">ZLayer</span>.succeed(<span class="hljs-keyword">new</span> <span class="hljs-type">Service</span> {
+
+      <span class="hljs-keyword">private</span> <span class="hljs-keyword">var</span> metricsMap: <span class="hljs-type">Map</span>[<span class="hljs-type">String</span>, <span class="hljs-type">Metric</span>] = <span class="hljs-type">Map</span>.empty[<span class="hljs-type">String</span>, <span class="hljs-type">Metric</span>]
+
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">getRegistry</span></span>(): <span class="hljs-type">Task</span>[<span class="hljs-type">CollectorRegistry</span>] =
+        getCurrentRegistry().provideLayer(<span class="hljs-type">Registry</span>.live)
+
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">put</span></span>(key: <span class="hljs-type">String</span>, metric: <span class="hljs-type">Metric</span>): <span class="hljs-type">Task</span>[<span class="hljs-type">Unit</span>] =
+        <span class="hljs-type">Task</span>(
+          <span class="hljs-keyword">this</span>.metricsMap =
+            <span class="hljs-keyword">if</span> (metricsMap.contains(key))
+              metricsMap.updated(key, metric)
+            <span class="hljs-keyword">else</span>
+              metricsMap + (key -&gt; metric)
+        ).unit
+
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">getHistogram</span></span>(name: <span class="hljs-type">String</span>): <span class="hljs-type">IO</span>[<span class="hljs-type">InvalidMetric</span>, <span class="hljs-type">Histogram</span>] =
+        metricsMap(name) <span class="hljs-keyword">match</span> {
+          <span class="hljs-keyword">case</span> h @ <span class="hljs-type">Histogram</span>(_) =&gt; <span class="hljs-type">IO</span>.succeed(h)
+          <span class="hljs-keyword">case</span> _                =&gt; <span class="hljs-type">IO</span>.fail(<span class="hljs-type">InvalidMetric</span>(<span class="hljs-string">"Metric is not a Histogram or doesn't exists!"</span>))
+        }
+
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">getCounter</span></span>(name: <span class="hljs-type">String</span>): <span class="hljs-type">IO</span>[<span class="hljs-type">InvalidMetric</span>, <span class="hljs-type">Counter</span>] =
+        metricsMap(name) <span class="hljs-keyword">match</span> {
+          <span class="hljs-keyword">case</span> c @ <span class="hljs-type">Counter</span>(_) =&gt; <span class="hljs-type">IO</span>.succeed(c)
+          <span class="hljs-keyword">case</span> _              =&gt; <span class="hljs-type">IO</span>.fail(<span class="hljs-type">InvalidMetric</span>(<span class="hljs-string">"Metric is not a Counter or doesn't exists!"</span>))
+        }
+    })
+  }
+</code></pre>
+<p>Simply put: the <code>MetricsMap</code> layer exposes methods to <code>get</code> and <code>put</code> metrics
+inside its private <code>Map</code>, overwriting the existing metric if the <code>key</code> is
+already registered. You only write to this <code>Map</code> when registering a metric NOT
+when actually using it, so the requirement for safe-concurrency are quite low.</p>
+<p>This technique aloows you to register all your metrics in one place:</p>
+<pre><code class="hljs css language-scala">  <span class="hljs-keyword">val</span> startup: <span class="hljs-type">RIO</span>[
+    <span class="hljs-type">MetricMap</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Registry</span>,
+    <span class="hljs-type">Unit</span>
+  ] =
+    <span class="hljs-keyword">for</span> {
+      m     &lt;- <span class="hljs-type">RIO</span>.environment[<span class="hljs-type">MetricMap</span>]
+      name  = <span class="hljs-string">"ExportersTest"</span>
+      c     &lt;- <span class="hljs-type">Counter</span>(name, <span class="hljs-type">Array</span>(<span class="hljs-string">"exporter"</span>))
+      hname = <span class="hljs-string">"export_histogram"</span>
+      h &lt;- histogram
+            .register(hname, <span class="hljs-type">Array</span>(<span class="hljs-string">"exporter"</span>, <span class="hljs-string">"method"</span>))
+            .provideLayer(<span class="hljs-type">Registry</span>.live)
+      _ &lt;- m.get.put(name, c)
+      _ &lt;- m.get.put(hname, h)
+    } <span class="hljs-keyword">yield</span> ()
+</code></pre>
+<p>and then usinig them downstream wherever you need:</p>
+<pre><code class="hljs css language-scala">  <span class="hljs-keyword">val</span> rtMM = <span class="hljs-type">Runtime</span>.unsafeFromLayer(<span class="hljs-type">MetricMap</span>.live ++ <span class="hljs-type">Registry</span>.live ++ <span class="hljs-type">Exporters</span>.live ++ <span class="hljs-type">Console</span>.live)
+
+  <span class="hljs-keyword">val</span> exporterTest: <span class="hljs-type">RIO</span>[
+    <span class="hljs-type">MetricMap</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Exporters</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Console</span>,
+    <span class="hljs-type">HTTPServer</span>
+  ] =
+    <span class="hljs-keyword">for</span> {
+      m  &lt;- <span class="hljs-type">RIO</span>.environment[<span class="hljs-type">MetricMap</span>]
+      _  &lt;- putStrLn(<span class="hljs-string">"Exporters"</span>)
+      r  &lt;- m.get.getRegistry()
+      _  &lt;- initializeDefaultExports(r)
+      hs &lt;- http(r, <span class="hljs-number">9090</span>)
+      c  &lt;- m.get.getCounter(<span class="hljs-string">"ExportersTest"</span>)
+      _  &lt;- c.inc(<span class="hljs-type">Array</span>(<span class="hljs-string">"counter"</span>))
+      _  &lt;- c.inc(<span class="hljs-number">2.0</span>, <span class="hljs-type">Array</span>(<span class="hljs-string">"counter"</span>))
+      h  &lt;- m.get.getHistogram(<span class="hljs-string">"export_histogram"</span>)
+      _  &lt;- h.time(() =&gt; <span class="hljs-type">Thread</span>.sleep(<span class="hljs-number">2000</span>), <span class="hljs-type">Array</span>(<span class="hljs-string">"histogram"</span>, <span class="hljs-string">"get"</span>))
+      s  &lt;- write004(r)
+      _  &lt;- putStrLn(s)
+    } <span class="hljs-keyword">yield</span> hs
+
+  <span class="hljs-keyword">val</span> programMM = startup *&gt; exporterTest &gt;&gt;= (server =&gt; putStrLn(<span class="hljs-string">s"Server port: <span class="hljs-subst">${server.getPort()}</span>"</span>))
+
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">main</span></span>(args: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">Unit</span> =
+    rt.unsafeRunMM(programMM)
+</code></pre>
+</span></div></article></div><div class="docLastUpdate"><em>Last updated on 4/4/2020 by toxicafunk</em></div><div class="docs-prevnext"></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#registry">Registry</a></li><li><a href="#counter">Counter</a></li><li><a href="#helpers">Helpers</a></li><li><a href="#gauge">Gauge</a></li><li><a href="#exporters">Exporters</a></li><li><a href="#histogram">Histogram</a></li><li><a href="#summary">Summary</a></li><li><a href="#dependency-injection-with-zlayers">Dependency Injection with ZLayers</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section><div><div class="gitter-open-chat-button">Open Chat</div><script type="text/javascript">
         ((window.gitter = {}).chat = {}).options = {
           showChatByDefault: false,
           activationElement: '.gitter-open-chat-button',
