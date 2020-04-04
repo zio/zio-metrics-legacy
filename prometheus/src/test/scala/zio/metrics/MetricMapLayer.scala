@@ -23,11 +23,11 @@ object MetricMapLayer {
     trait Service {
       def getRegistry(): Task[CollectorRegistry]
 
-      def put(name: String, metric: Metric): Task[Unit]
+      def put(key: String, metric: Metric): Task[Unit]
 
-      def getHistogram(name: String): IO[InvalidMetric, Histogram]
+      def getHistogram(key: String): IO[InvalidMetric, Histogram]
 
-      def getCounter(name: String): IO[InvalidMetric, Counter]
+      def getCounter(key: String): IO[InvalidMetric, Counter]
     }
 
     val live: Layer[Nothing, MetricMap] = ZLayer.succeed(new Service {
@@ -37,28 +37,27 @@ object MetricMapLayer {
       def getRegistry(): Task[CollectorRegistry] =
         getCurrentRegistry().provideLayer(Registry.live)
 
-      def put(name: String, metric: Metric): Task[Unit] =
+      def put(key: String, metric: Metric): Task[Unit] =
         Task(
           this.metricsMap =
-            if (metricsMap.contains(name))
-              metricsMap.updated(name, metric)
+            if (metricsMap.contains(key))
+              metricsMap.updated(key, metric)
             else
-              metricsMap + (name -> metric)
+              metricsMap + (key -> metric)
         ).unit
 
-      def getHistogram(name: String): IO[InvalidMetric, Histogram] =
-        metricsMap(name) match {
+      def getHistogram(key: String): IO[InvalidMetric, Histogram] =
+        metricsMap(key) match {
           case h @ Histogram(_) => IO.succeed(h)
           case _                => IO.fail(InvalidMetric("Metric is not a Histogram or doesn't exists!"))
         }
 
-      def getCounter(name: String): IO[InvalidMetric, Counter] =
-        metricsMap(name) match {
+      def getCounter(key: String): IO[InvalidMetric, Counter] =
+        metricsMap(key) match {
           case c @ Counter(_) => IO.succeed(c)
           case _              => IO.fail(InvalidMetric("Metric is not a Counter or doesn't exists!"))
         }
     })
-
   }
 
   val startup: RIO[
