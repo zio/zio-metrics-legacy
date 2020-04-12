@@ -53,6 +53,24 @@ object MetricsLayer {
         myHistogram.time(f, tags)
     })
 
+    val receiver: ZLayer[(Counter, Histogram), Nothing, Metrics] =
+      ZLayer.fromFunction[(Counter, Histogram), Metrics.Service](
+        minsts =>
+          new Service {
+
+            def getRegistry(): Task[CollectorRegistry] =
+              getCurrentRegistry().provideLayer(Registry.live)
+
+            def inc(tags: Array[String]): zio.Task[Unit] =
+              inc(1.0, tags)
+
+            def inc(amount: Double, tags: Array[String]): Task[Unit] =
+              minsts._1.inc(amount, tags)
+
+            def time(f: () => Unit, tags: Array[String]): Task[Double] =
+              minsts._2.time(f, tags)
+          }
+      )
   }
 
   val exporterTest: RIO[
