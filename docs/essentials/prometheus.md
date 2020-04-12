@@ -552,6 +552,27 @@ Although the ideal is to call `unsafeRun` only once in your App, this is only an
 ideal and calling it a second (or even third) time is OK as long as you do not
 abuse its usage.
 
+You can, however, eliminate this extra `unsafeRun` by registering your `counter`
+and `histogram` during startup and pass them as inputs to your `ZLayer` using
+`fromFunction`:
+
+```scala
+    val receiver: ZLayer[(Counter, Histogram), Nothing, Metrics] = ZLayer.fromFunction[(Counter, Histogram), Metrics.Service]( minsts => new Service {
+
+      def getRegistry(): Task[CollectorRegistry] =
+        getCurrentRegistry().provideLayer(Registry.live)
+
+      def inc(tags: Array[String]): zio.Task[Unit] =
+        inc(1.0, tags)
+
+      def inc(amount: Double, tags: Array[String]): Task[Unit] =
+        minsts._1.inc(amount, tags)
+
+      def time(f: () => Unit, tags: Array[String]): Task[Double] =
+        minsts._2.time(f, tags)
+    })
+```
+
 The second approach is somewhat more generic and doesn't need extra calls to
 `unsafeRun` but it requires the use of `PartialFunction`s and keeping a private
 `Map` inside our custom Layer, here called `MetricsMap`:
