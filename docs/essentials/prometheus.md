@@ -82,6 +82,31 @@ Using the registry helper the above function becomes:
   } yield r
 ```
 
+### Pass the CollectorRegistry explicitly
+If, for whatever reason, you already have a `CollectorRegistry` in your app and
+want to pass that to `zio-metrics-prometheus`, you can use the `explicit` layer
+intead of `live`. You just need to feed an `Option[CollectorRegistry]` to the
+`explicit` layer so:
+
+```scala
+ val myRegistry = CollectorRegistry.defaultRegistry
+  val preCounter = PCounter
+    .build()
+    .name("PreExistingCounter")
+    .help("Counter configured before using zio-metrics")
+    .register(myRegistry)
+  preCounter.inc(9)
+
+  val myCustomLayer = ZLayer.succeed[Option[CollectorRegistry]](Some(myRegistry)) >>> Registry.explicit
+```
+
+In this example we create a `CollectorRegistry` external to `zio-metrics`
+(`myRegistry`), add a counter and increase it to 9. The next step is to `lift`
+`myRegistry` to a layer (i.e. create a Layer that takes `Nothing` and outputs
+`Option[CollectorRegistry]`) and compose it with `Registry.explicit`. The you
+just need to use `myCustomLayer` wherever you would have used `Registry.live`,
+i.e. `counter.register(name, Array("exporter")).provideLayer(myCustomLayer)` or `val rt = Runtime.unsafeFromLayer(myCustomLayer ++ Exporters.live ++ Console.live)`
+
 ## Counter
 Counter has methods to increase a counter by 1 or by an arbitrary double
 passed as a parameter along with optional labels.

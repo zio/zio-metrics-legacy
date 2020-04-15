@@ -26,7 +26,7 @@ package object prometheus {
     type Percentile = Double
     type Tolerance  = Double
 
-    val explicit: ZLayer[Has[Option[CollectorRegistry]], Nothing, Has[Registry.Service]] =
+    val explicit: ZLayer[Has[Option[CollectorRegistry]], Nothing, Registry] =
       ZLayer.fromFunction[Has[Option[CollectorRegistry]], Registry.Service](
         optionalRegistry =>
           new Service {
