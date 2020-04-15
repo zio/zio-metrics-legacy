@@ -331,14 +331,6 @@ workflows:
             - lint
           filters:
             <<: *filter_tags
-      - microsite:
-          context: Website
-          requires:
-            - release
-          filters:
-            <<: *filter_tags
-            branches:
-              ignore: /.*/
       - release:
           context: Sonatype2
           requires:
@@ -352,4 +344,11 @@ workflows:
             branches:
               only:
                 - master
-
+      - microsite:
+          context: Website
+          requires:
+            - mdoc
+          filters:
+            <<: *filter_tags
+            branches:
+              ignore: /.*/
