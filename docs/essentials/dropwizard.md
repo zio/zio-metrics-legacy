@@ -81,6 +81,27 @@ Using the registry helper the above function becomes:
   } yield (r, c)
 ```
 
+### Provide the MetricRegistry explicitly
+If, for whatever reason, you already have a `MetricRegistry` in your app and
+want to pass that to `zio-metrics-dropwizard`, you can use the `explicit` layer
+intead of `live`. You just need to feed an `Option[MetricRegistry]` to the
+`explicit` layer so:
+
+```scala
+ val myRegistry = MetricRegistry.defaultRegistry
+  val preCounter = myRegistry.counter("PreExistingCounter")
+  preCounter.inc(9)
+
+  val myCustomLayer = ZLayer.succeed[Option[MetricRegistry]](Some(myRegistry)) >>> Registry.explicit
+```
+
+In this example we create a `MetricRegistry` external to `zio-metrics`
+(`myRegistry`), add a counter and increase it to 9. The next step is to `lift`
+`myRegistry` to a layer (i.e. create a Layer that takes `Nothing` and outputs
+`Option[MetricRegistry]`) and compose it with `Registry.explicit`. The you
+just need to use `myCustomLayer` wherever you would have used `Registry.live`,
+i.e. `counter.register(name, Array("exporter")).provideLayer(myCustomLayer)` or `val rt = Runtime.unsafeFromLayer(myCustomLayer ++ Console.live)`
+
 ## Counter
 Counter has methods to increase a counter by 1 or by an arbitrary double
 passed as a parameter along with optional labels.
@@ -388,3 +409,7 @@ finally, we just have to call `Server.builder` and provide the environment:
       .map(r => { println(s"Exiting $r"); 0})
   }
 ```
+
+## Dependency Injection with ZLayers
+Both `Prometheus` and `Dropwizard` zio-metrics implementation use `ZLayers` so
+please refer to this section on [the Prometheus section](prometheus.md) for examples.
