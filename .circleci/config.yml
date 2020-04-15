@@ -334,7 +334,7 @@ workflows:
       - microsite:
           context: Website
           requires:
-            - release
+            - mdoc
           filters:
             <<: *filter_tags
             branches:
