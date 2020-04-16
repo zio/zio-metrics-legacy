@@ -60,6 +60,27 @@ defined on ``typeclasses<code>with instances for String and Class[A]. Besides th
     r  &lt;- getCurrentRegistry()
   } <span class="hljs-keyword">yield</span> r
 </code></pre>
+<h3><a class="anchor" aria-hidden="true" id="pass-the-collectorregistry-explicitly"></a><a href="#pass-the-collectorregistry-explicitly" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Pass the CollectorRegistry explicitly</h3>
+<p>If, for whatever reason, you already have a <code>CollectorRegistry</code> in your app and
+want to pass that to <code>zio-metrics-prometheus</code>, you can use the <code>explicit</code> layer
+intead of <code>live</code>. You just need to feed an <code>Option[CollectorRegistry]</code> to the
+<code>explicit</code> layer so:</p>
+<pre><code class="hljs css language-scala"> <span class="hljs-keyword">val</span> myRegistry = <span class="hljs-type">CollectorRegistry</span>.defaultRegistry
+  <span class="hljs-keyword">val</span> preCounter = <span class="hljs-type">PCounter</span>
+    .build()
+    .name(<span class="hljs-string">"PreExistingCounter"</span>)
+    .help(<span class="hljs-string">"Counter configured before using zio-metrics"</span>)
+    .register(myRegistry)
+  preCounter.inc(<span class="hljs-number">9</span>)
+
+  <span class="hljs-keyword">val</span> myCustomLayer = <span class="hljs-type">ZLayer</span>.succeed[<span class="hljs-type">Option</span>[<span class="hljs-type">CollectorRegistry</span>]](<span class="hljs-type">Some</span>(myRegistry)) &gt;&gt;&gt; <span class="hljs-type">Registry</span>.explicit
+</code></pre>
+<p>In this example we create a <code>CollectorRegistry</code> external to <code>zio-metrics</code>
+(<code>myRegistry</code>), add a counter and increase it to 9. The next step is to <code>lift</code>
+<code>myRegistry</code> to a layer (i.e. create a Layer that takes <code>Nothing</code> and outputs
+<code>Option[CollectorRegistry]</code>) and compose it with <code>Registry.explicit</code>. The you
+just need to use <code>myCustomLayer</code> wherever you would have used <code>Registry.live</code>,
+i.e. <code>counter.register(name, Array(&quot;exporter&quot;)).provideLayer(myCustomLayer)</code> or <code>val rt = Runtime.unsafeFromLayer(myCustomLayer ++ Exporters.live ++ Console.live)</code></p>
 <h2><a class="anchor" aria-hidden="true" id="counter"></a><a href="#counter" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Counter</h2>
 <p>Counter has methods to increase a counter by 1 or by an arbitrary double
 passed as a parameter along with optional labels.</p>
@@ -442,6 +463,24 @@ start their execution flow from the beginning.</p>
 <p>Although the ideal is to call <code>unsafeRun</code> only once in your App, this is only an
 ideal and calling it a second (or even third) time is OK as long as you do not
 abuse its usage.</p>
+<p>You can, however, eliminate this extra <code>unsafeRun</code> by registering your <code>counter</code>
+and <code>histogram</code> during startup and pass them as inputs to your <code>ZLayer</code> using
+<code>fromFunction</code>:</p>
+<pre><code class="hljs css language-scala">    <span class="hljs-keyword">val</span> receiver: <span class="hljs-type">ZLayer</span>[(<span class="hljs-type">Counter</span>, <span class="hljs-type">Histogram</span>), <span class="hljs-type">Nothing</span>, <span class="hljs-type">Metrics</span>] = <span class="hljs-type">ZLayer</span>.fromFunction[(<span class="hljs-type">Counter</span>, <span class="hljs-type">Histogram</span>), <span class="hljs-type">Metrics</span>.<span class="hljs-type">Service</span>]( minsts =&gt; <span class="hljs-keyword">new</span> <span class="hljs-type">Service</span> {
+
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">getRegistry</span></span>(): <span class="hljs-type">Task</span>[<span class="hljs-type">CollectorRegistry</span>] =
+        getCurrentRegistry().provideLayer(<span class="hljs-type">Registry</span>.live)
+
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">inc</span></span>(tags: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]): zio.<span class="hljs-type">Task</span>[<span class="hljs-type">Unit</span>] =
+        inc(<span class="hljs-number">1.0</span>, tags)
+
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">inc</span></span>(amount: <span class="hljs-type">Double</span>, tags: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">Task</span>[<span class="hljs-type">Unit</span>] =
+        minsts._1.inc(amount, tags)
+
+      <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">time</span></span>(f: () =&gt; <span class="hljs-type">Unit</span>, tags: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">Task</span>[<span class="hljs-type">Double</span>] =
+        minsts._2.time(f, tags)
+    })
+</code></pre>
 <p>The second approach is somewhat more generic and doesn't need extra calls to
 <code>unsafeRun</code> but it requires the use of <code>PartialFunction</code>s and keeping a private
 <code>Map</code> inside our custom Layer, here called <code>MetricsMap</code>:</p>
@@ -538,7 +577,7 @@ when actually using it, so the requirement for safe-concurrency are quite low.</
   <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">main</span></span>(args: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">Unit</span> =
     rt.unsafeRunMM(programMM)
 </code></pre>
-</span></div></article></div><div class="docLastUpdate"><em>Last updated on 4/4/2020 by toxicafunk</em></div><div class="docs-prevnext"></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#registry">Registry</a></li><li><a href="#counter">Counter</a></li><li><a href="#helpers">Helpers</a></li><li><a href="#gauge">Gauge</a></li><li><a href="#exporters">Exporters</a></li><li><a href="#histogram">Histogram</a></li><li><a href="#summary">Summary</a></li><li><a href="#dependency-injection-with-zlayers">Dependency Injection with ZLayers</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section><div><div class="gitter-open-chat-button">Open Chat</div><script type="text/javascript">
+</span></div></article></div><div class="docLastUpdate"><em>Last updated on 4/15/2020 by toxicafunk</em></div><div class="docs-prevnext"></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#registry">Registry</a><ul class="toc-headings"><li><a href="#pass-the-collectorregistry-explicitly">Pass the CollectorRegistry explicitly</a></li></ul></li><li><a href="#counter">Counter</a></li><li><a href="#helpers">Helpers</a></li><li><a href="#gauge">Gauge</a></li><li><a href="#exporters">Exporters</a></li><li><a href="#histogram">Histogram</a></li><li><a href="#summary">Summary</a></li><li><a href="#dependency-injection-with-zlayers">Dependency Injection with ZLayers</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section><div><div class="gitter-open-chat-button">Open Chat</div><script type="text/javascript">
         ((window.gitter = {}).chat = {}).options = {
           showChatByDefault: false,
           activationElement: '.gitter-open-chat-button',
