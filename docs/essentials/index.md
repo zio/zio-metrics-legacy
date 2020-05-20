@@ -15,7 +15,7 @@ performant purely functional manner.
 
 
 ZIO-Metrics follows [the module pattern in
-ZIO](https://zio.dev/docs/howto/howto_use_module_pattern) to provide modules for
+ZIO](https://zio.dev/docs/howto/howto_use_layers) to provide modules for
 Prometheus and Dropwizard metrics as well as modules for StatsD and DogStatsdD
 Encoders and Clients.
 
