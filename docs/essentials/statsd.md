@@ -276,12 +276,12 @@ prints the encoded message to console and then uses the default host and port
 from `UDPClient`.
 
 ```scala mdoc:silent
-  val myudp: List[Metric] => RIO[Encoder with Console, List[Long]] = msgs =>
+  val myudp: List[Metric] => RIO[Encoder with Console, List[Int]] = msgs =>
     for {
       sde <- RIO.environment[Encoder]
       opt <- RIO.foreach(msgs)(sde.get.encode(_))
       _   <- putStrLn(s"udp: $opt")
-      l   <- RIO.collectAll(opt.flatten.map(s => UDPClient.clientM.use(_.write(Chunk.fromArray(s.getBytes())))))
+      l   <- RIO.foreach(opt.flatten)(s => UDPClient().use(_.send(s)))
     } yield l
 ```
 
@@ -292,7 +292,7 @@ and we can use this instead of the default changing the `client.listen` call so:
   client.queue >>= (queue => {
       implicit val q = queue
       for {
-        z <- client.listen[List, Long]{ l =>
+        z <- client.listen[List, Int]{ l =>
               myudp(l).provideSomeLayer[Encoder](Console.live)
             }
         opt <- RIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
