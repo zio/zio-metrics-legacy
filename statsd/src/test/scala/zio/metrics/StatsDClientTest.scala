@@ -6,7 +6,6 @@ import zio.console._
 import zio.metrics.encoders._
 import zio.metrics.statsd._
 import zio.duration.Duration
-
 import java.util.concurrent.TimeUnit
 
 object StatsDClientTest {

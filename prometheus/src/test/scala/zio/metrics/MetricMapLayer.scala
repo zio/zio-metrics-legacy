@@ -66,11 +66,11 @@ object MetricMapLayer {
   ] =
     for {
       m     <- RIO.environment[MetricMap]
-      name  = "ExportersTest"
-      c     <- Counter(name, Array("exporter"))
-      hname = "export_histogram"
+      name  = "MetricMapLayer"
+      c     <- Counter(name, Array("metricmap"))
+      hname = "metricmap_histogram"
       h <- histogram
-            .register(hname, Array("exporter", "method"))
+            .register(hname, Array("metricmap", "method"))
             .provideLayer(Registry.live)
       _ <- m.get.put(name, c)
       _ <- m.get.put(hname, h)
@@ -82,14 +82,14 @@ object MetricMapLayer {
   ] =
     for {
       m  <- RIO.environment[MetricMap]
-      _  <- putStrLn("Exporters")
+      _  <- putStrLn("MetricMapLayer")
       r  <- m.get.getRegistry()
       _  <- initializeDefaultExports(r)
       hs <- http(r, 9090)
-      c  <- m.get.getCounter("ExportersTest")
+      c  <- m.get.getCounter("MetricMapLayer")
       _  <- c.inc(Array("counter"))
       _  <- c.inc(2.0, Array("counter"))
-      h  <- m.get.getHistogram("export_histogram")
+      h  <- m.get.getHistogram("metricmap_histogram")
       _  <- h.time(() => Thread.sleep(2000), Array("histogram", "get"))
       s  <- write004(r)
       _  <- putStrLn(s)
