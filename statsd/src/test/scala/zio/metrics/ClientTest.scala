@@ -4,18 +4,17 @@ import zio.{ RIO, Runtime, Task }
 import zio.clock.Clock
 import zio.console._
 import zio.metrics.encoders._
-import zio.Chunk
 
 object ClientTest {
 
   val rt = Runtime.unsafeFromLayer(Encoder.statsd ++ Console.live ++ Clock.live)
 
-  val myudp: List[Metric] => RIO[Encoder with Console, List[Long]] = msgs =>
+  val myudp: List[Metric] => RIO[Encoder with Console, List[Int]] = msgs =>
     for {
       sde <- RIO.environment[Encoder]
       opt <- RIO.foreach(msgs)(sde.get.encode(_))
       _   <- putStrLn(s"udp: $opt")
-      l   <- RIO.collectAll(opt.flatten.map(s => UDPClient.clientM.use(_.write(Chunk.fromArray(s.getBytes())))))
+      l   <- RIO.foreach(opt.flatten)(s => UDPClient().use(_.send(s)))
     } yield l
 
   val program = {
@@ -24,12 +23,12 @@ object ClientTest {
     client.queue >>= (queue => {
       implicit val q = queue
       for {
-        f <- client.listen[List, Long] { l =>
+        f <- client.listen[List, Int] { l =>
               myudp(l).provideSomeLayer[Encoder](Console.live)
             }
         _   <- putStrLn(s"implicit queue: $q")
         opt <- RIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
-        _   <- RIO.collectAll(opt.map(m => client.sendAsync(q)(m)))
+        _   <- RIO.foreach(opt)(m => client.sendAsync(q)(m))
         _   <- f.join
       } yield queue
     })

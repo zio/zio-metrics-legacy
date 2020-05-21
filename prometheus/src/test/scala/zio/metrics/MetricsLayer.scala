@@ -53,9 +53,9 @@ object MetricsLayer {
         myHistogram.time(f, tags)
     })
 
-    val receiver: ZLayer[(Counter, Histogram), Nothing, Metrics] =
-      ZLayer.fromFunction[(Counter, Histogram), Metrics.Service](
-        minsts =>
+    val receiver: (Counter, Histogram) => Layer[Nothing, Metrics] =
+      (counter, histogram) =>
+        ZLayer.succeed(
           new Service {
 
             def getRegistry(): Task[CollectorRegistry] =
@@ -65,13 +65,56 @@ object MetricsLayer {
               inc(1.0, tags)
 
             def inc(amount: Double, tags: Array[String]): Task[Unit] =
-              minsts._1.inc(amount, tags)
+              counter.inc(amount, tags)
 
             def time(f: () => Unit, tags: Array[String]): Task[Double] =
-              minsts._2.time(f, tags)
+              histogram.time(f, tags)
+          }
+        )
+
+    val receiverHas: ZLayer[Has[(Counter, Histogram)], Nothing, Metrics] =
+      ZLayer.fromFunction[Has[(Counter, Histogram)], Metrics.Service](
+        minst =>
+          new Service {
+
+            def getRegistry(): Task[CollectorRegistry] =
+              getCurrentRegistry().provideLayer(Registry.live)
+
+            def inc(tags: Array[String]): zio.Task[Unit] =
+              inc(1.0, tags)
+
+            def inc(amount: Double, tags: Array[String]): Task[Unit] =
+              minst.get._1.inc(amount, tags)
+
+            def time(f: () => Unit, tags: Array[String]): Task[Double] =
+              minst.get._2.time(f, tags)
           }
       )
   }
+
+  import io.prometheus.client.{ Counter => PCounter, Histogram => PHistogram }
+  val c = Counter(
+    PCounter
+      .build()
+      .name("PrometheusCounter")
+      .labelNames(Array("class", "method"): _*)
+      .help(s"Sample prometheus counter")
+      .register()
+  )
+  val h = Histogram(
+    PHistogram
+      .build()
+      .name("PrometheusHistogram")
+      .labelNames(Array("class", "method"): _*)
+      .help(s"Sample prometheus histogram")
+      .register()
+  )
+
+  val rLayerHas     = ZLayer.succeed[(Counter, Histogram)]((c, h)) >>> Metrics.receiverHas
+  val rtReceiverhas = Runtime.unsafeFromLayer(rLayerHas ++ Exporters.live ++ Console.live)
+
+  val rLayer     = Metrics.receiver(c, h)
+  val rtReceiver = Runtime.unsafeFromLayer(rLayer ++ Exporters.live ++ Console.live)
 
   val exporterTest: RIO[
     Metrics with Exporters with Console,
