@@ -222,12 +222,12 @@ samples the metrics, encodes them and sends them to StatsD using <code>UDPClient
 Here is a similar processor that performs NO sampling, encodes the message,
 prints the encoded message to console and then uses the default host and port
 from <code>UDPClient</code>.</p>
-<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> myudp: <span class="hljs-type">List</span>[<span class="hljs-type">Metric</span>] =&gt; <span class="hljs-type">RIO</span>[<span class="hljs-type">Encoder</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Console</span>, <span class="hljs-type">List</span>[<span class="hljs-type">Long</span>]] = msgs =&gt;
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> myudp: <span class="hljs-type">List</span>[<span class="hljs-type">Metric</span>] =&gt; <span class="hljs-type">RIO</span>[<span class="hljs-type">Encoder</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Console</span>, <span class="hljs-type">List</span>[<span class="hljs-type">Int</span>]] = msgs =&gt;
     <span class="hljs-keyword">for</span> {
       sde &lt;- <span class="hljs-type">RIO</span>.environment[<span class="hljs-type">Encoder</span>]
       opt &lt;- <span class="hljs-type">RIO</span>.foreach(msgs)(sde.get.encode(_))
       _   &lt;- putStrLn(<span class="hljs-string">s"udp: <span class="hljs-subst">$opt</span>"</span>)
-      l   &lt;- <span class="hljs-type">RIO</span>.collectAll(opt.flatten.map(s =&gt; <span class="hljs-type">UDPClient</span>.clientM.use(_.write(<span class="hljs-type">Chunk</span>.fromArray(s.getBytes())))))
+      l   &lt;- <span class="hljs-type">RIO</span>.foreach(opt.flatten)(s =&gt; <span class="hljs-type">UDPClient</span>().use(_.send(s)))
     } <span class="hljs-keyword">yield</span> l
 </code></pre>
 <p>and we can use this instead of the default changing the <code>client.listen</code> call so:</p>
@@ -235,7 +235,7 @@ from <code>UDPClient</code>.</p>
   client.queue &gt;&gt;= (queue =&gt; {
       <span class="hljs-keyword">implicit</span> <span class="hljs-keyword">val</span> q = queue
       <span class="hljs-keyword">for</span> {
-        z &lt;- client.listen[<span class="hljs-type">List</span>, <span class="hljs-type">Long</span>]{ l =&gt;
+        z &lt;- client.listen[<span class="hljs-type">List</span>, <span class="hljs-type">Int</span>]{ l =&gt;
               myudp(l).provideSomeLayer[<span class="hljs-type">Encoder</span>](<span class="hljs-type">Console</span>.live)
             }
         opt &lt;- <span class="hljs-type">RIO</span>.foreach(messages)(d =&gt; <span class="hljs-type">Task</span>(<span class="hljs-type">Counter</span>(<span class="hljs-string">"clientbar"</span>, d, <span class="hljs-number">1.0</span>, <span class="hljs-type">Seq</span>.empty[<span class="hljs-type">Tag</span>])))
@@ -319,7 +319,7 @@ create a new runtime to support it.</p>
   }
 
 </code></pre>
-</span></div></article></div><div class="docLastUpdate"><em>Last updated on 3/8/2020 by toxicafunk</em></div><div class="docs-prevnext"></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#statsd-metrics">StatsD Metrics</a><ul class="toc-headings"><li><a href="#gauge">Gauge</a></li><li><a href="#counter">Counter</a></li><li><a href="#timers">Timers</a></li><li><a href="#meter">Meter</a></li><li><a href="#set">Set</a></li></ul></li><li><a href="#dogstatsd-metrics">DogStatsD Metrics</a><ul class="toc-headings"><li><a href="#histogram">Histogram</a></li><li><a href="#servicecheck">ServiceCheck</a></li><li><a href="#event">Event</a></li></ul></li><li><a href="#batching">Batching</a></li><li><a href="#synchronous-vs-asynchronous-delivery">Synchronous vs Asynchronous Delivery</a></li><li><a href="#custom-message-processor">Custom Message Processor</a></li><li><a href="#statsd-client">StatsD Client</a></li><li><a href="#dogstatsd-client">DogStatsD Client</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section><div><div class="gitter-open-chat-button">Open Chat</div><script type="text/javascript">
+</span></div></article></div><div class="docLastUpdate"><em>Last updated on 5/21/2020 by toxicafunk</em></div><div class="docs-prevnext"></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#statsd-metrics">StatsD Metrics</a><ul class="toc-headings"><li><a href="#gauge">Gauge</a></li><li><a href="#counter">Counter</a></li><li><a href="#timers">Timers</a></li><li><a href="#meter">Meter</a></li><li><a href="#set">Set</a></li></ul></li><li><a href="#dogstatsd-metrics">DogStatsD Metrics</a><ul class="toc-headings"><li><a href="#histogram">Histogram</a></li><li><a href="#servicecheck">ServiceCheck</a></li><li><a href="#event">Event</a></li></ul></li><li><a href="#batching">Batching</a></li><li><a href="#synchronous-vs-asynchronous-delivery">Synchronous vs Asynchronous Delivery</a></li><li><a href="#custom-message-processor">Custom Message Processor</a></li><li><a href="#statsd-client">StatsD Client</a></li><li><a href="#dogstatsd-client">DogStatsD Client</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section><div><div class="gitter-open-chat-button">Open Chat</div><script type="text/javascript">
         ((window.gitter = {}).chat = {}).options = {
           showChatByDefault: false,
           activationElement: '.gitter-open-chat-button',
