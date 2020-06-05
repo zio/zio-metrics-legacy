@@ -20,8 +20,8 @@ inThisBuild(
 )
 
 val http4sVersion     = "0.21.0-M5"
-val zioVersion        = "1.0.0-RC19-2"
-val interopVersion    = "2.0.0.0-RC12" // "1.3.1.0-RC3"
+val zioVersion        = "1.0.0-RC20"
+val interopVersion    = "2.1.3.0-RC15"
 val zioNIOVersion     = "1.0.0-RC6"
 val prometheusVersion = "0.8.1"
 val dropwizardVersion = "4.1.2"
@@ -128,7 +128,7 @@ lazy val http4s = Seq(
   "org.http4s"    %% "http4s-circe"        % http4sVersion,
   "org.http4s"    %% "http4s-blaze-server" % http4sVersion,
   "org.http4s"    %% "http4s-dsl"          % http4sVersion,
-  "org.typelevel" %% "cats-effect"         % "2.0.0" //% Optional,
+  "org.typelevel" %% "cats-effect"         % "2.1.3" //% Optional,
 )
 
 // TODO: enforce scalazzi dialect through the scalaz-plugin
