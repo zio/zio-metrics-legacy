@@ -9,6 +9,7 @@ import scala.concurrent.duration._
 import zio.console._
 import zio.duration.Duration
 import com.codahale.metrics.MetricRegistry
+import zio.ExitCode
 
 object ReportersTest extends App {
 
@@ -40,6 +41,6 @@ object ReportersTest extends App {
     println("Starting tests")
     val json = rt.unsafeRun(tests >>= (r => DropwizardExtractor.writeJson(r)(None)))
     RIO.sleep(Duration.fromScala(30.seconds))
-    putStrLn(json.spaces2).map(_ => 0)
+    putStrLn(json.spaces2).map(_ => ExitCode.success)
   }
 }

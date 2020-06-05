@@ -12,6 +12,7 @@ import zio.interop.catz._
 import org.http4s.implicits._
 import org.http4s.server.Router
 import com.codahale.metrics.MetricRegistry
+import zio.ExitCode
 
 object ServerTest extends App {
 
@@ -58,6 +59,6 @@ object ServerTest extends App {
     app
       .catchAll(t => putStrLn(s"$t"))
       .run
-      .map(r => { println(s"Exiting $r"); 0 })
+      .map(r => { println(s"Exiting $r"); ExitCode.success })
   }
 }
