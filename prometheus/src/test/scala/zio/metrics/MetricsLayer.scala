@@ -76,7 +76,6 @@ object MetricsLayer {
       ZLayer.fromFunction[Has[(Counter, Histogram)], Metrics.Service](
         minst =>
           new Service {
-
             def getRegistry(): Task[CollectorRegistry] =
               getCurrentRegistry().provideLayer(Registry.live)
 
@@ -110,12 +109,15 @@ object MetricsLayer {
       .register()
   )
 
-  val rLayerHas     = ZLayer.succeed[(Counter, Histogram)]((c, h)) >>> Metrics.receiverHas
-  val rtReceiverhas = Runtime.unsafeFromLayer(rLayerHas ++ Exporters.live ++ Console.live)
-
   val rLayer     = Metrics.receiver(c, h)
   val rtReceiver = Runtime.unsafeFromLayer(rLayer ++ Exporters.live ++ Console.live)
 
+  val chHas     = ZLayer.succeed[(Counter, Histogram)]((c, h))
+  val rLayerHas = chHas >>> Metrics.receiverHas
+  println(s"defining ReceiverHas RT: $rLayerHas")
+  val rtReceiverHas = Runtime.unsafeFromLayer(rLayerHas ++ Exporters.live ++ Console.live)
+
+  println("defining Test program")
   val exporterTest: RIO[
     Metrics with Exporters with Console,
     HTTPServer

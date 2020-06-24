@@ -129,7 +129,7 @@ object PrometheusLabelsTest {
         val r     = rt.unsafeRun(testHistogramDuration)
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
-        Result.combine(assert(count == 3.0), assert(sum >= 4.1 && sum <= 5.0))
+        Result.combine(assert(count == 3.0), assert(sum >= 3.1 && sum <= 5.0))
       },
       test("summary count and sum are as expected") { () =>
         val set: util.Set[String] = new util.HashSet[String]()

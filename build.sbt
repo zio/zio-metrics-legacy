@@ -20,8 +20,8 @@ inThisBuild(
 )
 
 val http4sVersion     = "0.21.0-M5"
-val zioVersion        = "1.0.0-RC20"
-val interopVersion    = "2.1.3.0-RC15"
+val zioVersion        = "1.0.0-RC21"
+val interopVersion    = "2.1.3.0-RC16"
 val zioNIOVersion     = "1.0.0-RC6"
 val prometheusVersion = "0.8.1"
 val dropwizardVersion = "4.1.2"
