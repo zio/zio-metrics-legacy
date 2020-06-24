@@ -72,7 +72,7 @@ object MetricsLayer {
           }
         )
 
-    val receiverHas: ZLayer[Has[(Counter, Histogram)], Nothing, Metrics] =
+    val receiverHas: ZLayer[Has[(Counter, Histogram)], Nothing, Has[Metrics.Service]] =
       ZLayer.fromFunction[Has[(Counter, Histogram)], Metrics.Service](
         minst =>
           new Service {
