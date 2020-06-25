@@ -19,6 +19,9 @@ inThisBuild(
   )
 )
 
+fork in Test := true
+fork in run := true
+
 val http4sVersion     = "0.21.0-M5"
 val zioVersion        = "1.0.0-RC21"
 val interopVersion    = "2.1.3.0-RC16"

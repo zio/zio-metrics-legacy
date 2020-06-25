@@ -1,14 +1,12 @@
 package zio.metrics
 
-import zio.Runtime
+import zio.{ Has, Layer, RIO, Runtime, Task, ZLayer }
 import zio.console.putStrLn
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.helpers._
 import zio.metrics.prometheus.exporters.Exporters
 import io.prometheus.client.exporter.HTTPServer
 import zio.console.Console
-import zio.{ Has, Layer, ZLayer }
-import zio.{ RIO, Task }
 import io.prometheus.client.CollectorRegistry
 
 object MetricsLayer {
@@ -72,7 +70,7 @@ object MetricsLayer {
           }
         )
 
-    val receiverHas: ZLayer[Has[(Counter, Histogram)], Nothing, Has[Metrics.Service]] =
+    val receiverHas: ZLayer[Has[(Counter, Histogram)], Nothing, Metrics] =
       ZLayer.fromFunction[Has[(Counter, Histogram)], Metrics.Service](
         minst =>
           new Service {
@@ -92,7 +90,7 @@ object MetricsLayer {
   }
 
   import io.prometheus.client.{ Counter => PCounter, Histogram => PHistogram }
-  val c = Counter(
+  val c: Counter = Counter(
     PCounter
       .build()
       .name("PrometheusCounter")
@@ -100,7 +98,7 @@ object MetricsLayer {
       .help(s"Sample prometheus counter")
       .register()
   )
-  val h = Histogram(
+  val h: Histogram = Histogram(
     PHistogram
       .build()
       .name("PrometheusHistogram")
@@ -109,13 +107,16 @@ object MetricsLayer {
       .register()
   )
 
-  val rLayer     = Metrics.receiver(c, h)
-  val rtReceiver = Runtime.unsafeFromLayer(rLayer ++ Exporters.live ++ Console.live)
+  val rLayer: Layer[Nothing, Metrics] = Metrics.receiver(c, h)
+  val rtReceiver: Runtime.Managed[Metrics with Exporters with Console] =
+    Runtime.unsafeFromLayer(rLayer ++ Exporters.live ++ Console.live)
 
-  val chHas     = ZLayer.succeed[(Counter, Histogram)]((c, h))
-  val rLayerHas = chHas >>> Metrics.receiverHas
+  /*val chHas: ULayer[Has[(Counter, Histogram)]] = ZLayer.succeed[(Counter, Histogram)]((c, h))
+  val rLayerHas: ZLayer[Any, Nothing, Metrics] = chHas >>> Metrics.receiverHas
   println(s"defining ReceiverHas RT: $rLayerHas")
-  val rtReceiverHas = Runtime.unsafeFromLayer(rLayerHas ++ Exporters.live ++ Console.live)
+  val combinedLayer: ZLayer[Any, Nothing, Metrics with Console] = rLayerHas ++ Console.live
+  println(s"combined: $combinedLayer")
+  val rtReceiverHas = Runtime.unsafeFromLayer(combinedLayer)*/
 
   println("defining Test program")
   val exporterTest: RIO[
