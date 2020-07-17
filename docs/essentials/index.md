@@ -29,13 +29,13 @@ Encoders and Clients.
 
 ```scala
 // Prometheus
-libraryDependencies += "dev.zio" %% "zio-metrics-prometheus" % "0.2.7"
+libraryDependencies += "dev.zio" %% "zio-metrics-prometheus" % "0.2.8"
 
 // Dropwizard
-libraryDependencies += "dev.zio" %% "zio-metrics-dropwizard" % "0.2.7"
+libraryDependencies += "dev.zio" %% "zio-metrics-dropwizard" % "0.2.8"
 
 // StatsD/DogStatsD
-libraryDependencies += "dev.zio" %% "zio-metrics-statsd" % "0.2.7"
+libraryDependencies += "dev.zio" %% "zio-metrics-statsd" % "0.2.8"
 ```
 
 ## References
