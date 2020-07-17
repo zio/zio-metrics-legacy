@@ -40,7 +40,7 @@ object Server {
       ZIO
         .runtime[HttpEnvironment]
         .flatMap { implicit rts =>
-          BlazeServerBuilder[HttpTask]
+          BlazeServerBuilder[HttpTask](rts.platform.executor.asEC)
             .bindHttp(port)
             .withHttpApp(app)
             .serve
