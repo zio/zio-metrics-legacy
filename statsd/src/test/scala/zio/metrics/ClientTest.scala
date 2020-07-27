@@ -3,7 +3,7 @@ package zio.metrics
 import zio.clock.Clock
 import zio.console._
 import zio.metrics.encoders._
-import zio.{RIO, Runtime, Task}
+import zio.{ RIO, Runtime, Task }
 
 object ClientTest {
 

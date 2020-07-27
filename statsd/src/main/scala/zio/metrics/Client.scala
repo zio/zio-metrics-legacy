@@ -31,9 +31,9 @@ class Client(val bufferSize: Long, val timeout: Long, host: Option[String], port
             case sm: SampledMetric =>
               if (sm.sampleRate >= 1.0 || ThreadLocalRandom.current.nextDouble <= sm.sampleRate) true else false
             case _ => true
-        }
+          }
       )
-  )
+    )
 
   val udp: List[Metric] => RIO[Encoder, List[Int]] = metrics =>
     for {
@@ -76,11 +76,13 @@ object Client {
   def apply(bufferSize: Long, timeout: Long, queueCapacity: Int): ZManaged[ClientEnv, Throwable, Client] =
     apply(bufferSize, timeout, queueCapacity, None, None)
 
-  def apply(bufferSize: Long,
-            timeout: Long,
-            queueCapacity: Int,
-            host: Option[String],
-            port: Option[Int]): ZManaged[ClientEnv, Throwable, Client] =
+  def apply(
+    bufferSize: Long,
+    timeout: Long,
+    queueCapacity: Int,
+    host: Option[String],
+    port: Option[Int]
+  ): ZManaged[ClientEnv, Throwable, Client] =
     ZManaged.make {
       for {
         queue  <- ZQueue.bounded[Metric](queueCapacity)

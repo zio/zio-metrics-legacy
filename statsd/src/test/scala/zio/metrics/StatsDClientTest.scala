@@ -7,7 +7,7 @@ import zio.console._
 import zio.duration.Duration
 import zio.metrics.encoders._
 import zio.metrics.statsd._
-import zio.{RIO, Runtime, Schedule}
+import zio.{ RIO, Runtime, Schedule }
 
 object StatsDClientTest {
 
