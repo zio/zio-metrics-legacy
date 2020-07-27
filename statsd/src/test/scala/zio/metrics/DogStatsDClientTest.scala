@@ -1,12 +1,13 @@
 package zio.metrics
 
-import zio.{ Queue, RIO, Runtime, Schedule }
+import java.util.concurrent.TimeUnit
+
 import zio.clock.Clock
 import zio.console._
-import java.util.concurrent.TimeUnit
 import zio.duration.Duration
 import zio.metrics.dogstatsd._
 import zio.metrics.encoders._
+import zio.{RIO, Runtime, Schedule}
 
 object DogStatsDClientTest {
 
@@ -14,12 +15,9 @@ object DogStatsDClientTest {
 
   val schd = Schedule.recurs(10)
 
-  val client = DogStatsDClient()
-
-  def program(r: Long)(implicit queue: Queue[Metric]) =
+  def program(r: Long)(client: DogStatsDClient) =
     for {
       clock <- RIO.environment[Clock]
-      _     <- client.listen
       t1    <- clock.get.currentTime(TimeUnit.MILLISECONDS)
       _     <- client.increment("zmetrics.dog.counter", 0.9)
       _     <- putStrLn(s"waiting for $r ms") *> clock.get.sleep(Duration(r, TimeUnit.MILLISECONDS))
@@ -34,12 +32,11 @@ object DogStatsDClientTest {
   def main(args: Array[String]): Unit = {
     val timeouts = Seq(34L, 76L, 52L)
     rt.unsafeRun(
-      client.queue >>= (
-        q =>
-          RIO
-            .foreach(timeouts)(l => program(l)(q))
-            .repeat(schd)
-        )
+      Client().map(new DogStatsDClient(_)).use { client =>
+        RIO
+          .foreach(timeouts)(l => program(l)(client))
+          .repeat(schd)
+      }
     )
     Thread.sleep(10000)
   }

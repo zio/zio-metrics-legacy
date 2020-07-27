@@ -1,9 +1,9 @@
 package zio.metrics
 
-import zio.{ RIO, Runtime, Task }
 import zio.clock.Clock
 import zio.console._
 import zio.metrics.encoders._
+import zio.{RIO, Runtime, Task}
 
 object ClientTest {
 
@@ -19,22 +19,18 @@ object ClientTest {
 
   val program = {
     val messages = List(1.0, 2.2, 3.4, 4.6, 5.1, 6.0, 7.9)
-    val client   = Client()
-    client.queue >>= (queue => {
-      implicit val q = queue
+    val client = Client.withListener[List, Int] { l: List[Metric] =>
+      myudp(l).provideSomeLayer[Encoder](Console.live)
+    }
+    client.use { client =>
       for {
-        f <- client.listen[List, Int] { l =>
-              myudp(l).provideSomeLayer[Encoder](Console.live)
-            }
-        _   <- putStrLn(s"implicit queue: $q")
         opt <- RIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
-        _   <- RIO.foreach(opt)(m => client.sendAsync(q)(m))
-        _   <- f.join
-      } yield queue
-    })
+        _   <- RIO.foreach(opt)(m => client.sendAsync(m))
+      } yield ()
+    }
   }
 
   def main(args: Array[String]): Unit =
-    rt.unsafeRun(program >>= (q => q.shutdown *> putStrLn("Bye bye").provideSomeLayer(Console.live)))
+    rt.unsafeRun(program *> putStrLn("Bye bye").provideSomeLayer(Console.live))
 
 }
