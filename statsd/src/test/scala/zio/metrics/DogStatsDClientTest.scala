@@ -32,7 +32,7 @@ object DogStatsDClientTest {
   def main(args: Array[String]): Unit = {
     val timeouts = Seq(34L, 76L, 52L)
     rt.unsafeRun(
-      Client().map(new DogStatsDClient(_)).use { client =>
+      DogStatsDClient().use { client =>
         RIO
           .foreach(timeouts)(l => program(l)(client))
           .repeat(schd)

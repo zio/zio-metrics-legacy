@@ -2,11 +2,11 @@ package zio.metrics
 
 import java.util.concurrent.ThreadLocalRandom
 
+import zio._
 import zio.clock.Clock
 import zio.duration.Duration.Finite
 import zio.metrics.encoders._
 import zio.stream.ZStream
-import zio._
 
 class Client(val bufferSize: Long, val timeout: Long, host: Option[String], port: Option[Int])(
   private val queue: Queue[Metric]
@@ -16,14 +16,14 @@ class Client(val bufferSize: Long, val timeout: Long, host: Option[String], port
 
   private val duration: Finite = Finite(timeout)
 
-  val udpClient: ZManaged[Any, Throwable, UDPClient] = (host, port) match {
+  private val udpClient: ZManaged[Any, Throwable, UDPClient] = (host, port) match {
     case (None, None)       => UDPClient()
     case (Some(h), Some(p)) => UDPClient(h, p)
     case (Some(h), None)    => UDPClient(h, 8125)
     case (None, Some(p))    => UDPClient("localhost", p)
   }
 
-  val sample: List[Metric] => Task[List[Metric]] = metrics =>
+  private val sample: List[Metric] => Task[List[Metric]] = metrics =>
     Task(
       metrics.filter(
         m =>
@@ -31,11 +31,11 @@ class Client(val bufferSize: Long, val timeout: Long, host: Option[String], port
             case sm: SampledMetric =>
               if (sm.sampleRate >= 1.0 || ThreadLocalRandom.current.nextDouble <= sm.sampleRate) true else false
             case _ => true
-          }
+        }
       )
-    )
+  )
 
-  val udp: List[Metric] => RIO[Encoder, List[Int]] = metrics =>
+  private val udp: List[Metric] => RIO[Encoder, List[Int]] = metrics =>
     for {
       sde  <- RIO.environment[Encoder]
       flt  <- sample(metrics)
@@ -43,10 +43,10 @@ class Client(val bufferSize: Long, val timeout: Long, host: Option[String], port
       ints <- RIO.foreach(msgs.flatten)(s => udpClient.use(_.send(s)))
     } yield ints
 
-  def listen: URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
+  private def listen: URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
     listen[List, Int](udp)
 
-  def listen[F[_], A](
+  private def listen[F[_], A](
     f: List[Metric] => RIO[Encoder, F[A]]
   ): URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
     ZStream
@@ -56,11 +56,18 @@ class Client(val bufferSize: Long, val timeout: Long, host: Option[String], port
       .runDrain
       .fork
 
-  val send: Metric => Task[Unit] =
-    queue.offer(_).unit
+  val send: Metric => UIO[Unit] =
+    metric => queue.offer(metric).unit
 
-  val sendAsync: Metric => Task[Unit] =
-    queue.offer(_).fork.unit
+  val sendAsync: Metric => UIO[Unit] =
+    metric => queue.offer(metric).fork.unit
+
+  def sendM(sync: Boolean): Metric => UIO[Unit] =
+    if (sync) {
+      send
+    } else {
+      sendAsync
+    }
 
 }
 

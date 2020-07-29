@@ -19,10 +19,10 @@ object ClientTest {
 
   val program = {
     val messages = List(1.0, 2.2, 3.4, 4.6, 5.1, 6.0, 7.9)
-    val client = Client.withListener[List, Int] { l: List[Metric] =>
+    val createClient = Client.withListener[List, Int] { l: List[Metric] =>
       myudp(l).provideSomeLayer[Encoder](Console.live)
     }
-    client.use { client =>
+    createClient.use { client =>
       for {
         opt <- RIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
         _   <- RIO.foreach(opt)(m => client.sendAsync(m))

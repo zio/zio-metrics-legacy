@@ -28,7 +28,7 @@ object StatsDClientTest {
   def main(args: Array[String]): Unit = {
     val timeouts = Seq(4L, 6L, 2L)
     rt.unsafeRun(
-      Client().map(new StatsDClient(_)).use { client =>
+      StatsDClient().use { client =>
         RIO
           .foreach(timeouts)(l => program(l)(client))
           .repeat(schd)
