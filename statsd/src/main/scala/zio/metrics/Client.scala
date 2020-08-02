@@ -31,9 +31,9 @@ class Client(val bufferSize: Long, val timeout: Long, host: Option[String], port
             case sm: SampledMetric =>
               if (sm.sampleRate >= 1.0 || ThreadLocalRandom.current.nextDouble <= sm.sampleRate) true else false
             case _ => true
-        }
+          }
       )
-  )
+    )
 
   private val udp: List[Metric] => RIO[Encoder, List[Int]] = metrics =>
     for {
