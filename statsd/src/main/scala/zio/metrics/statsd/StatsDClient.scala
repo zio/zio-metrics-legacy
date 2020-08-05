@@ -64,14 +64,14 @@ class StatsDClient(client: Client) {
 object StatsDClient {
   def apply(): ZManaged[ClientEnv, Throwable, StatsDClient] = apply(5, 5000, 100, None, None)
 
-  def apply(bufferSize: Long, timeout: Long): ZManaged[ClientEnv, Throwable, StatsDClient] =
+  def apply(bufferSize: Int, timeout: Long): ZManaged[ClientEnv, Throwable, StatsDClient] =
     apply(bufferSize, timeout, 100, None, None)
 
-  def apply(bufferSize: Long, timeout: Long, queueCapacity: Int): ZManaged[ClientEnv, Throwable, StatsDClient] =
+  def apply(bufferSize: Int, timeout: Long, queueCapacity: Int): ZManaged[ClientEnv, Throwable, StatsDClient] =
     apply(bufferSize, timeout, queueCapacity, None, None)
 
   def apply(
-    bufferSize: Long,
+    bufferSize: Int,
     timeout: Long,
     queueCapacity: Int,
     host: Option[String],

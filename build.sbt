@@ -23,9 +23,9 @@ fork in Test := true
 fork in run := true
 
 val http4sVersion     = "0.21.6"
-val zioVersion        = "1.0.0-RC21-2"
-val interopVersion    = "2.1.4.0-RC17"
-val zioNIOVersion     = "1.0.0-RC8"
+val zioVersion        = "1.0.0"
+val interopVersion    = "2.1.4.0"
+val zioNIOVersion     = "1.0.0-RC9"
 val prometheusVersion = "0.9.0"
 val dropwizardVersion = "4.1.10.1"
 val circeVersion      = "0.13.0"
