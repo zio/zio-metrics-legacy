@@ -214,7 +214,7 @@ this is a base client, ZIO-Metrics-StatsD also provide `StatsD` and a
   val rt = Runtime.unsafeFromLayer(Encoder.statsd ++ Console.live ++ Clock.live)
   
   val program = {
-    val messages = List(1.0, 2.2, 3.4, 4.6, 5.1, 6.0, 7.9)
+    val messages = Chunk(1.0, 2.2, 3.4, 4.6, 5.1, 6.0, 7.9)
     val createClient = Client()
     createClient.use { client =>
       for {
@@ -276,19 +276,19 @@ prints the encoded message to console and then uses the default host and port
 from `UDPClient`.
 
 ```scala mdoc:silent
-  val myudp: List[Metric] => RIO[Encoder with Console, List[Int]] = msgs =>
+  val myudp: Chunk[Metric] => RIO[Encoder with Console, Chunk[Int]] = msgs =>
     for {
       sde <- RIO.environment[Encoder]
       opt <- RIO.foreach(msgs)(sde.get.encode(_))
       _   <- putStrLn(s"udp: $opt")
-      l   <- RIO.foreach(opt.flatten)(s => UDPClient().use(_.send(s)))
+      l   <- RIO.foreach(opt.collect { case Some(msg) => msg })(s => UDPClient().use(_.send(s)))
     } yield l
 ```
 
 and we can use this instead of the default behavior by using the `withListener` constructor:
 
 ```scala mdoc:silent
-  val messages = List(1.0, 2.2, 3.4, 4.6, 5.1, 6.0, 7.9)
+  val messages = Chunk(1.0, 2.2, 3.4, 4.6, 5.1, 6.0, 7.9)
   val createCustomClient = Client.withListener { l =>
     myudp(l).provideSomeLayer[Encoder](Console.live)
   }
@@ -300,7 +300,7 @@ and we can use this instead of the default behavior by using the `withListener` 
   }
 ```
 
-A message processor is defined as: `List[Metric] => RIO[Encoder, F[A]]`, since
+A message processor is defined as: `Chunk[Metric] => RIO[Encoder, F[A]]`, since
 `myudp` requires `Encoder with Console` which is NOT the same type as just
 `Encoder`, we need to prove to the compiler our encoding capabilities using `provideSome`.
 

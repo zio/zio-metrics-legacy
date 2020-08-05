@@ -24,7 +24,7 @@ class Client(val bufferSize: Int, val timeout: Long, host: Option[String], port:
     case (None, Some(p))    => UDPClient("localhost", p)
   }
 
-  private val sample: List[Metric] => Task[List[Metric]] = metrics =>
+  private val sample: Chunk[Metric] => Task[Chunk[Metric]] = metrics =>
     Task(
       metrics.filter(
         m =>
@@ -36,24 +36,24 @@ class Client(val bufferSize: Int, val timeout: Long, host: Option[String], port:
       )
     )
 
-  private val udp: List[Metric] => RIO[Encoder, List[Int]] = metrics =>
+  private val udp: Chunk[Metric] => RIO[Encoder, Chunk[Int]] = metrics =>
     for {
       sde  <- RIO.environment[Encoder]
       flt  <- sample(metrics)
       msgs <- RIO.foreach(flt)(sde.get.encode(_))
-      ints <- RIO.foreach(msgs.flatten)(s => udpClient.use(_.send(s)))
+      ints <- RIO.foreach(msgs.collect { case Some(msg) => msg })(s => udpClient.use(_.send(s)))
     } yield ints
 
   private def listen: URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
-    listen[List, Int](udp)
+    listen[Chunk, Int](udp)
 
   private def listen[F[_], A](
-    f: List[Metric] => RIO[Encoder, F[A]]
+    f: Chunk[Metric] => RIO[Encoder, F[A]]
   ): URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
     ZStream
       .fromQueue[Encoder, Throwable, Metric](queue)
       .groupedWithin(bufferSize, duration)
-      .mapM(l => f(l.toList))
+      .mapM(l => f(l))
       .runDrain
       .fork
 
@@ -100,7 +100,7 @@ object Client {
     } { case (client, fiber) => client.queue.shutdown *> fiber.join.orDie }
       .map(_._1)
 
-  def withListener[F[_], A](listener: List[Metric] => RIO[Encoder, F[A]]): ZManaged[ClientEnv, Throwable, Client] =
+  def withListener[F[_], A](listener: Chunk[Metric] => RIO[Encoder, F[A]]): ZManaged[ClientEnv, Throwable, Client] =
     withListener(5, 5000, 100, None, None)(listener)
 
   def withListener[F[_], A](
@@ -109,7 +109,7 @@ object Client {
     queueCapacity: Int,
     host: Option[String],
     port: Option[Int]
-  )(listener: List[Metric] => RIO[Encoder, F[A]]): ZManaged[ClientEnv, Throwable, Client] =
+  )(listener: Chunk[Metric] => RIO[Encoder, F[A]]): ZManaged[ClientEnv, Throwable, Client] =
     ZManaged.make {
       for {
         queue  <- ZQueue.bounded[Metric](queueCapacity)
