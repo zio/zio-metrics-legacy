@@ -131,14 +131,14 @@ object DogStatsDClient {
 
   def apply(): ZManaged[ClientEnv, Throwable, DogStatsDClient] = apply(5, 5000, 100, None, None)
 
-  def apply(bufferSize: Long, timeout: Long): ZManaged[ClientEnv, Throwable, DogStatsDClient] =
+  def apply(bufferSize: Int, timeout: Long): ZManaged[ClientEnv, Throwable, DogStatsDClient] =
     apply(bufferSize, timeout, 100, None, None)
 
-  def apply(bufferSize: Long, timeout: Long, queueCapacity: Int): ZManaged[ClientEnv, Throwable, DogStatsDClient] =
+  def apply(bufferSize: Int, timeout: Long, queueCapacity: Int): ZManaged[ClientEnv, Throwable, DogStatsDClient] =
     apply(bufferSize, timeout, queueCapacity, None, None)
 
   def apply(
-    bufferSize: Long,
+    bufferSize: Int,
     timeout: Long,
     queueCapacity: Int,
     host: Option[String],

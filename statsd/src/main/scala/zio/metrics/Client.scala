@@ -4,17 +4,18 @@ import java.util.concurrent.ThreadLocalRandom
 
 import zio._
 import zio.clock.Clock
+import zio.duration.Duration
 import zio.duration.Duration.Finite
 import zio.metrics.encoders._
 import zio.stream.ZStream
 
-class Client(val bufferSize: Long, val timeout: Long, host: Option[String], port: Option[Int])(
+class Client(val bufferSize: Int, val timeout: Long, host: Option[String], port: Option[Int])(
   private val queue: Queue[Metric]
 ) {
 
   type UDPQueue = ZQueue[Nothing, Any, Encoder, Throwable, Nothing, Metric]
 
-  private val duration: Finite = Finite(timeout)
+  private val duration: Duration = Finite(timeout)
 
   private val udpClient: ZManaged[Any, Throwable, UDPClient] = (host, port) match {
     case (None, None)       => UDPClient()
@@ -52,7 +53,7 @@ class Client(val bufferSize: Long, val timeout: Long, host: Option[String], port
     ZStream
       .fromQueue[Encoder, Throwable, Metric](queue)
       .groupedWithin(bufferSize, duration)
-      .mapM(l => f(l))
+      .mapM(l => f(l.toList))
       .runDrain
       .fork
 
@@ -77,14 +78,14 @@ object Client {
 
   def apply(): ZManaged[ClientEnv, Throwable, Client] = apply(5, 5000, 100, None, None)
 
-  def apply(bufferSize: Long, timeout: Long): ZManaged[ClientEnv, Throwable, Client] =
+  def apply(bufferSize: Int, timeout: Long): ZManaged[ClientEnv, Throwable, Client] =
     apply(bufferSize, timeout, 100, None, None)
 
-  def apply(bufferSize: Long, timeout: Long, queueCapacity: Int): ZManaged[ClientEnv, Throwable, Client] =
+  def apply(bufferSize: Int, timeout: Long, queueCapacity: Int): ZManaged[ClientEnv, Throwable, Client] =
     apply(bufferSize, timeout, queueCapacity, None, None)
 
   def apply(
-    bufferSize: Long,
+    bufferSize: Int,
     timeout: Long,
     queueCapacity: Int,
     host: Option[String],
@@ -103,7 +104,7 @@ object Client {
     withListener(5, 5000, 100, None, None)(listener)
 
   def withListener[F[_], A](
-    bufferSize: Long,
+    bufferSize: Int,
     timeout: Long,
     queueCapacity: Int,
     host: Option[String],
