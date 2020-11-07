@@ -13,6 +13,6 @@
     "react-sidecar": "^0.1.1"
   },
   "dependencies": {
-    "bl": "1.2.3"
+    "bl": "2.2.1"
   }
 }
