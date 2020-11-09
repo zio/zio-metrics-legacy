@@ -77,6 +77,7 @@ install_nodejs: &install_nodejs
         nvm use
         node -v
 
+
 filter_tags: &filter_tags
   tags:
     only: /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
@@ -154,14 +155,14 @@ release: &release
 
 documentation: &documentation
   steps:
-      - checkout
-      - <<: *load_cache
-      - <<: *install_nodejs
-      - <<: *install_yarn
-      - run:
-          name: Generating docs
-          command: sbt ++2.12.8! doc
-      - <<: *save_cache
+    - checkout
+    - <<: *load_cache
+    - <<: *install_nodejs
+    - <<: *install_yarn
+    - run:
+        name: Generating docs
+        command: sbt ++2.12.8! doc
+    - <<: *save_cache
 
 microsite: &microsite
   steps:
@@ -269,25 +270,11 @@ jobs:
       - <<: *scala_dotty
       - <<: *jdk_11
 
-  release_211:
-    <<: *release
-    <<: *machine_ubuntu
-    environment:
-      - <<: *scala_211
-      - <<: *jdk_8
-
-  release_213:
-    <<: *release
-    <<: *machine_ubuntu
-    environment:
-      - <<: *scala_213
-      - <<: *jdk_8
-
   release:
     <<: *release
     <<: *machine_ubuntu
     environment:
-      - <<: *scala_212
+      - <<: *scala_213
       - <<: *jdk_8
 
   documentation:
