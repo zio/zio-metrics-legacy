@@ -167,7 +167,7 @@ this is a base client, ZIO-Metrics-StatsD also provide <code>StatsD</code> and a
   <span class="hljs-keyword">val</span> rt = <span class="hljs-type">Runtime</span>.unsafeFromLayer(<span class="hljs-type">Encoder</span>.statsd ++ <span class="hljs-type">Console</span>.live ++ <span class="hljs-type">Clock</span>.live)
   
   <span class="hljs-keyword">val</span> program = {
-    <span class="hljs-keyword">val</span> messages = <span class="hljs-type">List</span>(<span class="hljs-number">1.0</span>, <span class="hljs-number">2.2</span>, <span class="hljs-number">3.4</span>, <span class="hljs-number">4.6</span>, <span class="hljs-number">5.1</span>, <span class="hljs-number">6.0</span>, <span class="hljs-number">7.9</span>)
+    <span class="hljs-keyword">val</span> messages = <span class="hljs-type">Chunk</span>(<span class="hljs-number">1.0</span>, <span class="hljs-number">2.2</span>, <span class="hljs-number">3.4</span>, <span class="hljs-number">4.6</span>, <span class="hljs-number">5.1</span>, <span class="hljs-number">6.0</span>, <span class="hljs-number">7.9</span>)
     <span class="hljs-keyword">val</span> createClient = <span class="hljs-type">Client</span>()
     createClient.use { client =&gt;
       <span class="hljs-keyword">for</span> {
@@ -218,16 +218,16 @@ samples the metrics, encodes them and sends them to StatsD using <code>UDPClient
 Here is a similar processor that performs NO sampling, encodes the message,
 prints the encoded message to console and then uses the default host and port
 from <code>UDPClient</code>.</p>
-<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> myudp: <span class="hljs-type">List</span>[<span class="hljs-type">Metric</span>] =&gt; <span class="hljs-type">RIO</span>[<span class="hljs-type">Encoder</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Console</span>, <span class="hljs-type">List</span>[<span class="hljs-type">Int</span>]] = msgs =&gt;
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> myudp: <span class="hljs-type">Chunk</span>[<span class="hljs-type">Metric</span>] =&gt; <span class="hljs-type">RIO</span>[<span class="hljs-type">Encoder</span> <span class="hljs-keyword">with</span> <span class="hljs-type">Console</span>, <span class="hljs-type">Chunk</span>[<span class="hljs-type">Int</span>]] = msgs =&gt;
     <span class="hljs-keyword">for</span> {
       sde &lt;- <span class="hljs-type">RIO</span>.environment[<span class="hljs-type">Encoder</span>]
       opt &lt;- <span class="hljs-type">RIO</span>.foreach(msgs)(sde.get.encode(_))
       _   &lt;- putStrLn(<span class="hljs-string">s"udp: <span class="hljs-subst">$opt</span>"</span>)
-      l   &lt;- <span class="hljs-type">RIO</span>.foreach(opt.flatten)(s =&gt; <span class="hljs-type">UDPClient</span>().use(_.send(s)))
+      l   &lt;- <span class="hljs-type">RIO</span>.foreach(opt.collect { <span class="hljs-keyword">case</span> <span class="hljs-type">Some</span>(msg) =&gt; msg })(s =&gt; <span class="hljs-type">UDPClient</span>().use(_.send(s)))
     } <span class="hljs-keyword">yield</span> l
 </code></pre>
 <p>and we can use this instead of the default behavior by using the <code>withListener</code> constructor:</p>
-<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> messages = <span class="hljs-type">List</span>(<span class="hljs-number">1.0</span>, <span class="hljs-number">2.2</span>, <span class="hljs-number">3.4</span>, <span class="hljs-number">4.6</span>, <span class="hljs-number">5.1</span>, <span class="hljs-number">6.0</span>, <span class="hljs-number">7.9</span>)
+<pre><code class="hljs css language-scala mdoc:silent">  <span class="hljs-keyword">val</span> messages = <span class="hljs-type">Chunk</span>(<span class="hljs-number">1.0</span>, <span class="hljs-number">2.2</span>, <span class="hljs-number">3.4</span>, <span class="hljs-number">4.6</span>, <span class="hljs-number">5.1</span>, <span class="hljs-number">6.0</span>, <span class="hljs-number">7.9</span>)
   <span class="hljs-keyword">val</span> createCustomClient = <span class="hljs-type">Client</span>.withListener { l =&gt;
     myudp(l).provideSomeLayer[<span class="hljs-type">Encoder</span>](<span class="hljs-type">Console</span>.live)
   }
@@ -238,7 +238,7 @@ from <code>UDPClient</code>.</p>
     } <span class="hljs-keyword">yield</span> ()
   }
 </code></pre>
-<p>A message processor is defined as: <code>List[Metric] =&gt; RIO[Encoder, F[A]]</code>, since
+<p>A message processor is defined as: <code>Chunk[Metric] =&gt; RIO[Encoder, F[A]]</code>, since
 <code>myudp</code> requires <code>Encoder with Console</code> which is NOT the same type as just
 <code>Encoder</code>, we need to prove to the compiler our encoding capabilities using <code>provideSome</code>.</p>
 <h2><a class="anchor" aria-hidden="true" id="statsd-client"></a><a href="#statsd-client" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>StatsD Client</h2>
@@ -310,7 +310,7 @@ create a new runtime to support it.</p>
   }
 
 </code></pre>
-</span></div></article></div><div class="docLastUpdate"><em>Last updated on 8/3/2020 by Miguel Vilá</em></div><div class="docs-prevnext"></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#statsd-metrics">StatsD Metrics</a><ul class="toc-headings"><li><a href="#gauge">Gauge</a></li><li><a href="#counter">Counter</a></li><li><a href="#timers">Timers</a></li><li><a href="#meter">Meter</a></li><li><a href="#set">Set</a></li></ul></li><li><a href="#dogstatsd-metrics">DogStatsD Metrics</a><ul class="toc-headings"><li><a href="#histogram">Histogram</a></li><li><a href="#servicecheck">ServiceCheck</a></li><li><a href="#event">Event</a></li></ul></li><li><a href="#batching">Batching</a></li><li><a href="#synchronous-vs-asynchronous-delivery">Synchronous vs Asynchronous Delivery</a></li><li><a href="#custom-message-processor">Custom Message Processor</a></li><li><a href="#statsd-client">StatsD Client</a></li><li><a href="#dogstatsd-client">DogStatsD Client</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section><div><div class="gitter-open-chat-button">Open Chat</div><script type="text/javascript">
+</span></div></article></div><div class="docLastUpdate"><em>Last updated on 8/5/2020 by sebver</em></div><div class="docs-prevnext"></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#statsd-metrics">StatsD Metrics</a><ul class="toc-headings"><li><a href="#gauge">Gauge</a></li><li><a href="#counter">Counter</a></li><li><a href="#timers">Timers</a></li><li><a href="#meter">Meter</a></li><li><a href="#set">Set</a></li></ul></li><li><a href="#dogstatsd-metrics">DogStatsD Metrics</a><ul class="toc-headings"><li><a href="#histogram">Histogram</a></li><li><a href="#servicecheck">ServiceCheck</a></li><li><a href="#event">Event</a></li></ul></li><li><a href="#batching">Batching</a></li><li><a href="#synchronous-vs-asynchronous-delivery">Synchronous vs Asynchronous Delivery</a></li><li><a href="#custom-message-processor">Custom Message Processor</a></li><li><a href="#statsd-client">StatsD Client</a></li><li><a href="#dogstatsd-client">DogStatsD Client</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section><div><div class="gitter-open-chat-button">Open Chat</div><script type="text/javascript">
         ((window.gitter = {}).chat = {}).options = {
           showChatByDefault: false,
           activationElement: '.gitter-open-chat-button',
