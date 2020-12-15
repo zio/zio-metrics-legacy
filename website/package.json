@@ -13,6 +13,7 @@
     "react-sidecar": "^0.1.1"
   },
   "dependencies": {
-    "bl": "2.2.1"
+    "bl": "2.2.1",
+    "highlight.js": "10.4.1"
   }
 }
