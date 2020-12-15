@@ -1,4 +1,11 @@
+/**
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 const OFF = 0;
+// eslint-disable-next-line no-unused-vars
 const WARNING = 1;
 const ERROR = 2;
 
@@ -21,6 +28,7 @@ module.exports = {
     'no-plusplus': OFF,
     'prefer-template': OFF,
     'import/no-extraneous-dependencies': OFF,
+    'react/jsx-fragments': OFF, // Babylon v6 does not support <> fragments
     'react/jsx-closing-bracket-location': OFF, // Formatting is left to Prettier.
     'react/jsx-filename-extension': OFF, // Enable in future when migrating.
     'react/jsx-one-expression-per-line': OFF, // Formatting is left to Prettier.
