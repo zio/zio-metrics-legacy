@@ -35,7 +35,7 @@ We will also provide our own `Runtime` which will use ZIOMetric Dropwizard's
   val rt = Runtime.unsafeFromLayer(Registry.live ++ Reporters.live ++ Console.live)
 ```
 
-We will assume the reader has working knowledge for Prometheus already, if
+We will assume the reader has working knowledge for Dropwizard already, if
 not then head over to [Dropwizard Metrics
 Core](https://metrics.dropwizard.io/4.0.0/manual/core.html).
 

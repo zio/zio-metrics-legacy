@@ -4,7 +4,7 @@ title:  "Prometheus ZIO Wrapper"
 ---
 
 ZIO Metrics Prometheus provides Prometheus' 4 metrics plus a number of
-exporters all connected through the `CollectorRegstry`.
+exporters all connected through the `CollectorRegistry`.
 
 Required imports for presented snippets:
 
@@ -22,7 +22,7 @@ import zio.console.{ Console, putStrLn }
 import zio.clock.Clock
 import zio.duration.Duration
 import scala.concurrent.duration._
-// and for inspecting primetheus
+// and for inspecting prometheus
 import java.util
 ```
 
@@ -417,10 +417,10 @@ might as well just use
   write004(rhd)
 ```
 
-instead or any other way we've seen of observing our `CollectoRegistry`.
+instead or any other way we've seen of observing our `CollectorRegistry`.
 
 ## Summary
-`Sumamry` works exactly as `Histogram` above except a `Summary` also allows to
+`Summary` works exactly as `Histogram` above except a `Summary` also allows to
 pass the list of percentiles we wish to include in our measures: `quantiles:
 List[(Percentile, Tolerance)]` where `Percentile` is a `Double` value between 0
 and 1 that represents the percentile (i.e. 0.5 = median) and `Tolerance` is a
