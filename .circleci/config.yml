@@ -28,6 +28,8 @@ install_jdk: &install_jdk
       command: |
         while $(ps aux | grep -i ' apt ' | grep -v grep > /dev/null); do sleep 1; done # Wait for apt to be ready
         sudo add-apt-repository ppa:openjdk-r/ppa -y
+        sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 78BD65473CB3BD13
+        sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 5DC22404A6F9F1CA
         sudo apt update
         sudo apt install openjdk-${JDK_VERSION}-jdk -y
 
@@ -58,6 +60,8 @@ install_yarn: &install_yarn
       command: |
         curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
         sudo bash -c 'echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list'
+        sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 78BD65473CB3BD13
+        sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 5DC22404A6F9F1CA
         sudo apt update && sudo apt install yarn -y
         yarn policies set-version
         yarn -v
@@ -72,6 +76,7 @@ install_nodejs: &install_nodejs
         nvm install
         nvm use
         node -v
+
 
 filter_tags: &filter_tags
   tags:
@@ -150,14 +155,14 @@ release: &release
 
 documentation: &documentation
   steps:
-      - checkout
-      - <<: *load_cache
-      - <<: *install_nodejs
-      - <<: *install_yarn
-      - run:
-          name: Generating docs
-          command: sbt ++2.12.8! doc
-      - <<: *save_cache
+    - checkout
+    - <<: *load_cache
+    - <<: *install_nodejs
+    - <<: *install_yarn
+    - run:
+        name: Generating docs
+        command: sbt ++2.12.8! doc
+    - <<: *save_cache
 
 microsite: &microsite
   steps:
@@ -265,25 +270,11 @@ jobs:
       - <<: *scala_dotty
       - <<: *jdk_11
 
-  release_211:
-    <<: *release
-    <<: *machine_ubuntu
-    environment:
-      - <<: *scala_211
-      - <<: *jdk_8
-
-  release_213:
-    <<: *release
-    <<: *machine_ubuntu
-    environment:
-      - <<: *scala_213
-      - <<: *jdk_8
-
   release:
     <<: *release
     <<: *machine_ubuntu
     environment:
-      - <<: *scala_212
+      - <<: *scala_213
       - <<: *jdk_8
 
   documentation:

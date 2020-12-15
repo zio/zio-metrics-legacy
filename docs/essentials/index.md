@@ -15,7 +15,7 @@ performant purely functional manner.
 
 
 ZIO-Metrics follows [the module pattern in
-ZIO](https://zio.dev/docs/howto/howto_use_module_pattern) to provide modules for
+ZIO](https://zio.dev/docs/howto/howto_use_layers) to provide modules for
 Prometheus and Dropwizard metrics as well as modules for StatsD and DogStatsdD
 Encoders and Clients.
 
@@ -29,13 +29,13 @@ Encoders and Clients.
 
 ```scala
 // Prometheus
-libraryDependencies += "dev.zio" %% "zio-metrics-prometheus" % "0.1.0"
+libraryDependencies += "dev.zio" %% "zio-metrics-prometheus" % "1.0.4"
 
 // Dropwizard
-libraryDependencies += "dev.zio" %% "zio-metrics-dropwizard" % "0.1.0"
+libraryDependencies += "dev.zio" %% "zio-metrics-dropwizard" % "1.0.4"
 
 // StatsD/DogStatsD
-libraryDependencies += "dev.zio" %% "zio-metrics-statsd" % "0.1.0"
+libraryDependencies += "dev.zio" %% "zio-metrics-statsd" % "1.0.4"
 ```
 
 ## References

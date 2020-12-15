@@ -3,16 +3,19 @@
   "localized-strings": {
     "next": "Next",
     "previous": "Previous",
-    "tagline": "A thin wrapper over both Prometheus and Dropwizard intrumentation libraries allowing you to measure the behaviour of your application in a performant purely functional manner.",
+    "tagline": "A pure-ZIO StatsD/DogStatsD client and a thin wrapper over both Prometheus and Dropwizard intrumentation libraries allowing you to measure the behaviour of your application in a performant purely functional manner.",
     "docs": {
-      "essentials/essentials_sockets": {
+      "essentials/essentials_dropwizard": {
         "title": "Dropwizard ZIO WSrapper"
       },
       "essentials/essentials_index": {
         "title": "Overview"
       },
-      "essentials/essentials_files": {
+      "essentials/essentials_prometheus": {
         "title": "Prometheus ZIO Wrapper"
+      },
+      "essentials/essentials_statsd": {
+        "title": "StatsD/DogStatsD Pure ZIO Client"
       }
     },
     "links": {

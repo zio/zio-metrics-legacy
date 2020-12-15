@@ -2,7 +2,6 @@ package zio.metrics
 
 import zio.{ RIO, Runtime, Task }
 import zio.console._
-import zio.internal.PlatformLive
 import testz.{ assert, Harness, PureHarness }
 import com.codahale.metrics.{ MetricRegistry }
 import zio.metrics.dropwizard._
@@ -14,75 +13,72 @@ import java.util.concurrent.TimeUnit
 
 object DropwizardTest {
 
-  val rt = Runtime(
-    new DropwizardRegistry with Console.Live,
-    PlatformLive.Default
-  )
+  val rt = Runtime.unsafeFromLayer(Registry.live ++ Console.live)
 
   val tester: () => Long = () => System.nanoTime()
 
-  val testCounter: RIO[DropwizardRegistry, MetricRegistry] = for {
-    dwr <- RIO.environment[DropwizardRegistry]
-    dwc <- dwr.registry.registerCounter(Label(DropwizardTest.getClass(), Array("test", "counter")))
+  val testCounter: RIO[Registry, MetricRegistry] = for {
+    dwr <- RIO.environment[Registry]
+    dwc <- dwr.get.registerCounter(Label(DropwizardTest.getClass(), Array("test", "counter")))
     c   <- Task(new Counter(dwc))
     _   <- c.inc()
     _   <- c.inc(2.0)
-    r   <- dwr.registry.getCurrent()
+    r   <- dwr.get.getCurrent()
   } yield r
 
-  val testCounterHelper: RIO[DropwizardRegistry, MetricRegistry] = for {
+  val testCounterHelper: RIO[Registry, MetricRegistry] = for {
     c <- counter.register("DropwizardCounterHelper", Array("test", "counter"))
     _ <- c.inc()
     _ <- c.inc(2.0)
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 
-  val testGauge: RIO[DropwizardRegistry, (MetricRegistry, Long)] = for {
+  val testGauge: RIO[Registry, (MetricRegistry, Long)] = for {
     g <- gauge.register("DropwizardGauge", Array("test", "gauge"), tester)
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
     l <- g.getValue[Long]()
   } yield (r, l)
 
-  val testHistogram: RIO[DropwizardRegistry, MetricRegistry] = for {
+  val testHistogram: RIO[Registry, MetricRegistry] = for {
     h <- histogram.register("DropwizardHistogram", Array("test", "histogram"))
     _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 
-  val testUniformHistogram: RIO[DropwizardRegistry, MetricRegistry] = for {
+  val testUniformHistogram: RIO[Registry, MetricRegistry] = for {
     h <- histogram.register("DropwizardUniformHistogram", Array("uniform", "histogram"), new UniformReservoir(512))
     _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 
-  val testExponentialHistogram: RIO[DropwizardRegistry, MetricRegistry] = for {
+  val testExponentialHistogram: RIO[Registry, MetricRegistry] = for {
     h <- histogram.register(
           "DropwizardExponentialHistogram",
           Array("exponential", "histogram"),
           new ExponentiallyDecayingReservoir
         )
     _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 
-  val testSlidingTimeWindowHistogram: RIO[DropwizardRegistry, MetricRegistry] = for {
+  val testSlidingTimeWindowHistogram: RIO[Registry, MetricRegistry] = for {
     h <- histogram.register(
           "DropwizardSlidingHistogram",
           Array("sliding", "histogram"),
           new SlidingTimeWindowArrayReservoir(30, TimeUnit.SECONDS)
         )
     _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 
-  val testMeter: RIO[DropwizardRegistry, MetricRegistry] = for {
+  val testMeter: RIO[Registry, MetricRegistry] = for {
     m <- meter.register("DropwizardMeter", Array("test", "meter"))
     _ <- RIO.foreach(Seq(1L, 2L, 3L, 4L, 5L))(m.mark(_))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 
-  val testTimer: RIO[DropwizardRegistry, (MetricRegistry, List[Long])] = for {
-    r   <- registry.getCurrent()
+  val testTimer: RIO[Registry, (MetricRegistry, List[Long])] = for {
+    r   <- getCurrentRegistry()
     t   <- timer.register("DropwizardTimer", Array("test", "timer"))
     ctx <- t.start()
     l <- RIO.foreach(
@@ -170,7 +166,7 @@ object DropwizardTest {
           .getMeanRate
 
         println(s"count: $count, meanRate: $meanRate")
-        assert(count == 15 && meanRate > 300 && meanRate < 2000)
+        assert(count == 15 && meanRate > 300 && meanRate < 3000)
       },
       test("Timer called 3 times") { () =>
         val name = MetricRegistry.name("DropwizardTimer", Array("test", "timer"): _*)
@@ -195,12 +191,13 @@ object DropwizardTest {
         assert(meanRate > 0.78 && meanRate < 0.84)
       },
       test("Report printer is consistent") { () =>
-        val str = for {
-          dwr <- RIO.environment[DropwizardRegistry]
-          j   <- DropwizardExtractor.writeJson(dwr)(None)
-        } yield j.spaces2
+        val program = for {
+          r <- getCurrentRegistry()
+          j <- DropwizardExtractor.writeJson(r)(None)
+          _ <- putStrLn(j.spaces2)
+        } yield ()
 
-        rt.unsafeRun(str >>= putStrLn)
+        rt.unsafeRun(program)
 
         assert(true)
 

@@ -1,52 +1,36 @@
 package zio.metrics
 
-import zio.{ RIO, Runtime, Task }
 import zio.clock.Clock
 import zio.console._
-import zio.internal.PlatformLive
-import zio.metrics.statsd._
-import zio.Chunk
-import zio.metrics.statsd.StatsDEncoder
+import zio.metrics.encoders._
+import zio.{ Chunk, RIO, Runtime, Task }
 
 object ClientTest {
 
-  val rt = Runtime(
-    new StatsDEncoder with Console.Live with Clock.Live,
-    PlatformLive.Default
-  )
+  val rt = Runtime.unsafeFromLayer(Encoder.statsd ++ Console.live ++ Clock.live)
 
-  val myudp: List[Metric] => RIO[Encoder with Console, List[Long]] = msgs =>
+  val myudp: Chunk[Metric] => RIO[Encoder with Console, Chunk[Int]] = msgs =>
     for {
       sde <- RIO.environment[Encoder]
-      opt <- RIO.traverse(msgs)(sde.encoder.encode(_))
+      opt <- RIO.foreach(msgs)(sde.get.encode(_))
       _   <- putStrLn(s"udp: $opt")
-      l   <- RIO.sequence(opt.flatten.map(s => UDPClient.clientM.use(_.write(Chunk.fromArray(s.getBytes())))))
+      l   <- RIO.foreach(opt.collect { case Some(msg) => msg })(s => UDPClient().use(_.send(s)))
     } yield l
 
   val program = {
     val messages = List(1.0, 2.2, 3.4, 4.6, 5.1, 6.0, 7.9)
-    val client   = Client()
-    client.queue >>= (queue => {
-      implicit val q = queue
+    val createClient = Client.withListener[Chunk, Int] { l: Chunk[Metric] =>
+      myudp(l).provideSomeLayer[Encoder](Console.live)
+    }
+    createClient.use { client =>
       for {
-        z <- client.listen[List, Long](
-              myudp(_).provideSome[Encoder](
-                env =>
-                  new StatsDEncoder with Console.Live {
-                    override val encoder = env.encoder
-                  }
-              )
-            )
-        _   <- putStrLn(s"implicit queue: $q")
-        opt <- RIO.traverse(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
-        _   <- RIO.sequence(opt.map(m => client.send(q)(m)))
-      } yield z
-    })
+        opt <- RIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
+        _   <- RIO.foreach(opt)(m => client.sendAsync(m))
+      } yield ()
+    }
   }
 
-  def main(args: Array[String]): Unit = {
-    rt.unsafeRun(program >>= (lst => putStrLn(s"Main: $lst").provideSome(_ => Console.Live)))
-    Thread.sleep(10000)
-  }
+  def main(args: Array[String]): Unit =
+    rt.unsafeRun(program *> putStrLn("Bye bye").provideSomeLayer(Console.live))
 
 }

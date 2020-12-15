@@ -4,18 +4,13 @@ import testz.{ assert, Harness, PureHarness }
 
 import zio.{ RIO, Runtime }
 import zio.console._
-import zio.internal.PlatformLive
-
-import zio.metrics.dogstatsd._
+import zio.metrics.encoders._
 
 object DogStatsDEncoderTest {
 
   type OptString = Option[String]
 
-  val rt = Runtime(
-    new DogStatsDEncoder with Console.Live,
-    PlatformLive.Default
-  )
+  val rt = Runtime.unsafeFromLayer(Encoder.dogstatsd ++ Console.live)
 
   val gaugeTag        = Tag("metric", "gauge")
   val counterTag      = Tag("metric", "counter")
@@ -24,45 +19,45 @@ object DogStatsDEncoderTest {
   val serviceCheckTag = Tag("metric", "serviceCheck")
   val eventTag        = Tag("metric", "event")
 
-  val encode: Metric => RIO[DogStatsDEncoder, OptString] = metric =>
+  val encode: Metric => RIO[Encoder, OptString] = metric =>
     for {
-      sde   <- RIO.environment[DogStatsDEncoder]
-      coded <- sde.encoder.encode(metric)
+      sde   <- RIO.environment[Encoder]
+      coded <- sde.get.encode(metric)
     } yield coded
 
-  val testCounter: RIO[DogStatsDEncoder, (OptString, OptString)] = for {
+  val testCounter: RIO[Encoder, (OptString, OptString)] = for {
     enc1 <- encode(Counter("foobar", 1.0, 1.0, Seq.empty[Tag]))
     enc2 <- encode(Counter("foobar", 1.0, 0.5, List(counterTag)))
   } yield (enc1, enc2)
 
-  val testGauge: RIO[DogStatsDEncoder, (OptString, OptString, OptString)] = for {
+  val testGauge: RIO[Encoder, (OptString, OptString, OptString)] = for {
     enc1 <- encode(Gauge("foobar", 1.0, List(gaugeTag)))
     enc2 <- encode(Gauge("foobar", java.lang.Double.NEGATIVE_INFINITY, tags = List(gaugeTag)))
     enc3 <- encode(Gauge("foobar", java.lang.Double.POSITIVE_INFINITY, tags = List(gaugeTag)))
   } yield (enc1, enc2, enc3)
 
-  val testTimer: RIO[DogStatsDEncoder, (OptString, OptString, OptString)] = for {
+  val testTimer: RIO[Encoder, (OptString, OptString, OptString)] = for {
     enc1 <- encode(Timer("foobar", 1.0, 1.0, Seq.empty[Tag]))
     enc2 <- encode(Timer("foobar", 1.0, 0.5, List(timerTag)))
     enc3 <- encode(Timer("foobar", 1.0, 1.001, List(timerTag)))
   } yield (enc1, enc2, enc3)
 
-  val testHistogram: RIO[DogStatsDEncoder, (OptString, OptString, OptString)] = for {
+  val testHistogram: RIO[Encoder, (OptString, OptString, OptString)] = for {
     enc1 <- encode(Histogram("foobar", 1.0, 1.0, Seq.empty[Tag]))
     enc2 <- encode(Histogram("foobar", 1.0, 0.5, List(histogramTag)))
     enc3 <- encode(Histogram("foobar", 1.0, 1.001, List(histogramTag)))
   } yield (enc1, enc2, enc3)
 
-  val testMeter: RIO[DogStatsDEncoder, OptString] = for {
+  val testMeter: RIO[Encoder, OptString] = for {
     enc <- encode(Meter("foobar", 1.0, Seq.empty[Tag]))
   } yield enc
 
-  val testSet: RIO[DogStatsDEncoder, OptString] = for {
+  val testSet: RIO[Encoder, OptString] = for {
     enc <- encode(Set("foobar", "barfoo", Seq.empty[Tag]))
   } yield enc
 
   val now = System.currentTimeMillis() / 1000
-  val testServiceCheck: RIO[DogStatsDEncoder, (OptString, OptString)] = {
+  val testServiceCheck: RIO[Encoder, (OptString, OptString)] = {
     val sc1 = ServiceCheck(
       "foobar",
       ServiceCheckOk,
@@ -85,7 +80,7 @@ object DogStatsDEncoderTest {
     } yield (enc1, enc2)
   }
 
-  val testEvent: RIO[DogStatsDEncoder, (OptString, OptString)] = {
+  val testEvent: RIO[Encoder, (OptString, OptString)] = {
     val ev1 = Event(
       "foobar",
       "derp derp derp",

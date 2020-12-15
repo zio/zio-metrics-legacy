@@ -1,5 +1,22 @@
 module.exports = function(hljs) {
   var XML_IDENT_RE = '[A-Za-z0-9\\._:-]+';
+  var XML_ENTITIES = {
+    className: 'symbol',
+    begin: '&[a-z]+;|&#[0-9]+;|&#x[a-f0-9]+;'
+  };
+  var XML_META_KEYWORDS = {
+	  begin: '\\s',
+	  contains:[
+	    {
+	      className: 'meta-keyword',
+	      begin: '#?[a-z_][a-z1-9_-]+',
+	      illegal: '\\n',
+      }
+	  ]
+  };
+  var XML_META_PAR_KEYWORDS = hljs.inherit(XML_META_KEYWORDS, {begin: '\\(', end: '\\)'});
+  var APOS_META_STRING_MODE = hljs.inherit(hljs.APOS_STRING_MODE, {className: 'meta-string'});
+  var QUOTE_META_STRING_MODE = hljs.inherit(hljs.QUOTE_STRING_MODE, {className: 'meta-string'});
   var TAG_INTERNALS = {
     endsWithParent: true,
     illegal: /</,
@@ -18,8 +35,8 @@ module.exports = function(hljs) {
             className: 'string',
             endsParent: true,
             variants: [
-              {begin: /"/, end: /"/},
-              {begin: /'/, end: /'/},
+              {begin: /"/, end: /"/, contains: [XML_ENTITIES]},
+              {begin: /'/, end: /'/, contains: [XML_ENTITIES]},
               {begin: /[^\s"'=<>`]+/}
             ]
           }
@@ -33,9 +50,29 @@ module.exports = function(hljs) {
     contains: [
       {
         className: 'meta',
-        begin: '<!DOCTYPE', end: '>',
+        begin: '<![a-z]', end: '>',
         relevance: 10,
-        contains: [{begin: '\\[', end: '\\]'}]
+        contains: [
+				  XML_META_KEYWORDS,
+				  QUOTE_META_STRING_MODE,
+				  APOS_META_STRING_MODE,
+					XML_META_PAR_KEYWORDS,
+					{
+					  begin: '\\[', end: '\\]',
+					  contains:[
+						  {
+					      className: 'meta',
+					      begin: '<![a-z]', end: '>',
+					      contains: [
+					        XML_META_KEYWORDS,
+					        XML_META_PAR_KEYWORDS,
+					        QUOTE_META_STRING_MODE,
+					        APOS_META_STRING_MODE
+						    ]
+			        }
+					  ]
+				  }
+				]
       },
       hljs.COMMENT(
         '<!--',
@@ -48,6 +85,7 @@ module.exports = function(hljs) {
         begin: '<\\!\\[CDATA\\[', end: '\\]\\]>',
         relevance: 10
       },
+      XML_ENTITIES,
       {
         className: 'meta',
         begin: /<\?xml/, end: /\?>/, relevance: 10

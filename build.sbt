@@ -19,12 +19,16 @@ inThisBuild(
   )
 )
 
-val http4sVersion     = "0.21.0-M5"
-val zioVersion        = "1.0.0-RC17"
-val interopVersion    = "2.0.0.0-RC10" // "1.3.1.0-RC3"
-val prometheusVersion = "0.7.0"
-val dropwizardVersion = "4.0.1"
-val circeVersion      = "0.12.3"
+fork in Test := true
+fork in run := true
+
+val http4sVersion     = "0.21.6"
+val zioVersion        = "1.0.3"
+val interopVersion    = "2.1.4.0"
+val zioNIOVersion     = "1.0.0-RC10"
+val prometheusVersion = "0.9.0"
+val dropwizardVersion = "4.1.10.1"
+val circeVersion      = "0.13.0"
 
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
@@ -74,9 +78,10 @@ lazy val statsd = project
 
 lazy val commonDependencies = Seq(
   "dev.zio"    %% "zio"              % zioVersion,
+  "dev.zio"    %% "zio-streams"      % zioVersion,
   "dev.zio"    %% "zio-interop-cats" % interopVersion,
-  "org.scalaz" % "testz-core_2.12"   % "0.0.5",
-  "org.scalaz" % "testz-stdlib_2.12" % "0.0.5"
+  "org.scalaz" % "testz-core_2.12"   % "0.0.5" % Test,
+  "org.scalaz" % "testz-stdlib_2.12" % "0.0.5" % Test
 )
 
 lazy val prometheusDependencies = Seq(
@@ -97,7 +102,7 @@ lazy val dropwizardDependencies = Seq(
 )
 
 lazy val statsdDependencies = Seq(
-  "dev.zio" %% "zio-nio" % "1.0.0-RC2"
+  //"dev.zio" %% "zio-nio" % zioNIOVersion
 )
 
 lazy val docs = project
@@ -126,7 +131,7 @@ lazy val http4s = Seq(
   "org.http4s"    %% "http4s-circe"        % http4sVersion,
   "org.http4s"    %% "http4s-blaze-server" % http4sVersion,
   "org.http4s"    %% "http4s-dsl"          % http4sVersion,
-  "org.typelevel" %% "cats-effect"         % "2.0.0" //% Optional,
+  "org.typelevel" %% "cats-effect"         % "2.1.3" //% Optional,
 )
 
 // TODO: enforce scalazzi dialect through the scalaz-plugin

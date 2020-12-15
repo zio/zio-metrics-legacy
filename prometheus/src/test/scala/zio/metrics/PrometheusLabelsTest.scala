@@ -5,9 +5,9 @@ import java.util
 import zio.{ RIO, Runtime }
 import testz.{ assert, Harness, PureHarness, Result }
 import io.prometheus.client.{ CollectorRegistry }
-import zio.internal.PlatformLive
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.helpers._
+import zio.metrics.prometheus.exporters.Exporters
 import zio.console.putStrLn
 import zio.console.Console
 import zio.duration.Duration
@@ -16,44 +16,42 @@ import zio.clock.Clock
 
 object PrometheusLabelsTest {
 
-  val rt = Runtime(
-    new PrometheusRegistry with PrometheusExporters with Console.Live with Clock.Live,
-    PlatformLive.Default
-  )
+  val rt = Runtime
+    .unsafeFromLayer(Registry.live ++ Exporters.live ++ Console.live ++ Clock.live)
 
-  val testCounter: RIO[PrometheusRegistry, CollectorRegistry] = for {
+  val testCounter: RIO[Registry, CollectorRegistry] = for {
     c <- Counter("simple_counter", Array("method", "resource"))
     _ <- c.inc(Array("get", "users"))
     _ <- c.inc(2.0, Array("get", "users"))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 
-  val testGauge: RIO[PrometheusRegistry, (CollectorRegistry, Double)] = for {
+  val testGauge: RIO[Registry, (CollectorRegistry, Double)] = for {
     g <- Gauge("simple_gauge", Array("method"))
     _ <- g.inc(Array("get"))
     _ <- g.inc(2.0, Array("get"))
     _ <- g.dec(1.0, Array("get"))
     d <- g.getValue(Array("get"))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield (r, d)
 
-  val testHistogram: RIO[PrometheusRegistry, CollectorRegistry] = for {
+  val testHistogram: RIO[Registry, CollectorRegistry] = for {
     h <- Histogram("simple_histogram", Array("method"), DefaultBuckets(Seq(10, 20, 30, 40, 50)))
     _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.observe(_, Array("get")))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 
-  val testHistogramTimer: RIO[PrometheusRegistry, CollectorRegistry] = for {
+  val testHistogramTimer: RIO[Registry, CollectorRegistry] = for {
     h <- Histogram("simple_histogram_timer", Array("method"), LinearBuckets(1, 2, 5))
     _ <- h.time(() => Thread.sleep(2000), Array("post"))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 
   val f = (n: Long) => {
     RIO.sleep(Duration.fromScala(n.millis)) *> putStrLn(s"n = $n")
   }
 
-  val testHistogramDuration: RIO[PrometheusRegistry with Console with Clock, CollectorRegistry] = for {
+  val testHistogramDuration: RIO[Registry with Console with Clock, CollectorRegistry] = for {
     h <- Histogram("duration_histogram", Array("method"), ExponentialBuckets(0.25, 2, 5))
     t <- h.startTimer(Array("time"))
     dl <- RIO.foreach(List(75L, 750L, 2000L))(
@@ -64,13 +62,13 @@ object PrometheusLabelsTest {
              } yield d
          )
     _ <- RIO.foreach(dl)(d => putStrLn(d.toString()))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 
-  val testSummary: RIO[PrometheusRegistry, CollectorRegistry] = for {
+  val testSummary: RIO[Registry, CollectorRegistry] = for {
     s <- Summary("simple_summary", Array("method"), List((0.5, 0.05), (0.9, 0.01)))
     _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(s.observe(_, Array("put")))
-    r <- registry.getCurrent()
+    r <- getCurrentRegistry()
   } yield r
 
   def tests[T](harness: Harness[T]): T = {
@@ -131,14 +129,16 @@ object PrometheusLabelsTest {
         val r     = rt.unsafeRun(testHistogramDuration)
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
-        Result.combine(assert(count == 3.0), assert(sum >= 4.1 && sum <= 5.0))
+        Result.combine(assert(count == 3.0), assert(sum >= 3.1 && sum <= 5.0))
       },
       test("summary count and sum are as expected") { () =>
         val set: util.Set[String] = new util.HashSet[String]()
         set.add("simple_summary_count")
         set.add("simple_summary_sum")
 
-        val r = rt.unsafeRun(testSummary.tap(r => exporters.write004(r).map(println)))
+        val testExec = testSummary.tap(r => write004(r).map(println))
+
+        val r = rt.unsafeRun(testExec)
 
         val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
         val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
