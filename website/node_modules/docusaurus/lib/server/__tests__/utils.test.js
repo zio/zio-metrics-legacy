@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2017-present, Facebook, Inc.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -39,11 +39,7 @@ describe('server utils', () => {
     const css = await utils.minifyCss(testCss);
     expect(css).toMatchSnapshot();
 
-    try {
-      await utils.minifyCss(notCss);
-    } catch (error) {
-      expect(error).toMatchSnapshot();
-    }
+    await expect(utils.minifyCss(notCss)).rejects.toMatchSnapshot();
   });
 
   test('autoprefix css', async () => {

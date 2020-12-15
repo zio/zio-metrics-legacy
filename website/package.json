@@ -9,10 +9,11 @@
     "rename-version": "docusaurus-rename-version"
   },
   "devDependencies": {
-    "docusaurus": "^1.12.0",
+    "docusaurus": "^1.14.6",
     "react-sidecar": "^0.1.1"
   },
   "dependencies": {
-    "bl": "2.2.1"
+    "bl": "2.2.1",
+    "highlight.js": "10.4.1"
   }
 }

@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Feed = void 0;
 var atom1_1 = require("./atom1");
 var json_1 = require("./json");
 var rss2_1 = require("./rss2");
