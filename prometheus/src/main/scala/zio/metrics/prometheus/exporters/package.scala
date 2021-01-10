@@ -1,17 +1,11 @@
 package zio.metrics.prometheus
 
-import zio.{ Has, Layer, Task, ZLayer }
+import io.prometheus.{ client => jp }
 
-import io.prometheus.client.CollectorRegistry
-import io.prometheus.client.exporter.{ HTTPServer, PushGateway }
-import io.prometheus.client.bridge.Graphite
-import io.prometheus.client.exporter.common.TextFormat
-import io.prometheus.client.exporter.HttpConnectionFactory
-import io.prometheus.client.exporter.BasicAuthHttpConnectionFactory
-import io.prometheus.client.hotspot.DefaultExports
-
+import zio._
+import zio.clock.Clock
+import zio.duration.Duration
 import java.net.InetSocketAddress
-import java.io.StringWriter
 
 package object exporters {
 
@@ -19,75 +13,77 @@ package object exporters {
 
   object Exporters {
     trait Service {
-      def http(r: CollectorRegistry, port: Int): Task[HTTPServer]
-
-      def graphite(r: CollectorRegistry, host: String, port: Int, intervalSeconds: Int): Task[Thread]
-
+      def http(port: Int): TaskManaged[jp.exporter.HTTPServer]
+      def graphite(host: String, port: Int, interval: Duration): RManaged[Clock, Unit]
       def pushGateway(
-        r: CollectorRegistry,
-        hots: String,
-        port: Int,
-        jobName: String,
-        user: Option[String],
-        password: Option[String],
-        httpConnectionFactory: Option[HttpConnectionFactory]
-      ): Task[Unit]
-
-      def write004(r: CollectorRegistry): Task[String]
-
-      def initializeDefaultExports(r: CollectorRegistry): Task[Unit]
-    }
-
-    val live: Layer[Nothing, Exporters] = ZLayer.succeed(new Service {
-      def http(r: CollectorRegistry, port: Int): zio.Task[HTTPServer] =
-        Task {
-          new HTTPServer(new InetSocketAddress(port), r)
-        }
-
-      def graphite(r: CollectorRegistry, host: String, port: Int, intervalSeconds: Int): Task[Thread] =
-        Task {
-          val g = new Graphite(host, port)
-          g.start(r, intervalSeconds)
-        }
-
-      def pushGateway(
-        r: CollectorRegistry,
         host: String,
         port: Int,
         jobName: String,
         user: Option[String],
         password: Option[String],
-        httpConnectionFactory: Option[HttpConnectionFactory]
-      ): Task[Unit] =
-        Task {
-          val pg = new PushGateway(s"$host:$port")
+        httpConnectionFactory: Option[jp.exporter.HttpConnectionFactory]
+      ): Task[Unit]
+    }
 
-          if (user.isDefined)
-            for {
-              u <- user
-              p <- password
-            } yield pg.setConnectionFactory(new BasicAuthHttpConnectionFactory(u, p))
-          else if (httpConnectionFactory.isDefined)
-            for {
-              conn <- httpConnectionFactory
-            } yield pg.setConnectionFactory(conn)
+    def live: URLayer[Registry, Exporters] = ZLayer.fromService { (registry: Registry.Service) =>
+      new Service {
+        def http(port: Int): TaskManaged[jp.exporter.HTTPServer] =
+          for {
+            r <- registry.collectorRegistry.toManaged_
+            server <- ZIO
+                       .effect(
+                         new jp.exporter.HTTPServer(new InetSocketAddress(port), r)
+                       )
+                       .toManaged(server => ZIO.effectTotal(server.stop()))
+          } yield server
 
-          pg.pushAdd(r, jobName)
+        def graphite(host: String, port: Int, interval: Duration): RManaged[Clock, Unit] =
+          for {
+            g    <- ZIO.effect(new jp.bridge.Graphite(host, port)).toManaged_
+            stop <- Ref.make(false).toManaged_
+            _ <- registry.collectorRegistry
+                  .flatMap(r => ZIO.effect(g.push(r)))
+                  .repeatOrElse(
+                    Schedule.fixed(interval) *> Schedule.recurUntilM((_: Unit) => stop.get),
+                    (_, _: Option[Unit]) => ZIO.unit
+                  )
+                  .fork
+                  .toManaged(fiber => stop.set(true) *> fiber.join)
+          } yield ()
+
+        def pushGateway(
+          host: String,
+          port: Int,
+          jobName: String,
+          user: Option[String],
+          password: Option[String],
+          httpConnectionFactory: Option[jp.exporter.HttpConnectionFactory]
+        ): Task[Unit] = registry.collectorRegistry >>= { r =>
+          ZIO.effect {
+            val pg = new jp.exporter.PushGateway(s"$host:$port")
+            (
+              for {
+                u <- user
+                p <- password
+              } yield new jp.exporter.BasicAuthHttpConnectionFactory(u, p)
+            ).orElse(httpConnectionFactory).foreach(pg.setConnectionFactory)
+            pg.pushAdd(r, jobName)
+          }
         }
-
-      def write004(r: CollectorRegistry): Task[String] =
-        Task {
-          val writer = new StringWriter
-          TextFormat.write004(writer, r.metricFamilySamples)
-          writer.toString
-        }
-
-      def initializeDefaultExports(r: CollectorRegistry): Task[Unit] =
-        Task(DefaultExports.initialize())
-    })
-
-    def stopHttp(server: HTTPServer): Task[Unit] =
-      Task(server.stop())
+      }
+    }
   }
+
+  def http(port: Int): RManaged[Exporters, jp.exporter.HTTPServer] = ZManaged.accessManaged(_.get.http(port))
+  def graphite(host: String, port: Int, interval: Duration): RManaged[Exporters with Clock, Unit] =
+    ZManaged.accessManaged(_.get.graphite(host, port, interval))
+  def pushGateway(
+    host: String,
+    port: Int,
+    jobName: String,
+    user: Option[String],
+    password: Option[String],
+    httpConnectionFactory: Option[jp.exporter.HttpConnectionFactory]
+  ): RIO[Exporters, Unit] = ZIO.accessM(_.get.pushGateway(host, port, jobName, user, password, httpConnectionFactory))
 
 }

@@ -1,6 +1,6 @@
-package zio.metrics.prometheus2
+package zio.metrics.prometheus
 
-import zio.metrics.prometheus2.LabelList._
+import zio.metrics.prometheus.LabelList._
 
 import zio._
 import zio.clock._
@@ -16,20 +16,18 @@ object example {
   object MyMetrics {
     // The layer to register the metrics in the Registry
     def live: ZLayer[Registry with Clock, Throwable, Has[MyMetrics]] =
-      ZLayer.fromEffect(
-        for {
-          counterWithoutLabels <- Counter("my_counter", Some("Counting something"))
-          latencyWithLabels <- Histogram(
-                                "my_histogram",
-                                Buckets.Default,
-                                Some("Time to do something"),
-                                "method" :: "path" :: LNil
-                              )
-        } yield MyMetrics(counterWithoutLabels, latencyWithLabels)
-      )
+      (for {
+        counterWithoutLabels <- Counter("my_counter", Some("Counting something"))
+        latencyWithLabels <- Histogram(
+          "my_histogram",
+          Buckets.Default,
+          Some("Time to do something"),
+          "method" :: "path" :: LNil
+        )
+      } yield MyMetrics(counterWithoutLabels, latencyWithLabels)).toLayer
   }
 
-  val app = for {
+  val app: ZIO[Has[MyMetrics], Throwable, Unit] = for {
     // Access MyMetrics from the environment
     metrics <- ZIO.service[MyMetrics]
 
@@ -56,5 +54,5 @@ object example {
     // _ <- metrics.latencyWithLabels("GET" ::: LNil).startTimer
   } yield ()
 
-  val runnableApp = app.provideCustomLayer((Registry.live ++ ZLayer.requires[Clock]) >>> MyMetrics.live)
+  val runnableApp: ZIO[zio.ZEnv, Throwable, Unit] = app.provideCustomLayer((Registry.live ++ ZLayer.requires[Clock]) >>> MyMetrics.live)
 }

@@ -1,4 +1,4 @@
-package zio.metrics.prometheus2
+package zio.metrics.prometheus
 
 /**
  * A list of strings whose size is statically known.

@@ -1,6 +1,8 @@
-package zio.metrics.prometheus2
+package zio.metrics.prometheus
 
 import zio.ZIO
+
+trait MetricLabels
 
 /**
  * Helper to create strongly typed Prometheus labelled metrics.
@@ -9,7 +11,7 @@ import zio.ZIO
  * Operations on the metric (increment a counter for instance), require to pass a list of label
  * values with the same length.
  */
-trait LabelledMetric[R, E, M] {
+trait LabelledMetric[R, E, M] extends MetricLabels {
   def unsafeLabeled(
     name: String,
     help: Option[String],
@@ -31,7 +33,7 @@ trait LabelledMetric[R, E, M] {
  * Operations on the metric (increment a counter for instance), require to pass a list of label
  * values with the same length.
  */
-trait LabelledMetricP[R, E, P, M] {
+trait LabelledMetricP[R, E, P, M] extends MetricLabels {
   protected[this] def unsafeLabeled(
     name: String,
     p: P,
