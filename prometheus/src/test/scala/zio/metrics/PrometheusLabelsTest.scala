@@ -1,75 +1,78 @@
 package zio.metrics
 
 import java.util
-
-import zio.{ RIO, Runtime }
+import zio.{ RIO, Runtime, ZIO }
 import testz.{ assert, Harness, PureHarness, Result }
-import io.prometheus.client.{ CollectorRegistry }
+import io.prometheus.client.CollectorRegistry
 import zio.metrics.prometheus._
-import zio.metrics.prometheus.helpers._
-import zio.metrics.prometheus.exporters.Exporters
 import zio.console.putStrLn
 import zio.console.Console
 import zio.duration.Duration
+
 import scala.concurrent.duration._
 import zio.clock.Clock
+import zio.metrics.prometheus.LabelList.LNil
 
 object PrometheusLabelsTest {
 
-  val rt = Runtime
-    .unsafeFromLayer(Registry.live ++ Exporters.live ++ Console.live ++ Clock.live)
+  val rt: Runtime.Managed[Registry with Console with Clock] = Runtime
+    .unsafeFromLayer(Registry.live ++ Console.live ++ Clock.live)
 
   val testCounter: RIO[Registry, CollectorRegistry] = for {
-    c <- Counter("simple_counter", Array("method", "resource"))
-    _ <- c.inc(Array("get", "users"))
-    _ <- c.inc(2.0, Array("get", "users"))
-    r <- getCurrentRegistry()
-  } yield r
+    c  <- Counter("simple_counter", None, "method" :: "path" :: LNil)
+    _  <- c("GET" :: "/users" :: LNil).inc
+    _  <- c("GET" :: "/users" :: LNil).inc(2.0)
+    cr <- collectorRegistry
+  } yield cr
 
-  val testGauge: RIO[Registry, (CollectorRegistry, Double)] = for {
-    g <- Gauge("simple_gauge", Array("method"))
-    _ <- g.inc(Array("get"))
-    _ <- g.inc(2.0, Array("get"))
-    _ <- g.dec(1.0, Array("get"))
-    d <- g.getValue(Array("get"))
-    r <- getCurrentRegistry()
-  } yield (r, d)
+  val testGauge: RIO[Registry with Clock, (CollectorRegistry, Double)] = for {
+    g  <- Gauge("simple_gauge", None, "method" :: LNil)
+    _  <- g("GET" :: LNil).inc
+    _  <- g("GET" :: LNil).inc(2.0)
+    _  <- g("GET" :: LNil).dec(1.0)
+    d  <- g("GET" :: LNil).get
+    cr <- collectorRegistry
+  } yield (cr, d)
 
-  val testHistogram: RIO[Registry, CollectorRegistry] = for {
-    h <- Histogram("simple_histogram", Array("method"), DefaultBuckets(Seq(10, 20, 30, 40, 50)))
-    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.observe(_, Array("get")))
-    r <- getCurrentRegistry()
-  } yield r
+  val testHistogram: RIO[Registry with Clock, CollectorRegistry] = for {
+    h <- Histogram("simple_histogram", Buckets.Simple(Seq(10, 20, 30, 40, 50)), None, "method" :: LNil)
+    _ <- RIO.foreach_(List(10500L, 25000L, 50700L, 57300L, 19800L))(
+          (l: Long) => h("GET" :: LNil).observe(Duration.fromMillis(l))
+        )
+    cr <- collectorRegistry
+  } yield cr
 
-  val testHistogramTimer: RIO[Registry, CollectorRegistry] = for {
-    h <- Histogram("simple_histogram_timer", Array("method"), LinearBuckets(1, 2, 5))
-    _ <- h.time(() => Thread.sleep(2000), Array("post"))
-    r <- getCurrentRegistry()
-  } yield r
+  val testHistogramTimer: RIO[Registry with Clock, CollectorRegistry] = for {
+    h  <- Histogram("simple_histogram_timer", Buckets.Linear(1, 2, 5), None, "method" :: LNil)
+    _  <- h("POST" :: LNil).observe_(() => Thread.sleep(2000))
+    cr <- collectorRegistry
+  } yield cr
 
-  val f = (n: Long) => {
-    RIO.sleep(Duration.fromScala(n.millis)) *> putStrLn(s"n = $n")
+  val f: Long => ZIO[Console with Clock, Nothing, Unit] = (n: Long) => {
+    putStrLn(s"n = $n").delay(Duration.fromScala(n.millis))
   }
 
   val testHistogramDuration: RIO[Registry with Console with Clock, CollectorRegistry] = for {
-    h <- Histogram("duration_histogram", Array("method"), ExponentialBuckets(0.25, 2, 5))
-    t <- h.startTimer(Array("time"))
+    h <- Histogram("duration_histogram", Buckets.Exponential(0.25, 2, 5), None, "method" :: LNil)
+    t <- h("POST" :: LNil).startTimer
     dl <- RIO.foreach(List(75L, 750L, 2000L))(
            n =>
              for {
                _ <- f(n)
-               d <- h.observeDuration(t)
+               d <- t.stop
              } yield d
          )
-    _ <- RIO.foreach(dl)(d => putStrLn(d.toString()))
-    r <- getCurrentRegistry()
-  } yield r
+    _  <- RIO.foreach_(dl)(d => putStrLn(d.toString))
+    cr <- collectorRegistry
+  } yield cr
 
-  val testSummary: RIO[Registry, CollectorRegistry] = for {
-    s <- Summary("simple_summary", Array("method"), List((0.5, 0.05), (0.9, 0.01)))
-    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(s.observe(_, Array("put")))
-    r <- getCurrentRegistry()
-  } yield r
+  val testSummary: RIO[Registry with Clock, CollectorRegistry] = for {
+    s <- Summary("simple_summary", List(Quantile(0.5, 0.05), Quantile(0.9, 0.01)), None, "method" :: LNil)
+    _ <- RIO.foreach_(List(10500L, 25000L, 50700L, 57300L, 19800L))(
+          (l: Long) => s("POST" :: LNil).observe(Duration.fromMillis(millis = l))
+        )
+    cr <- collectorRegistry
+  } yield cr
 
   def tests[T](harness: Harness[T]): T = {
     import harness._
@@ -136,7 +139,7 @@ object PrometheusLabelsTest {
         set.add("simple_summary_count")
         set.add("simple_summary_sum")
 
-        val testExec = testSummary.tap(r => write004(r).map(println))
+        val testExec = testSummary <* string004.map(println)
 
         val r = rt.unsafeRun(testExec)
 

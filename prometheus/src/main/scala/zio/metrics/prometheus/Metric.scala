@@ -1,4 +1,4 @@
-package zio.metrics.prometheus2
+package zio.metrics.prometheus
 
 import io.prometheus.{ client => jPrometheus }
 
@@ -6,7 +6,9 @@ import zio._
 import zio.clock._
 import zio.duration.Duration
 
-trait Counter {
+trait Metric
+
+trait Counter extends Metric {
   def inc: UIO[Unit] = inc(1)
   def inc(amount: Double): UIO[Unit]
 }
@@ -22,7 +24,7 @@ object Counter extends LabelledMetric[Registry, Throwable, Counter] {
                      jPrometheus.Counter
                        .build()
                        .name(name)
-                       .help(help.getOrElse(""))
+                       .help(help.getOrElse(s"No help set for $name"))
                        .labelNames(labels: _*)
                        .register(r)
                    )
@@ -58,6 +60,9 @@ trait TimerMetric {
   /** Runs the given effect and records in the metric how much time it took to succeed or fail. */
   def observe[R, E, A](zio: ZIO[R, E, A]): ZIO[R, E, A] = timer.use(_ => zio)
 
+  /** Wraps the function on an effect and records in the metric how much time it took to succeed or fail. */
+  def observe_[A](f: () => A): Task[A] = timer.use(_ => ZIO.effect(f()))
+
   /**
    * Runs the given effect and records in the metric how much time it took to succeed. Do not
    * record failures.
@@ -84,7 +89,7 @@ private abstract class TimerMetricImpl(clock: Clock.Service) extends TimerMetric
     }
 }
 
-trait Gauge extends TimerMetric {
+trait Gauge extends Metric with TimerMetric {
   def get: UIO[Double]
   def set(value: Double): UIO[Unit]
   def inc: UIO[Unit] = inc(1)
@@ -106,7 +111,7 @@ object Gauge extends LabelledMetric[Registry with Clock, Throwable, Gauge] {
                    jPrometheus.Gauge
                      .build()
                      .name(name)
-                     .help(help.getOrElse(""))
+                     .help(help.getOrElse(s"No help set for $name"))
                      .labelNames(labels: _*)
                      .register(r)
                  )
@@ -130,7 +135,7 @@ object Buckets {
   case class Exponential(start: Double, factor: Double, count: Int) extends Buckets
 }
 
-trait Histogram extends TimerMetric
+trait Histogram extends Metric with TimerMetric
 object Histogram extends LabelledMetricP[Registry with Clock, Throwable, Buckets, Histogram] {
   def unsafeLabeled(
     name: String,
@@ -145,7 +150,7 @@ object Histogram extends LabelledMetricP[Registry with Clock, Throwable, Buckets
                        val builder = jPrometheus.Histogram
                          .build()
                          .name(name)
-                         .help(help.getOrElse(""))
+                         .help(help.getOrElse(s"No help set for $name"))
                          .labelNames(labels: _*)
                        (
                          buckets match {
@@ -168,7 +173,7 @@ object Histogram extends LabelledMetricP[Registry with Clock, Throwable, Buckets
 
 final case class Quantile(percentile: Double, tolerance: Double)
 
-trait Summary extends TimerMetric
+trait Summary extends Metric with TimerMetric
 object Summary extends LabelledMetricP[Registry with Clock, Throwable, List[Quantile], Summary] {
   def unsafeLabeled(
     name: String,
@@ -183,7 +188,7 @@ object Summary extends LabelledMetricP[Registry with Clock, Throwable, List[Quan
                        val builder = jPrometheus.Summary
                          .build()
                          .name(name)
-                         .help(help.getOrElse(""))
+                         .help(help.getOrElse(s"No help set for $name"))
                          .labelNames(labels: _*)
                        quantiles.foldLeft(builder)((b, c) => b.quantile(c.percentile, c.tolerance)).register(r)
                      }

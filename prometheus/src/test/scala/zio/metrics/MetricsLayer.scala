@@ -1,115 +1,93 @@
 package zio.metrics
 
-import zio.{ Has, Layer, RIO, Runtime, Task, ZLayer }
+import zio.{ Has, Layer, RIO, Runtime, Task, ZIO, ZLayer }
 import zio.console.putStrLn
 import zio.metrics.prometheus._
-import zio.metrics.prometheus.helpers._
-import zio.metrics.prometheus.exporters.Exporters
 import io.prometheus.client.exporter.HTTPServer
 import zio.console.Console
+import zio.clock.Clock
 import io.prometheus.client.CollectorRegistry
+import zio.metrics.prometheus.LabelList.LNil
+import zio.metrics.prometheus.exporters.Exporters
 
 object MetricsLayer {
 
+  type Metrics = Has[Metrics.Service]
+
   type Env = Registry with Exporters with Console
 
-  val rt = Runtime.unsafeFromLayer(Registry.live ++ Exporters.live ++ Console.live)
-
-  type Metrics = Has[Metrics.Service]
+  val rt: Runtime.Managed[Registry with Exporters with Clock with Console] =
+    Runtime.unsafeFromLayer(Registry.liveWithDefaultMetrics >+> Exporters.live ++ Clock.live ++ Console.live)
 
   object Metrics {
     trait Service {
-      def getRegistry(): Task[CollectorRegistry]
+      def getRegistry: RIO[Registry, CollectorRegistry]
 
-      def inc(tags: Array[String]): Task[Unit]
+      def inc(tags: LabelList.LCons[LabelList.LCons[LNil]]): Task[Unit]
 
-      def inc(amount: Double, tags: Array[String]): Task[Unit]
+      def inc(amount: Double, tags: LabelList.LCons[LabelList.LCons[LNil]]): Task[Unit]
 
-      def time(f: () => Unit, tags: Array[String]): Task[Double]
-
+      def time(f: () => Double, tags: LabelList.LCons[LabelList.LCons[LNil]]): Task[Double]
     }
+
+    type CounterInstance   = Counter.Labelled[LabelList.LCons[LabelList.LCons[LNil]]]
+    type HistogramInstance = Histogram.Labelled[LabelList.LCons[LabelList.LCons[LNil]]]
 
     val live: Layer[Nothing, Metrics] = ZLayer.succeed(new Service {
 
       private val (myCounter, myHistogram) = rt.unsafeRun(
         for {
-          c <- counter.register("myCounter", Array("name", "method"))
-          h <- histogram.register("myHistogram", Array("name", "method"))
+          c <- Counter("myCounter", None, "name" :: "method" :: LNil)
+          h <- Histogram("myHistogram", Buckets.Default, None, "name" :: "method" :: LNil)
         } yield (c, h)
       )
 
-      def getRegistry(): Task[CollectorRegistry] =
-        getCurrentRegistry().provideLayer(Registry.live)
+      def getRegistry: RIO[Registry, CollectorRegistry] = collectorRegistry
 
-      def inc(tags: Array[String]): zio.Task[Unit] =
+      def inc(tags: LabelList.LCons[LabelList.LCons[LNil]]): zio.Task[Unit] =
         inc(1.0, tags)
 
-      def inc(amount: Double, tags: Array[String]): Task[Unit] =
-        myCounter.inc(amount, tags)
+      def inc(amount: Double, tags: LabelList.LCons[LabelList.LCons[LNil]]): Task[Unit] =
+        myCounter(tags).inc(amount)
 
-      def time(f: () => Unit, tags: Array[String]): Task[Double] =
-        myHistogram.time(f, tags)
+      def time(f: () => Double, tags: LabelList.LCons[LabelList.LCons[LNil]]): Task[Double] =
+        myHistogram(tags).observe_(f)
     })
 
-    val receiver: (Counter, Histogram) => Layer[Nothing, Metrics] =
-      (counter, histogram) =>
-        ZLayer.succeed(
+    val receiver: ZLayer[Has[(CounterInstance, HistogramInstance)], Nothing, Metrics] =
+      ZLayer.fromFunction[Has[(CounterInstance, HistogramInstance)], Metrics.Service](
+        f = minst =>
           new Service {
+            def getRegistry: RIO[Registry, CollectorRegistry] =
+              collectorRegistry
 
-            def getRegistry(): Task[CollectorRegistry] =
-              getCurrentRegistry().provideLayer(Registry.live)
-
-            def inc(tags: Array[String]): zio.Task[Unit] =
+            def inc(tags: LabelList.LCons[LabelList.LCons[LNil]]): zio.Task[Unit] =
               inc(1.0, tags)
 
-            def inc(amount: Double, tags: Array[String]): Task[Unit] =
-              counter.inc(amount, tags)
+            def inc(amount: Double, tags: LabelList.LCons[LabelList.LCons[LNil]]): Task[Unit] =
+              minst.get._1(tags).inc(amount)
 
-            def time(f: () => Unit, tags: Array[String]): Task[Double] =
-              histogram.time(f, tags)
-          }
-        )
-
-    val receiverHas: ZLayer[Has[(Counter, Histogram)], Nothing, Metrics] =
-      ZLayer.fromFunction[Has[(Counter, Histogram)], Metrics.Service](
-        minst =>
-          new Service {
-            def getRegistry(): Task[CollectorRegistry] =
-              getCurrentRegistry().provideLayer(Registry.live)
-
-            def inc(tags: Array[String]): zio.Task[Unit] =
-              inc(1.0, tags)
-
-            def inc(amount: Double, tags: Array[String]): Task[Unit] =
-              minst.get._1.inc(amount, tags)
-
-            def time(f: () => Unit, tags: Array[String]): Task[Double] =
-              minst.get._2.time(f, tags)
+            def time(f: () => Double, tags: LabelList.LCons[LabelList.LCons[LNil]]): Task[Double] =
+              minst.get._2(tags).observe_(f)
           }
       )
   }
 
-  import io.prometheus.client.{ Counter => PCounter, Histogram => PHistogram }
-  val c: Counter = Counter(
-    PCounter
-      .build()
-      .name("PrometheusCounter")
-      .labelNames(Array("class", "method"): _*)
-      .help(s"Sample prometheus counter")
-      .register()
-  )
-  val h: Histogram = Histogram(
-    PHistogram
-      .build()
-      .name("PrometheusHistogram")
-      .labelNames(Array("class", "method"): _*)
-      .help(s"Sample prometheus histogram")
-      .register()
-  )
+  val counter = Counter("PrometheusCounter", Some("Sample prometheus counter"), "class" :: "method" :: LNil)
 
-  val rLayer: Layer[Nothing, Metrics] = Metrics.receiver(c, h)
-  val rtReceiver: Runtime.Managed[Metrics with Exporters with Console] =
-    Runtime.unsafeFromLayer(rLayer ++ Exporters.live ++ Console.live)
+  val histogram =
+    Histogram("PrometheusHistogram", Buckets.Default, Some("Sample prometheus histogram"), "class" :: "method" :: LNil)
+
+  val rLayer: ZLayer[Registry with Clock, Throwable, Metrics] = {
+    val tup = (for {
+      c <- counter
+      h <- histogram
+    } yield (c, h)).toLayer
+    tup >>> Metrics.receiver
+  }
+
+  val rtReceiver: Runtime.Managed[Registry with Clock with Metrics with Console] =
+    Runtime.unsafeFromLayer(Registry.liveWithDefaultMetrics >+> Clock.live >+> rLayer ++ Console.live)
 
   /*val chHas: ULayer[Has[(Counter, Histogram)]] = ZLayer.succeed[(Counter, Histogram)]((c, h))
   val rLayerHas: ZLayer[Any, Nothing, Metrics] = chHas >>> Metrics.receiverHas
@@ -119,25 +97,24 @@ object MetricsLayer {
   val rtReceiverHas = Runtime.unsafeFromLayer(combinedLayer)*/
 
   println("defining Test program")
-  val exporterTest: RIO[
-    Metrics with Exporters with Console,
-    HTTPServer
-  ] =
-    for {
-      m  <- RIO.environment[Metrics]
-      _  <- putStrLn("Exporters")
-      r  <- m.get.getRegistry()
-      _  <- initializeDefaultExports(r)
-      hs <- http(r, 9090)
-      _  <- m.get.inc(Array("RequestCounter", "get"))
-      _  <- m.get.inc(Array("RequestCounter", "post"))
-      _  <- m.get.inc(2.0, Array("LoginCounter", "login"))
-      _  <- m.get.time(() => Thread.sleep(2000), Array("histogram", "get"))
-      s  <- write004(r)
-      _  <- putStrLn(s)
-    } yield hs
+  import zio.metrics.prometheus.exporters._
+  val exporterTest: ZIO[Console with Registry with Metrics with Exporters, Throwable, HTTPServer] =
+    http(9090).use(
+      hs =>
+        for {
+          m <- RIO.environment[Metrics]
+          _ <- putStrLn("Exporters")
+          _ <- m.get.inc("RequestCounter" :: "get" :: LNil)
+          _ <- m.get.inc("RequestCounter" :: "post" :: LNil)
+          _ <- m.get.inc(2.0, "LoginCounter" :: "login" :: LNil)
+          _ <- m.get.time(() => { Thread.sleep(2000); 2.0 }, "histogram" :: "get" :: LNil)
+          s <- string004
+          _ <- putStrLn(s)
+        } yield hs
+    )
 
-  val program = exporterTest >>= (server => putStrLn(s"Server port: ${server.getPort()}"))
+  val program: ZIO[Console with Registry with Metrics with Exporters, Throwable, Unit] =
+    exporterTest >>= (server => putStrLn(s"Server port: ${server.getPort}"))
 
   def main(args: Array[String]): Unit =
     rt.unsafeRun(program.provideSomeLayer[Env](Metrics.live))
