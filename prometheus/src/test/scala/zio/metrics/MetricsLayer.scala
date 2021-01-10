@@ -1,6 +1,6 @@
 package zio.metrics
 
-import zio.{Has, Layer, RIO, Runtime, Task, ZIO, ZLayer}
+import zio.{ Has, Layer, RIO, Runtime, Task, ZIO, ZLayer }
 import zio.console.putStrLn
 import zio.metrics.prometheus._
 import io.prometheus.client.exporter.HTTPServer
@@ -99,17 +99,18 @@ object MetricsLayer {
   println("defining Test program")
   import zio.metrics.prometheus.exporters._
   val exporterTest: ZIO[Console with Registry with Metrics with Exporters, Throwable, HTTPServer] =
-    http(9090).use(hs =>
-      for {
-        m  <- RIO.environment[Metrics]
-        _  <- putStrLn("Exporters")
-        _  <- m.get.inc("RequestCounter" :: "get" :: LNil)
-        _  <- m.get.inc("RequestCounter" :: "post" :: LNil)
-        _  <- m.get.inc(2.0, "LoginCounter" :: "login" :: LNil)
-        _  <- m.get.time(() => {Thread.sleep(2000); 2.0},"histogram" :: "get" :: LNil)
-        s  <- string004
-        _  <- putStrLn(s)
-      } yield hs
+    http(9090).use(
+      hs =>
+        for {
+          m <- RIO.environment[Metrics]
+          _ <- putStrLn("Exporters")
+          _ <- m.get.inc("RequestCounter" :: "get" :: LNil)
+          _ <- m.get.inc("RequestCounter" :: "post" :: LNil)
+          _ <- m.get.inc(2.0, "LoginCounter" :: "login" :: LNil)
+          _ <- m.get.time(() => { Thread.sleep(2000); 2.0 }, "histogram" :: "get" :: LNil)
+          s <- string004
+          _ <- putStrLn(s)
+        } yield hs
     )
 
   val program: ZIO[Console with Registry with Metrics with Exporters, Throwable, Unit] =

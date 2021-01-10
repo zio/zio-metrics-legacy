@@ -1,8 +1,8 @@
 package zio.metrics
 
 import java.util
-import zio.{RIO, Runtime, ZIO}
-import testz.{Harness, PureHarness, Result, assert}
+import zio.{ RIO, Runtime, ZIO }
+import testz.{ assert, Harness, PureHarness, Result }
 import io.prometheus.client.CollectorRegistry
 import zio.metrics.prometheus._
 import zio.console.putStrLn
@@ -35,8 +35,10 @@ object PrometheusLabelsTest {
   } yield (cr, d)
 
   val testHistogram: RIO[Registry with Clock, CollectorRegistry] = for {
-    h  <- Histogram("simple_histogram", Buckets.Simple(Seq(10, 20, 30, 40, 50)), None, "method" :: LNil)
-    _  <- RIO.foreach_(List(10500L, 25000L, 50700L, 57300L, 19800L))((l: Long) => h("GET" :: LNil).observe(Duration.fromMillis(l)))
+    h <- Histogram("simple_histogram", Buckets.Simple(Seq(10, 20, 30, 40, 50)), None, "method" :: LNil)
+    _ <- RIO.foreach_(List(10500L, 25000L, 50700L, 57300L, 19800L))(
+          (l: Long) => h("GET" :: LNil).observe(Duration.fromMillis(l))
+        )
     cr <- collectorRegistry
   } yield cr
 
@@ -60,13 +62,15 @@ object PrometheusLabelsTest {
                d <- t.stop
              } yield d
          )
-    _ <- RIO.foreach_(dl)(d => putStrLn(d.toString))
+    _  <- RIO.foreach_(dl)(d => putStrLn(d.toString))
     cr <- collectorRegistry
   } yield cr
 
   val testSummary: RIO[Registry with Clock, CollectorRegistry] = for {
-    s  <- Summary("simple_summary", List(Quantile(0.5, 0.05), Quantile(0.9, 0.01)), None, "method" :: LNil)
-    _  <- RIO.foreach_(List(10500L, 25000L, 50700L, 57300L, 19800L))((l: Long) => s("POST" :: LNil).observe(Duration.fromMillis(millis = l)))
+    s <- Summary("simple_summary", List(Quantile(0.5, 0.05), Quantile(0.9, 0.01)), None, "method" :: LNil)
+    _ <- RIO.foreach_(List(10500L, 25000L, 50700L, 57300L, 19800L))(
+          (l: Long) => s("POST" :: LNil).observe(Duration.fromMillis(millis = l))
+        )
     cr <- collectorRegistry
   } yield cr
 

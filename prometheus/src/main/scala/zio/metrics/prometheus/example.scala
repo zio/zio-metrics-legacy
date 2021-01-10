@@ -19,11 +19,11 @@ object example {
       (for {
         counterWithoutLabels <- Counter("my_counter", Some("Counting something"))
         latencyWithLabels <- Histogram(
-          "my_histogram",
-          Buckets.Default,
-          Some("Time to do something"),
-          "method" :: "path" :: LNil
-        )
+                              "my_histogram",
+                              Buckets.Default,
+                              Some("Time to do something"),
+                              "method" :: "path" :: LNil
+                            )
       } yield MyMetrics(counterWithoutLabels, latencyWithLabels)).toLayer
   }
 
@@ -54,5 +54,6 @@ object example {
     // _ <- metrics.latencyWithLabels("GET" ::: LNil).startTimer
   } yield ()
 
-  val runnableApp: ZIO[zio.ZEnv, Throwable, Unit] = app.provideCustomLayer((Registry.live ++ ZLayer.requires[Clock]) >>> MyMetrics.live)
+  val runnableApp: ZIO[zio.ZEnv, Throwable, Unit] =
+    app.provideCustomLayer((Registry.live ++ ZLayer.requires[Clock]) >>> MyMetrics.live)
 }

@@ -11,7 +11,7 @@ import io.prometheus.client.CollectorRegistry
 import zio.metrics.prometheus.LabelList.LNil*/
 
 object MetricMapLayer {
-/*
+  /*
   val rt: Runtime.Managed[MetricMap with Registry with Exporters with Console] = Runtime.unsafeFromLayer(MetricMap.live ++ (Registry.live >+> Exporters.live) ++ Console.live)
 
   type MetricMap = Has[MetricMap.Service]

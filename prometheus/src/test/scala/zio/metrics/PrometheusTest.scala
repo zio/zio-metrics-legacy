@@ -1,9 +1,9 @@
 package zio.metrics
 
 import java.util
-import zio.{RIO, Runtime, Task}
+import zio.{ RIO, Runtime, Task }
 import zio.console.putStrLn
-import testz.{Harness, PureHarness, Result, assert}
+import testz.{ assert, Harness, PureHarness, Result }
 import io.prometheus.client.CollectorRegistry
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.exporters._
@@ -15,7 +15,8 @@ object PrometheusTest {
 
   type Env = Registry with Exporters with Clock
 
-  val rt: Runtime.Managed[Registry with Clock with Console] = Runtime.unsafeFromLayer(Registry.default ++ Clock.live ++ Console.live)
+  val rt: Runtime.Managed[Registry with Clock with Console] =
+    Runtime.unsafeFromLayer(Registry.default ++ Clock.live ++ Console.live)
 
   val tester: () => Long = () => System.nanoTime()
 
@@ -51,7 +52,9 @@ object PrometheusTest {
   val testHistogramTimer: RIO[Registry with Clock, CollectorRegistry] = for {
     h <- Histogram("simple_histogram_timer", Buckets.Default, None)
     t <- h.startTimer
-    _ <- Task{ () => Thread.sleep(2000); t.stop}
+    _ <- Task { () =>
+          Thread.sleep(2000); t.stop
+        }
     cr <- collectorRegistry
   } yield cr
 
@@ -63,25 +66,27 @@ object PrometheusTest {
 
   val testHistogramTask2: RIO[Registry with Clock, (CollectorRegistry, String)] = for {
     h <- Histogram("task_histogram_timer_", Buckets.Default, None)
-    a <- h.observe_[String]({() => Thread.sleep(2000); "Success" })
+    a <- h.observe_[String]({ () =>
+          Thread.sleep(2000); "Success"
+        })
     cr <- collectorRegistry
   } yield (cr, a)
 
   val testSummary: RIO[Registry with Clock, CollectorRegistry] = for {
-    s <- Summary("simple_summary", List.empty[Quantile], None)
-    _ <- RIO.foreach_(List(10500L, 25000L, 50700L, 57300L, 19800L))(l => s.observe(Duration.fromMillis(l)))
+    s  <- Summary("simple_summary", List.empty[Quantile], None)
+    _  <- RIO.foreach_(List(10500L, 25000L, 50700L, 57300L, 19800L))(l => s.observe(Duration.fromMillis(l)))
     cr <- collectorRegistry
   } yield cr
 
   val testSummaryTask: RIO[Registry with Clock, CollectorRegistry] = for {
-    s <- Summary("task_summary_timer", List.empty[Quantile], None)
-    _ <- s.observe(Task(Thread.sleep(2000)))
+    s  <- Summary("task_summary_timer", List.empty[Quantile], None)
+    _  <- s.observe(Task(Thread.sleep(2000)))
     cr <- collectorRegistry
   } yield cr
 
   val testSummaryTask2: RIO[Registry with Clock, CollectorRegistry] = for {
-    s <- Summary("task_summary_timer_", List.empty[Quantile], None)
-    _ <- s.observe(Task(Thread.sleep(2000)))
+    s  <- Summary("task_summary_timer_", List.empty[Quantile], None)
+    _  <- s.observe(Task(Thread.sleep(2000)))
     cr <- collectorRegistry
   } yield cr
 
