@@ -171,10 +171,10 @@ helper method creates the empty array the labels parameter needs. There are also
 helper methods that supports an array for labels:
 
 ```
-    c <- counter.register("PrometheusTestHelper, Array("method", "resource")")
+    c <- counter.register("PrometheusTestHelper", Array("method", "resource"))
 ```
 
-From here on. we will use environmental efects, helper methods or a mix of both.
+From here on, we will use environmental effects, helper methods, or a mix of both.
 
 ## Gauge
 Besides increasing, a gauge may also decrease and has methods to `set` and `get`
@@ -336,7 +336,7 @@ If, instead, we want to measure arbitrary values:
 `RIO.foreach` will take each value of the list `List(10.5, 25.0, 50.7, 57.3,
 19.8)` and apply the function `h.observe(_, Array("get"))` to each
 value in a synchronous manner, where `_` refers to the value (10.5, 25.0,
-etc.) and `Array("get")` is the specic label for the current observation.
+etc.) and `Array("get")` is the specific label for the current observation.
 
 We can override the `DefaultBuckets` so:
 
@@ -383,7 +383,7 @@ Finally, we have two variations of `time`, one that returns the duration and the
 result of executing the `Task` or `RIO` and another (`time_`) that only executes the
 `Task` and returns the result, but not the duration. The benefit of `time_` is
 that it uses `ZIO.bracket` underneath to have stronger guarantees on the
-aquisition, use and release of the timer and the task execution.
+acquisition, use, and release of the timer and the task execution.
 
 ```scala mdoc:silent
   import zio.Task
@@ -457,12 +457,12 @@ Just like `Histogram` it has methods `time` and `time_` that take a `Task` or
 ## Dependency Injection with ZLayers
 A common principle in functional programming is to execute the effects `at the
 end of the world` in your application. This basically means that you will write
-pure functions by wrapping your effectul code in ZIO and you execute them from
+pure functions by wrapping your effectful code in ZIO and you execute them from
 your top-most functions, i.e. in `main` or as close as possible to `main`.
 Unfortunately, this has the effect (pun intended) of creating a tree-like
 structure of nested functions.
 
-Let's say, for instanc,e you have a `Router` which calls a `Service` which
+Let's say, for instance, you have a `Router` which calls a `Service` which
 calls 2 different functions, `MeasuringPoint1` and `MeasuringPoint2` where you
 need to count something. If you `register` the counter in `MyRoutes` then you
 need to pass the counter downstream first to `MyService1` and then to the MeasuringPoint
@@ -562,7 +562,7 @@ The key of this approach is that even if you register only one counter, you can
 in practice have as many counters (or any other metric) as you need by
 distinguishing them using the `name` tag. You can have as many different
 counters as combination of tags you can devise for your app. Your
-`MeasurinPoints` can be as nested as they need to be, you just need to declare
+`MeasuringPoints` can be as nested as they need to be, you just need to declare
 `Metrics` as part of your environment in the function that will actually get to
 use it.
 
