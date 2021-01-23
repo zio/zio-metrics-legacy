@@ -1,5 +1,9 @@
 package zio.metrics.prometheus
 
+import io.prometheus.client.Summary.{ Child => SChild }
+import io.prometheus.client.Histogram.{ Child => HChild }
+import io.prometheus.client.Gauge.{ Child => GChild }
+import io.prometheus.client.Counter.{ Child => CChild }
 import zio.{ RIO, Task, UIO }
 import zio.metrics.prometheus.Registry.{ Percentile, Tolerance }
 import io.prometheus.client.{ Counter => PCounter, Gauge => PGauge }
@@ -18,6 +22,15 @@ case class Counter(private val pCounter: PCounter) extends Metric {
 
   def inc(amount: Double, labelNames: Array[String]): Task[Unit] =
     Task(if (labelNames.isEmpty) pCounter.inc(amount) else pCounter.labels(labelNames: _*).inc(amount))
+
+  def labels(labelNames: Array[String]): CounterChild = CounterChild(pCounter.labels(labelNames: _*))
+
+}
+
+case class CounterChild(private val pCounter: CChild) extends Metric {
+  def inc(): Task[Unit] = Task(pCounter.inc())
+
+  def inc(amount: Double): Task[Unit] = Task(pCounter.inc(amount))
 }
 
 object Counter {
@@ -82,6 +95,33 @@ case class Gauge(private val pGauge: PGauge) extends Metric {
       f()
       pGauge.set(t.setDuration)
     }
+
+  def labels(labelNames: Array[String]): GaugeChild = GaugeChild(pGauge.labels(labelNames: _*))
+}
+
+case class GaugeChild(private val pGauge: GChild) extends Metric {
+
+  def getValue(): Task[Double] = Task(pGauge.get())
+
+  def inc(): Task[Unit] = Task(pGauge.inc())
+
+  def dec(): Task[Unit] = Task(pGauge.dec())
+
+  def inc(amount: Double): Task[Unit] = Task(pGauge.inc(amount))
+
+  def dec(amount: Double): Task[Unit] = Task(pGauge.dec(amount))
+
+  def set(amount: Double): Task[Unit] = Task(pGauge.set(amount))
+
+  def setToCurrentTime(): Task[Unit] = Task(pGauge.setToCurrentTime())
+
+  def setToTime(f: () => Unit): Task[Unit] =
+    Task {
+      val t = pGauge.startTimer()
+      f()
+      pGauge.set(t.setDuration)
+    }
+
 }
 
 object Gauge {
@@ -132,6 +172,37 @@ case class Histogram(private val pHistogram: PHistogram) extends Metric {
 
   def time_[R, A](task: RIO[R, A], labelNames: Array[String]): RIO[R, A] =
     Task(if (labelNames.isEmpty) pHistogram.startTimer() else pHistogram.labels(labelNames: _*).startTimer())
+      .bracket(t => UIO(t.close))(_ => task)
+
+  def labels(labelNames: Array[String]): HistogramChild = HistogramChild(pHistogram.labels(labelNames: _*))
+}
+
+case class HistogramChild(private val pHistogram: HChild) extends Metric {
+  type HistogramTimer = PHistogram.Timer
+
+  def observe(amount: Double): Task[Unit] =
+    Task(pHistogram.observe(amount))
+
+  def startTimer(): Task[HistogramTimer] =
+    Task(pHistogram.startTimer())
+
+  def observeDuration(timer: HistogramTimer): Task[Double] =
+    Task(timer.observeDuration())
+
+  def time(f: () => Unit): Task[Double] =
+    Task {
+      val t = pHistogram.startTimer()
+      f()
+      t.observeDuration()
+    }
+
+  def time[R, A](task: RIO[R, A]): RIO[R, (Double, A)] = {
+    val t = pHistogram.startTimer()
+    task >>= (a => Task((t.observeDuration(), a)))
+  }
+
+  def time_[R, A](task: RIO[R, A]): RIO[R, A] =
+    Task(pHistogram.startTimer())
       .bracket(t => UIO(t.close))(_ => task)
 }
 
@@ -185,6 +256,39 @@ case class Summary(private val pSummary: PSummary) extends Metric {
     RIO
       .effect(if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer())
       .bracket(t => UIO(t.close))(_ => task)
+
+  def labels(labelNames: Array[String]): SummaryChild = SummaryChild(pSummary.labels(labelNames: _*))
+}
+
+case class SummaryChild(private val pSummary: SChild) extends Metric {
+  type SummaryTimer = PSummary.Timer
+
+  def observe(amount: Double): Task[Unit] =
+    Task(pSummary.observe(amount))
+
+  def startTimer(): Task[SummaryTimer] =
+    Task(pSummary.startTimer())
+
+  def observeDuration(timer: SummaryTimer): Task[Double] =
+    Task(timer.observeDuration())
+
+  def time(f: () => Unit): Task[Double] =
+    Task {
+      val t = pSummary.startTimer()
+      f()
+      t.observeDuration()
+    }
+
+  def time[R, A](task: RIO[R, A]): RIO[R, (Double, A)] = {
+    val t = pSummary.startTimer()
+    task >>= (a => RIO((t.observeDuration(), a)))
+  }
+
+  def time_[R, A](task: RIO[R, A]): RIO[R, A] =
+    RIO
+      .effect(pSummary.startTimer())
+      .bracket(t => UIO(t.close))(_ => task)
+
 }
 
 object Summary {
