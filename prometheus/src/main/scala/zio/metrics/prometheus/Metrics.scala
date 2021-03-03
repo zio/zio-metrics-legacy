@@ -38,6 +38,10 @@ object Counter {
     for {
       c <- registerCounter(name, labels)
     } yield new Counter(c)
+  def apply(name: String, labels: Array[String], help: String): RIO[Registry, Counter] =
+    for {
+      c <- registerCounter(name, labels, help)
+    } yield new Counter(c)
 }
 
 case class Gauge(private val pGauge: PGauge) extends Metric {
@@ -129,6 +133,11 @@ object Gauge {
     for {
       g <- registerGauge(name, labels)
     } yield new Gauge(g)
+
+  def apply(name: String, labels: Array[String], help: String): RIO[Registry, Gauge] =
+    for {
+      g <- registerGauge(name, labels, help)
+    } yield new Gauge(g)
 }
 
 case class Histogram(private val pHistogram: PHistogram) extends Metric {
@@ -210,6 +219,11 @@ object Histogram {
   def apply(name: String, labels: Array[String], buckets: Buckets): RIO[Registry, Histogram] =
     for {
       h <- registerHistogram(name, labels, buckets)
+    } yield new Histogram(h)
+
+  def apply(name: String, labels: Array[String], buckets: Buckets, help: String): RIO[Registry, Histogram] =
+    for {
+      h <- registerHistogram(name, labels, buckets, help)
     } yield new Histogram(h)
 }
 
@@ -299,5 +313,15 @@ object Summary {
   ): RIO[Registry, Summary] =
     for {
       s <- registerSummary(name, labels, percentiles)
+    } yield new Summary(s)
+
+  def apply(
+    name: String,
+    labels: Array[String],
+    percentiles: List[(Percentile, Tolerance)],
+    help: String
+  ): RIO[Registry, Summary] =
+    for {
+      s <- registerSummary(name, labels, percentiles, help)
     } yield new Summary(s)
 }

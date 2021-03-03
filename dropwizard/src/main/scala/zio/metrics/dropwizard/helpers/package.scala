@@ -15,23 +15,23 @@ package object helpers {
     RIO.accessM(_.get.getCurrent())
 
   def registerCounter(name: String, labels: Array[String]): RIO[Registry, DWCounter] =
-    RIO.accessM(_.get.registerCounter(Label(name, labels)))
+    RIO.accessM(_.get.registerCounter(Label(name, labels, s"$name counter")))
 
   def registerGauge[A](name: String, labels: Array[String], f: () => A): RIO[Registry, DWGauge[A]] =
-    RIO.accessM(_.get.registerGauge[String, A](Label(name, labels), f))
+    RIO.accessM(_.get.registerGauge[String, A](Label(name, labels, s"$name gauge"), f))
 
   def registerTimer(name: String, labels: Array[String]): RIO[Registry, DWTimer] =
-    RIO.accessM(_.get.registerTimer(Label(name, labels)))
+    RIO.accessM(_.get.registerTimer(Label(name, labels, s"$name timer")))
 
   def registerMeter(name: String, labels: Array[String]): RIO[Registry, DWMeter] =
-    RIO.accessM(_.get.registerMeter(Label(name, labels)))
+    RIO.accessM(_.get.registerMeter(Label(name, labels, s"$name meter")))
 
   def registerHistogram(
     name: String,
     labels: Array[String],
     reservoir: Reservoir
   ): RIO[Registry, DWHistogram] =
-    RIO.accessM(_.get.registerHistogram(Label(name, labels), reservoir))
+    RIO.accessM(_.get.registerHistogram(Label(name, labels, s"$name histogram"), reservoir))
 
   object counter {
     def register(name: String) = Counter(name, Array.empty[String])

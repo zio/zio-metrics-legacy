@@ -44,7 +44,7 @@ package object prometheus {
                   .build()
                   .name(name)
                   .labelNames(label.labels: _*)
-                  .help(s"$name counter")
+                  .help(label.help)
                   .register(r)
                 (c, r)
               }))
@@ -56,7 +56,7 @@ package object prometheus {
                   .build()
                   .name(name)
                   .labelNames(label.labels: _*)
-                  .help(s"$name gauge")
+                  .help(label.help)
                   .register(r)
                 (g, r)
               }))
@@ -68,7 +68,7 @@ package object prometheus {
                   .build()
                   .name(name)
                   .labelNames(label.labels: _*)
-                  .help(s"$name histogram")
+                  .help(label.help)
 
                 val h = buckets match {
                   case DefaultBuckets(bs)          => if (bs.isEmpty) hb else hb.buckets(bs: _*)
@@ -85,7 +85,7 @@ package object prometheus {
                   .build()
                   .name(name)
                   .labelNames(label.labels: _*)
-                  .help(s"$name timer")
+                  .help(label.help)
 
                 val s = quantiles.foldLeft(sb)((acc, c) => acc.quantile(c._1, c._2)).register(r)
                 (s, r)

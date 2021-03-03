@@ -3,7 +3,7 @@ package zio.metrics
 import scala.math.Numeric
 import scala.math.Numeric.Implicits._
 
-case class Label[A: Show](name: A, labels: Array[String])
+case class Label[A: Show](name: A, labels: Array[String], help: String)
 
 trait Show[A] {
   def show(value: A): String
