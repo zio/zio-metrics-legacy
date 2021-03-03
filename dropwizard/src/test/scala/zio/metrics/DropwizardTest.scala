@@ -19,7 +19,7 @@ object DropwizardTest {
 
   val testCounter: RIO[Registry, MetricRegistry] = for {
     dwr <- RIO.environment[Registry]
-    dwc <- dwr.get.registerCounter(Label(DropwizardTest.getClass(), Array("test", "counter")))
+    dwc <- dwr.get.registerCounter(Label(DropwizardTest.getClass(), Array("test", "counter"), ""))
     c   <- Task(new Counter(dwc))
     _   <- c.inc()
     _   <- c.inc(2.0)
