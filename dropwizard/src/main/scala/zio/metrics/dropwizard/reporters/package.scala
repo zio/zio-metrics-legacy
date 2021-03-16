@@ -1,8 +1,6 @@
 package zio.metrics.dropwizard
 
 import zio.{ Has, Layer, Task, ZLayer }
-import java.util.concurrent.TimeUnit
-import java.io.File
 import java.util.Locale
 import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
