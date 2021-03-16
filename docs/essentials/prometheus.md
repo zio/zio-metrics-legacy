@@ -55,7 +55,7 @@ methods. We'll start using environmental effects until the `Helper` methods are 
 ```scala mdoc:silent
   val testRegistry: RIO[Registry, CollectorRegistry] = for {
     pr <- RIO.environment[Registry]
-    _  <- pr.get.registerCounter(ZLabel("simple_counter", Array("method")))
+    _  <- pr.get.registerCounter(ZLabel("simple_counter", Array("method"), "Just a simple counter for your consideration"))
     r  <- pr.get.getCurrent()
   } yield r
 ```

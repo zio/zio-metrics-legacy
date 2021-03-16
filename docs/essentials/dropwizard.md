@@ -54,7 +54,7 @@ methods. We'll start using environmental effects until the `Helper` methods are 
 ```scala mdoc:silent
   val testRegistry: RIO[Registry, (MetricRegistry, Counter)] = for {
     dwr <- RIO.environment[Registry]
-    dwc <- dwr.get.registerCounter(ZLabel("DropwizardTests", Array("test", "counter")))
+    dwc <- dwr.get.registerCounter(ZLabel("DropwizardTests", Array("test", "counter"), "Just a counter for your consideration"))
     c   <- Task(new Counter(dwc))
     r   <- dwr.get.getCurrent()
   } yield (r, c)

@@ -4,26 +4,25 @@ import scala.util.Properties.envOrNone
 
 import cats.data.Kleisli
 import cats.instances.list._
-
-import org.http4s.server.blaze._
-import org.http4s.{ Request, Response }
+import com.codahale.metrics.MetricRegistry
+import io.circe.Json
+import org.http4s.HttpRoutes
+import org.http4s.Request
+import org.http4s.Response
 import org.http4s.circe._
 import org.http4s.dsl.impl.Root
 import org.http4s.dsl.io._
-import org.http4s.{ HttpRoutes, Response }
-
-import zio.{ RIO, ZIO }
-import zio.system.System
+import org.http4s.server.blaze._
+import zio.RIO
+import zio.ZIO
+import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.console.Console
-import zio.random.Random
-import zio.blocking.Blocking
 import zio.interop.catz._
-import io.circe.Json
-import zio.RIO
-import zio.metrics.dropwizard.typeclasses._
 import zio.metrics.dropwizard.DropwizardExtractor._
-import com.codahale.metrics.MetricRegistry
+import zio.metrics.dropwizard.typeclasses._
+import zio.random.Random
+import zio.system.System
 
 object Server {
   val port: Int = envOrNone("HTTP_PORT").fold(9090)(_.toInt)
