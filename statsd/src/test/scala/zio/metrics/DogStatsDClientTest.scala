@@ -25,6 +25,7 @@ object DogStatsDClientTest {
       d     = (t2 - t1).toDouble
       _     <- client.timer("zmetrics.dog.timer", d, 0.9)
       _     <- client.histogram("zmetrics.dog.hist", d)
+      _     <- client.distribution("zmetrics.dog.dist", d)
       _     <- client.serviceCheck("zmetrics.dog.check", ServiceCheckOk)
       _     <- client.event("zmetrics.dog.event", "something amazing happened")
     } yield ()

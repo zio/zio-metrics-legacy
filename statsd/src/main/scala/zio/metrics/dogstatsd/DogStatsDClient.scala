@@ -125,6 +125,19 @@ class DogStatsDClient(client: Client) {
     client.sendM(sync)(
       Event(name, text, timestamp, hostname, aggregationKey, priority, sourceTypeName, alertType, tags)
     )
+
+  def distribution(name: String, value: Double): Task[Unit] =
+    distribution(name, value, 1.0, Seq.empty[Tag], false)
+
+  def distribution(name: String, value: Double, sampleRate: Double): Task[Unit] =
+    distribution(name, value, sampleRate, Seq.empty[Tag], false)
+
+  def distribution(name: String, value: Double, sampleRate: Double, tags: Seq[Tag]): Task[Unit] =
+    distribution(name, value, sampleRate, tags, false)
+
+  def distribution(name: String, value: Double, sampleRate: Double, tags: Seq[Tag], sync: Boolean): Task[Unit] =
+    client.sendM(sync)(Distribution(name, value, sampleRate, tags))
+
 }
 
 object DogStatsDClient {

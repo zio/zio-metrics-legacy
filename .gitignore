@@ -66,7 +66,8 @@ flycheck_*.el
 .LSOverride
 
 # Icon must end with two \r
-Icon
+Icon
+
 
 # Thumbnails
 ._*
@@ -448,4 +449,7 @@ project/plugins/project/
 
 .bloop
 .metals
-project/metals.sbt
+project/
+
+#VS Code
+.vscode

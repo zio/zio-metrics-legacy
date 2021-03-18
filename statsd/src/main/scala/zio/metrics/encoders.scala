@@ -23,13 +23,14 @@ object encoders {
     }
 
     private def getMetricType(m: Metric): String = m match {
-      case _: Counter   => "c"
-      case _: Gauge     => "g"
-      case _: Meter     => "m"
-      case _: Set       => "s"
-      case _: Timer     => "ms"
-      case _: Histogram => "h"
-      case _            => ""
+      case _: Counter      => "c"
+      case _: Gauge        => "g"
+      case _: Meter        => "m"
+      case _: Set          => "s"
+      case _: Timer        => "ms"
+      case _: Histogram    => "h"
+      case _: Distribution => "d"
+      case _               => ""
     }
 
     val statsd: Layer[Nothing, Encoder] = ZLayer.succeed(new Service[Metric] {
