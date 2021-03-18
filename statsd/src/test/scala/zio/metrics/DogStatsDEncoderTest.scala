@@ -18,6 +18,7 @@ object DogStatsDEncoderTest {
   val histogramTag    = Tag("metric", "histogram")
   val serviceCheckTag = Tag("metric", "serviceCheck")
   val eventTag        = Tag("metric", "event")
+  val distributeTag   = Tag("metric", "distribution")
 
   val encode: Metric => RIO[Encoder, OptString] = metric =>
     for {
@@ -46,6 +47,12 @@ object DogStatsDEncoderTest {
     enc1 <- encode(Histogram("foobar", 1.0, 1.0, Seq.empty[Tag]))
     enc2 <- encode(Histogram("foobar", 1.0, 0.5, List(histogramTag)))
     enc3 <- encode(Histogram("foobar", 1.0, 1.001, List(histogramTag)))
+  } yield (enc1, enc2, enc3)
+
+  val testDistribution: RIO[Encoder, (OptString, OptString, OptString)] = for {
+    enc1 <- encode(Distribution("foobar", 1.0, 1.0, Seq.empty[Tag]))
+    enc2 <- encode(Distribution("foobar", 1.0, 0.5, List(distributeTag)))
+    enc3 <- encode(Distribution("foobar", 1.0, 1.001, List(distributeTag)))
   } yield (enc1, enc2, enc3)
 
   val testMeter: RIO[Encoder, OptString] = for {
@@ -162,6 +169,13 @@ object DogStatsDEncoderTest {
                 "_e{6,14}:foobar|derp derp\\\\nderp|d:%d|h:host|k:agg_key|p:normal|s:user|t:warning|#metric:event"
                   .format(now)
               )
+        )
+      },
+      test("DogStatsD Encoder encodes distribution") { () =>
+        val m = rt.unsafeRun(testDistribution)
+        assert(
+          m._1 == Some("foobar:1|d") && m._2 == Some("foobar:1|d|@0.5|#metric:distribution")
+            && m._3 == Some("foobar:1|d|#metric:distribution")
         )
       }
     )
