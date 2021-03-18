@@ -40,7 +40,7 @@ describe('server utils', () => {
     expect(css).toMatchSnapshot();
 
     await expect(utils.minifyCss(notCss)).rejects.toMatchSnapshot();
-  });
+  }, 10000);
 
   test('autoprefix css', async () => {
     const testCss = fs.readFileSync(
@@ -90,5 +90,21 @@ describe('server utils', () => {
     expect(utils.getSubDir(docD, translatedDir)).toEqual('wow');
     expect(utils.getSubDir(docE, docsDir)).toBeNull();
     expect(utils.getSubDir(docE, translatedDir)).toEqual('lol/lah');
+  });
+
+  describe('replaceAssetsLink', () => {
+    test('verifies asset link is replaced after code block', () => {
+      const content = '```Some block```\n![alt](assets/my.png) more text';
+      const link = utils.replaceAssetsLink(content, 'thelocation');
+      expect(link).toBe(
+        '```Some block```\n![alt](thelocation/assets/my.png) more text',
+      );
+    });
+
+    test('verifies asset link is not replaced inside a fenced code block', () => {
+      const content = '```\n![alt](assets/my.png)\n```';
+      const link = utils.replaceAssetsLink(content, 'thelocation');
+      expect(link).toBe('```\n![alt](assets/my.png)\n```');
+    });
   });
 });
