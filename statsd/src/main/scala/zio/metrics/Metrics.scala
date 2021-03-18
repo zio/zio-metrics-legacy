@@ -111,3 +111,8 @@ case class Timer(name: String, value: Double, sampleRate: Double, tags: Seq[Tag]
     extends Metric
     with NumericMetric
     with SampledMetric
+
+case class Distribution(name: String, value: Double, sampleRate: Double, tags: Seq[Tag])
+    extends Metric
+    with NumericMetric
+    with SampledMetric
