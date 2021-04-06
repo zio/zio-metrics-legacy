@@ -91,7 +91,7 @@ trait Gauge extends TimerMetric {
   def inc(amount: Double): UIO[Unit]
   def dec: UIO[Unit] = dec(1)
   def dec(amount: Double): UIO[Unit]
-  override def observe(amount: Duration): UIO[Unit] = set(amount.toNanos() * 10e-9)
+  override def observe(amount: Duration): UIO[Unit] = set(amount.toNanos() * 1e-9)
 }
 object Gauge extends LabelledMetric[Registry with Clock, Throwable, Gauge] {
   def unsafeLabeled(
@@ -161,7 +161,7 @@ object Histogram extends LabelledMetricP[Registry with Clock, Throwable, Buckets
       val child = pHistogram.labels(labels: _*)
       new TimerMetricImpl(clock) with Histogram {
         override def observe(amount: Duration): UIO[Unit] =
-          ZIO.effectTotal(child.observe(amount.toNanos() * 10e-9))
+          ZIO.effectTotal(child.observe(amount.toNanos() * 1e-9))
       }
     }
 }
@@ -192,7 +192,7 @@ object Summary extends LabelledMetricP[Registry with Clock, Throwable, List[Quan
       val child = pHistogram.labels(labels: _*)
       new TimerMetricImpl(clock) with Summary {
         override def observe(amount: Duration): UIO[Unit] =
-          ZIO.effectTotal(child.observe(amount.toNanos() * 10e-9))
+          ZIO.effectTotal(child.observe(amount.toNanos() * 1e-9))
       }
     }
 }
