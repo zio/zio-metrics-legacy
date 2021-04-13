@@ -263,7 +263,8 @@ cwallet.sso.lck# JEnv local Java version configuration file
 .idea/**/usage.statistics.xml
 .idea/**/dictionaries
 .idea/**/shelf
-
+.idea/*
+.bsp/*
 # Sensitive or high-churn files
 .idea/**/dataSources/
 .idea/**/dataSources.ids

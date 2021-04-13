@@ -1,217 +1,168 @@
 package zio.metrics
 
 import java.util
-
-import zio.{ RIO, Runtime, Task, ZEnv }
-import zio.console.putStrLn
-import testz.{ assert, Harness, PureHarness, Result }
 import io.prometheus.client.CollectorRegistry
+import zio.{ RIO, UIO, ZIO }
+import zio.clock.Clock
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.helpers._
 import zio.metrics.prometheus.exporters.Exporters
+import zio.duration._
+import zio.test.environment.TestClock
+import zio.test.{ assert, DefaultRunnableSpec }
+import zio.test.Assertion._
 
-object PrometheusTest {
+object PrometheusTest extends DefaultRunnableSpec {
 
-  val rt: Runtime.Managed[ZEnv] = Runtime.unsafeFromLayer(ZEnv.live)
+  val env = Registry.live ++ Exporters.live ++ Clock.live
 
-  val prometheusLayer = Registry.live ++ Exporters.live
-
-  val tester = () => System.nanoTime()
-
-  val testCounter: RIO[Registry, CollectorRegistry] = for {
-    c <- Counter("PrometheusTest", Array.empty[String])
-    _ <- c.inc()
-    _ <- c.inc(2.0)
+  val counterTestRegistry: RIO[Registry, CollectorRegistry] = for {
+    c <- Counter("simple_counter", Array("method", "resource"))
+    _ <- c.inc(Array("get", "users"))
+    _ <- c.inc(2.0, Array("get", "users"))
     r <- getCurrentRegistry()
   } yield r
 
-  val testCounterHelper: RIO[Registry, CollectorRegistry] = for {
-    c <- counter.register("PrometheusTestHelper")
-    _ <- c.inc()
-    _ <- c.inc(2.0)
-    r <- getCurrentRegistry()
-  } yield r
-
-  val testGauge: RIO[Registry, (CollectorRegistry, Double)] = for {
-    g <- gauge.register("simple_gauge")
-    _ <- g.inc()
-    _ <- g.inc(2.0)
-    _ <- g.dec(1.0)
-    d <- g.getValue()
+  val gaugeTestRegistry: RIO[Registry, (CollectorRegistry, Double)] = for {
+    g <- Gauge("simple_gauge", Array("method"))
+    _ <- g.inc(Array("get"))
+    _ <- g.inc(2.0, Array("get"))
+    _ <- g.dec(1.0, Array("get"))
+    d <- g.getValue(Array("get"))
     r <- getCurrentRegistry()
   } yield (r, d)
 
-  val testHistogram: RIO[Registry, CollectorRegistry] = for {
-    h <- Histogram("simple_histogram", Array.empty[String], DefaultBuckets(Seq.empty[Double]))
-    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.observe(_))
+  val histogramTestRegistry: RIO[Registry, CollectorRegistry] = for {
+    h <- Histogram("simple_histogram", Array("method"), DefaultBuckets(Seq(10, 20, 30, 40, 50)))
+    _ <- RIO.foreach_(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.observe(_, Array("get")))
     r <- getCurrentRegistry()
   } yield r
 
-  val testHistogramTimer: RIO[Registry, CollectorRegistry] = for {
-    h <- Histogram("simple_histogram_timer", Array.empty[String], DefaultBuckets(Seq.empty[Double]))
-    _ <- h.time(() => Thread.sleep(2000))
+  val histogramTimerTestRegistry: RIO[Registry, CollectorRegistry] = for {
+    h <- Histogram("simple_histogram_timer", Array("method"), LinearBuckets(1, 2, 5))
+    _ <- h.time(() => Thread.sleep(2000), Array("post"))
     r <- getCurrentRegistry()
   } yield r
 
-  val testHistogramTask: RIO[Registry, (CollectorRegistry, Double, String)] = for {
-    h      <- Histogram("task_histogram_timer", Array.empty[String], DefaultBuckets(Seq.empty[Double]))
-    (d, s) <- h.time(Task { Thread.sleep(2000); "Success" })
-    r      <- getCurrentRegistry()
-  } yield (r, d, s)
-
-  val testHistogramTask2: RIO[Registry, (CollectorRegistry, String)] = for {
-    h <- histogram.register("task_histogram_timer_")
-    a <- h.time_(Task { Thread.sleep(2000); "Success" })
-    r <- getCurrentRegistry()
-  } yield (r, a)
-
-  val testSummary: RIO[Registry, CollectorRegistry] = for {
-    s <- Summary("simple_summary", Array.empty[String], List.empty[(Double, Double)])
-    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(s.observe(_))
-    r <- getCurrentRegistry()
-  } yield r
-
-  val testSummaryTask: RIO[Registry, CollectorRegistry] = for {
-    s <- summary.register("task_summary_timer")
-    _ <- s.time(Task(Thread.sleep(2000)))
-    r <- getCurrentRegistry()
-  } yield r
-
-  val testSummaryTask2: RIO[Registry, CollectorRegistry] = for {
-    s <- summary.register("task_summary_timer_")
-    _ <- s.time_(Task(Thread.sleep(2000)))
-    r <- getCurrentRegistry()
-  } yield r
-
-  def tests[T](harness: Harness[T]): T = {
-    import harness._
-    section(
-      test("counter increases by `inc` amount") { () =>
-        val set: util.Set[String] = new util.HashSet[String]()
-        set.add("PrometheusTest")
-        val r = rt.unsafeRun(testCounter.provideCustomLayer(prometheusLayer))
-        val counter = r
-          .filteredMetricFamilySamples(set)
-          .nextElement()
-          .samples
-          .get(0)
-          .value
-        assert(counter == 3.0)
-      },
-      test("counter helper increases by `inc` amount") { () =>
-        val set: util.Set[String] = new util.HashSet[String]()
-        set.add("PrometheusTestHelper")
-        val r = rt.unsafeRun(testCounterHelper.provideCustomLayer(prometheusLayer))
-        val counter = r
-          .filteredMetricFamilySamples(set)
-          .nextElement()
-          .samples
-          .get(0)
-          .value
-        assert(counter == 3.0)
-      },
-      test("gauge returns latest value") { () =>
-        val set: util.Set[String] = new util.HashSet[String]()
-        set.add("simple_gauge")
-        val r = rt.unsafeRun(testGauge.provideCustomLayer(prometheusLayer))
-        val a1 = r._1
-          .filteredMetricFamilySamples(set)
-          .nextElement()
-          .samples
-          .get(0)
-          .value
-
-        assert(a1 == r._2)
-        assert(a1 == 2.0)
-      },
-      test("histogram count and sum are as expected") { () =>
-        val set: util.Set[String] = new util.HashSet[String]()
-        set.add("simple_histogram_count")
-        set.add("simple_histogram_sum")
-
-        val r     = rt.unsafeRun(testHistogram.provideCustomLayer(prometheusLayer))
-        val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
-        val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
-        Result.combine(assert(count == 5.0), assert(sum == 163.3))
-      },
-      test("histogram timer accepts lambdas") { () =>
-        val set: util.Set[String] = new util.HashSet[String]()
-        set.add("simple_histogram_timer_count")
-        set.add("simple_histogram_timer_sum")
-
-        val r = rt.unsafeRun(testHistogramTimer.provideCustomLayer(prometheusLayer))
-
-        val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
-        val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
-        Result.combine(assert(count == 1.0), assert(sum >= 2.0 && sum <= 3.0))
-      },
-      test("histogram timer accepts tasks") { () =>
-        val set: util.Set[String] = new util.HashSet[String]()
-        set.add("task_histogram_timer_count")
-        set.add("task_histogram_timer_sum")
-
-        val r = rt.unsafeRun(testHistogramTask.provideCustomLayer(prometheusLayer))
-
-        val count = r._1.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
-        val sum   = r._1.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
-
-        println(s"Timed Task returns ${r._3} after ${r._2}")
-
-        Result.combine(assert(count == 1.0 && sum >= 2.0 && sum <= 3.0), assert(r._3 == "Success"))
-      },
-      test("histogram timer_ accepts tasks") { () =>
-        val set: util.Set[String] = new util.HashSet[String]()
-        set.add("task_histogram_timer__count")
-        set.add("task_histogram_timer__sum")
-
-        val r = rt.unsafeRun(testHistogramTask2.provideCustomLayer(prometheusLayer))
-
-        val count = r._1.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
-        val sum   = r._1.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
-        Result.combine(assert(count == 1.0 && sum >= 2.0 && sum <= 3.0), assert(r._2 == "Success"))
-      },
-      test("summary count and sum are as expected") { () =>
-        val set: util.Set[String] = new util.HashSet[String]()
-        set.add("simple_summary_count")
-        set.add("simple_summary_sum")
-
-        val r     = rt.unsafeRun(testSummary.provideCustomLayer(prometheusLayer))
-        val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
-        val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
-        Result.combine(assert(count == 5.0), assert(sum == 163.3))
-      },
-      test("summary timer accepts tasks") { () =>
-        val set: util.Set[String] = new util.HashSet[String]()
-        set.add("task_summary_timer_count")
-        set.add("task_summary_timer_sum")
-
-        val r = rt.unsafeRun(testSummaryTask.provideCustomLayer(prometheusLayer))
-
-        val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
-        val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
-        Result.combine(assert(count == 1.0), assert(sum >= 2.0 && sum <= 3.0))
-      },
-      test("summary timer_ accepts tasks") { () =>
-        val set: util.Set[String] = new util.HashSet[String]()
-        set.add("task_summary_timer__count")
-        set.add("task_summary_timer__sum")
-
-        val testExec = testSummaryTask2.tap(r => write004(r).map(println))
-
-        val r = rt.unsafeRun(testExec.provideCustomLayer(prometheusLayer))
-
-        val count = r.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
-        val sum   = r.filteredMetricFamilySamples(set).nextElement().samples.get(1).value
-        Result.combine(assert(count == 1.0), assert(sum >= 2.0 && sum <= 3.0))
-      }
-    )
+  val histogramDurationTestRegistry = {
+    for {
+      h <- Histogram("duration_histogram", Array("method"), ExponentialBuckets(0.25, 2, 5))
+      t <- h.startTimer(Array("time"))
+      _ <- ZIO.foreach_(List(75L, 750L, 2000L))(
+            n =>
+              for {
+                _ <- UIO(n).delay(n.millis)
+                _ <- TestClock.adjust(n.millis)
+                d <- h.observeDuration(t)
+              } yield d
+          )
+      r <- getCurrentRegistry()
+    } yield r
   }
 
-  val harness: Harness[PureHarness.Uses[Unit]] =
-    PureHarness.makeFromPrinter((result, name) => {
-      rt.unsafeRun(putStrLn(s"${name.reverse.mkString("[\"", "\"->\"", "\"]:")} $result"))
-    })
+  val summaryTestRegistry: RIO[Registry, CollectorRegistry] = for {
+    s <- Summary("simple_summary", Array("method"), List((0.5, 0.05), (0.9, 0.01)))
+    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(s.observe(_, Array("put")))
+    r <- getCurrentRegistry()
+  } yield r
 
-  def main(args: Array[String]): Unit =
-    tests(harness)((), Nil).print()
+  override def spec =
+    suite("PrometheusLabelsTest")(
+      suite("Counter")(
+        testM("counter increases by `inc` amount") {
+          val set: util.Set[String] = new util.HashSet[String]()
+          set.add("simple_counter")
+
+          for {
+            registry <- counterTestRegistry
+            counterValue <- ZIO.succeed(
+                             registry
+                               .filteredMetricFamilySamples(set)
+                               .nextElement()
+                               .samples
+                               .get(0)
+                               .value
+                           )
+          } yield assert(counterValue)(equalTo(3.0))
+        }
+      ),
+      suite("Gauge")(
+        testM("gauge returns latest value") {
+          val set: util.Set[String] = new util.HashSet[String]()
+          set.add("simple_gauge")
+
+          for {
+            registry <- gaugeTestRegistry
+            value <- ZIO.succeed(
+                      registry._1.filteredMetricFamilySamples(set).nextElement().samples.get(0).value
+                    )
+          } yield {
+            assert(value)(equalTo(registry._2)) &&
+            assert(value)(equalTo(2.0))
+          }
+        }
+      ),
+      suite("Histogram")(
+        testM("histogram count and sum are as expected") {
+          val set: util.Set[String] = new util.HashSet[String]()
+          set.add("simple_histogram_count")
+          set.add("simple_histogram_sum")
+
+          for {
+            registry <- histogramTestRegistry
+            count    <- ZIO.succeed(registry.filteredMetricFamilySamples(set).nextElement().samples.get(0).value)
+            sum      <- ZIO.succeed(registry.filteredMetricFamilySamples(set).nextElement().samples.get(1).value)
+          } yield {
+            assert(count)(equalTo(5.0)) &&
+            assert(sum)(equalTo(163.3))
+          }
+        },
+        testM("histogram timer accepts lambdas") {
+          val set: util.Set[String] = new util.HashSet[String]()
+          set.add("simple_histogram_timer_count")
+          set.add("simple_histogram_timer_sum")
+
+          for {
+            registry <- histogramTimerTestRegistry
+            count    <- ZIO.succeed(registry.filteredMetricFamilySamples(set).nextElement().samples.get(0).value)
+            sum      <- ZIO.succeed(registry.filteredMetricFamilySamples(set).nextElement().samples.get(1).value)
+          } yield {
+            assert(count)(equalTo(1.0)) &&
+            assert(sum)(isGreaterThanEqualTo(2.0)) &&
+            assert(sum)(isLessThanEqualTo(3.0))
+          }
+        },
+        testM("histogram duration count and sum are as expected") {
+          val set: util.Set[String] = new util.HashSet[String]()
+          set.add("duration_histogram_count")
+          set.add("duration_histogram_sum")
+
+          for {
+            registry <- histogramDurationTestRegistry
+            count    <- ZIO.succeed(registry.filteredMetricFamilySamples(set).nextElement().samples.get(0).value)
+            sum      <- ZIO.succeed(registry.filteredMetricFamilySamples(set).nextElement().samples.get(1).value)
+          } yield {
+            assert(count)(equalTo(3.0)) &&
+            assert(sum)(isGreaterThanEqualTo(3.1)) &&
+            assert(sum)(isLessThanEqualTo(5.0))
+          }
+        }
+      ),
+      suite("Summary")(
+        testM("summary count and sum are as expected") {
+          val set: util.Set[String] = new util.HashSet[String]()
+          set.add("simple_summary_count")
+          set.add("simple_summary_sum")
+
+          for {
+            registry <- summaryTestRegistry
+            count    <- ZIO.succeed(registry.filteredMetricFamilySamples(set).nextElement().samples.get(0).value)
+            sum      <- ZIO.succeed(registry.filteredMetricFamilySamples(set).nextElement().samples.get(1).value)
+          } yield {
+            assert(count)(equalTo(5.0)) &&
+            assert(sum)(equalTo(163.3))
+          }
+        }
+      )
+    ).provideCustomLayer(env)
 }

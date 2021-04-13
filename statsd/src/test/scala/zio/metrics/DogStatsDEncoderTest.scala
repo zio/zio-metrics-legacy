@@ -1,16 +1,87 @@
 package zio.metrics
 
-import testz.{ assert, Harness, PureHarness }
-
-import zio.{ RIO, Runtime }
-import zio.console._
+import zio.RIO
 import zio.metrics.encoders._
+import zio.test.DefaultRunnableSpec
+import zio.test._
+import zio.test.Assertion._
 
-object DogStatsDEncoderTest {
+object DogStatsDEncoderTest extends DefaultRunnableSpec {
+
+  override def spec =
+    suite("DogStatsDEncoder")(
+      testM("DogStatsD Encoder encodes counters") {
+        testCounter.map(tup => assert(tup)(equalTo((Some("foobar:1|c"), Some("foobar:1|c|@0,5|#metric:counter")))))
+      },
+      testM("DogStatsD Encoder encodes gauges") {
+        testGauge.map(tup => assert(tup)(equalTo((Some("foobar:1|g|#metric:gauge"), None, None))))
+      },
+      testM("DogStatsD Encoder encodes timers") {
+        testTimer.map(
+          tup =>
+            assert(tup)(
+              equalTo((Some("foobar:1|ms"), Some("foobar:1|ms|@0,5|#metric:timer"), Some("foobar:1|ms|#metric:timer")))
+            )
+        )
+      },
+      testM("DogStatsD Encoder encodes histograms") {
+        for {
+          (first, second, third) <- testHistogram
+        } yield {
+          assert(first)(isSome(equalTo("foobar:1|h"))) &&
+          assert(second)(isSome(equalTo("foobar:1|h|@0,5|#metric:histogram"))) &&
+          assert(third)(isSome(equalTo("foobar:1|h|#metric:histogram")))
+        }
+      },
+      testM("DogStatsD Encoder encodes meters") {
+        testMeter.map(encoded => assert(encoded)(isSome(equalTo("foobar:1|m"))))
+      },
+      testM("DogStatsD Encoder encodes sets") {
+        testSet.map(encoded => assert(encoded)(isSome(equalTo("foobar:barfoo|s"))))
+      },
+      testM("DogStatsD Encoder encodes serviceChecks") {
+        for {
+          tup <- testServiceCheck
+        } yield {
+          assert(tup._1)(
+            isSome(equalTo("_sc|foobar|0|d:%d|h:host|#metric:serviceCheck|m:hello\\\\nworld\\\\nagain!".format(now)))
+          ) &&
+          assert(tup._2)(isSome(equalTo("_sc|foobar|1|d:%d|h:host|#metric:serviceCheck|m:wheeee!".format(now))))
+        }
+      },
+      testM("DogStatsD Encoder encodes events") {
+        for {
+          tup <- testEvent
+        } yield {
+          assert(tup._1)(
+            isSome(
+              equalTo(
+                "_e{6,14}:foobar|derp derp derp|d:%d|h:host|k:agg_key|p:low|s:user|t:error|#metric:event".format(now)
+              )
+            )
+          ) &&
+          assert(tup._2)(
+            isSome(
+              equalTo(
+                "_e{6,14}:foobar|derp derp\\\\nderp|d:%d|h:host|k:agg_key|p:normal|s:user|t:warning|#metric:event"
+                  .format(now)
+              )
+            )
+          )
+        }
+      },
+      testM("DogStatsD Encoder encodes distribution") {
+        for {
+          tup <- testDistribution
+        } yield {
+          assert(tup._1)(isSome(equalTo("foobar:1|d"))) &&
+          assert(tup._2)(isSome(equalTo("foobar:1|d|@0,5|#metric:distribution"))) &&
+          assert(tup._3)(isSome(equalTo("foobar:1|d|#metric:distribution")))
+        }
+      }
+    ).provideCustomLayer(Encoder.dogstatsd)
 
   type OptString = Option[String]
-
-  val rt = Runtime.unsafeFromLayer(Encoder.dogstatsd ++ Console.live)
 
   val gaugeTag        = Tag("metric", "gauge")
   val counterTag      = Tag("metric", "counter")
@@ -63,7 +134,8 @@ object DogStatsDEncoderTest {
     enc <- encode(Set("foobar", "barfoo", Seq.empty[Tag]))
   } yield enc
 
-  val now = System.currentTimeMillis() / 1000
+  private val now = System.currentTimeMillis() / 1000
+
   val testServiceCheck: RIO[Encoder, (OptString, OptString)] = {
     val sc1 = ServiceCheck(
       "foobar",
@@ -116,76 +188,4 @@ object DogStatsDEncoderTest {
     } yield (enc1, enc2)
   }
 
-  def tests[T](harness: Harness[T]): T = {
-    import harness._
-
-    section(
-      test("DogStatsD Encoder encodes counters") { () =>
-        val m = rt.unsafeRun(testCounter)
-        assert(m._1 == Some("foobar:1|c") && m._2 == Some("foobar:1|c|@0.5|#metric:counter"))
-      },
-      test("DogStatsD Encoder encodes gauges") { () =>
-        val m = rt.unsafeRun(testGauge)
-        assert(m._1 == Some("foobar:1|g|#metric:gauge") && m._2 == None && m._3 == None)
-      },
-      test("DogStatsD Encoder encodes timers") { () =>
-        val m = rt.unsafeRun(testTimer)
-        assert(
-          m._1 == Some("foobar:1|ms") && m._2 == Some("foobar:1|ms|@0.5|#metric:timer")
-            && m._3 == Some("foobar:1|ms|#metric:timer")
-        )
-      },
-      test("DogStatsD Encoder encodes histograms") { () =>
-        val m = rt.unsafeRun(testHistogram)
-        assert(
-          m._1 == Some("foobar:1|h") && m._2 == Some("foobar:1|h|@0.5|#metric:histogram")
-            && m._3 == Some("foobar:1|h|#metric:histogram")
-        )
-      },
-      test("DogStatsD Encoder encodes meters") { () =>
-        val m = rt.unsafeRun(testMeter)
-        assert(m == Some("foobar:1|m"))
-      },
-      test("DogStatsD Encoder encodes sets") { () =>
-        val m = rt.unsafeRun(testSet)
-        assert(m == Some("foobar:barfoo|s"))
-      },
-      test("DogStatsD Encoder encodes serviceChecks") { () =>
-        val m = rt.unsafeRun(testServiceCheck)
-        assert(
-          m._1 == Some("_sc|foobar|0|d:%d|h:host|#metric:serviceCheck|m:hello\\\\nworld\\\\nagain!".format(now))
-            &&
-              m._2 == Some("_sc|foobar|1|d:%d|h:host|#metric:serviceCheck|m:wheeee!".format(now))
-        )
-      },
-      test("DogStatsD Encoder encodes events") { () =>
-        val m = rt.unsafeRun(testEvent)
-        assert(
-          m._1 == Some(
-            "_e{6,14}:foobar|derp derp derp|d:%d|h:host|k:agg_key|p:low|s:user|t:error|#metric:event".format(now)
-          )
-            &&
-              m._2 == Some(
-                "_e{6,14}:foobar|derp derp\\\\nderp|d:%d|h:host|k:agg_key|p:normal|s:user|t:warning|#metric:event"
-                  .format(now)
-              )
-        )
-      },
-      test("DogStatsD Encoder encodes distribution") { () =>
-        val m = rt.unsafeRun(testDistribution)
-        assert(
-          m._1 == Some("foobar:1|d") && m._2 == Some("foobar:1|d|@0.5|#metric:distribution")
-            && m._3 == Some("foobar:1|d|#metric:distribution")
-        )
-      }
-    )
-  }
-
-  val harness: Harness[PureHarness.Uses[Unit]] =
-    PureHarness.makeFromPrinter((result, name) => {
-      println(s"${name.reverse.mkString("[\"", "\"->\"", "\"]:")} $result")
-    })
-
-  def main(args: Array[String]): Unit =
-    tests(harness)((), Nil).print()
 }
