@@ -30,6 +30,7 @@ object StatsDClientTest extends DefaultRunnableSpec {
               _            <- putStrLn("Starting use")
               _            <- client.increment("TestCounter", 0.9, false)
               clientMetric <- agent.nextReceivedMetric
+              _            <- putStrLn("Testing timer")
               _            <- client.timer("TestTimer", 0.44, 0.9)
               timerMetric  <- agent.nextReceivedMetric
               _            <- putStrLn("Finished use")
