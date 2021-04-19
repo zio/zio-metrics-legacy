@@ -7,7 +7,7 @@ import zio.metrics.dropwizard.reporters._
 import zio.test.environment.TestClock
 import zio.ZIO
 
-import java.util.concurrent.TimeUnit
+//import java.util.concurrent.TimeUnit
 import zio.duration._
 import zio.test.DefaultRunnableSpec
 import zio.test._
@@ -49,8 +49,8 @@ object ReportersTest extends DefaultRunnableSpec {
         testM("reporter works") {
           // Console reporter just prints to console
           for {
-            r <- getCurrentRegistry()
-            _ <- console(r, 5, TimeUnit.SECONDS)
+            //r <- getCurrentRegistry()
+            //_ <- console(r, 5, TimeUnit.SECONDS)
             c <- counter.register("ReportersTestCnt", Array("test", "counter"))
             _ <- c.inc() *> c.inc(2.0)
           } yield assert(true)(isTrue)
