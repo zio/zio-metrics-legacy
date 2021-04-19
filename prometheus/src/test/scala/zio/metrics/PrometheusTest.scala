@@ -8,8 +8,8 @@ import zio.metrics.prometheus.exporters.Exporters
 import zio.metrics.prometheus.helpers._
 import zio.test.Assertion._
 import zio.test.environment.TestClock
-import zio.test.{DefaultRunnableSpec, assert}
-import zio.{RIO, UIO, ZIO}
+import zio.test.{ assert, DefaultRunnableSpec }
+import zio.{ RIO, UIO, ZIO }
 
 import java.util
 
