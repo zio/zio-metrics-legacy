@@ -48,6 +48,7 @@ lazy val dropwizard = project
   .settings(
     name := "dropwizard",
     stdSettings("metrics-dropwizard") ++ settings,
+    testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
     libraryDependencies ++= commonDependencies ++ dropwizardDependencies ++ (CrossVersion
       .partialVersion(scalaBinaryVersion.value) match {
       case Some((2, 11)) => Seq()
@@ -60,6 +61,7 @@ lazy val prometheus = project
   .settings(
     name := "prometheus",
     stdSettings("metrics-prometheus") ++ settings,
+    testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
     libraryDependencies ++= commonDependencies ++ prometheusDependencies
   )
   .dependsOn(common)
@@ -69,6 +71,7 @@ lazy val statsd = project
     name := "statsd",
     crossScalaVersions -= "2.11.12",
     stdSettings("metrics-statsd") ++ settings,
+    testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
     libraryDependencies ++= commonDependencies ++ (CrossVersion.partialVersion(scalaBinaryVersion.value) match {
       case Some((2, 11)) => Seq()
       case _             => statsdDependencies
@@ -80,7 +83,8 @@ lazy val commonDependencies = Seq(
   "dev.zio" %% "zio"              % zioVersion,
   "dev.zio" %% "zio-streams"      % zioVersion,
   "dev.zio" %% "zio-interop-cats" % interopVersion,
-  "dev.zio" %% "zio-test"         % zioVersion % Test
+  "dev.zio" %% "zio-test"         % zioVersion % Test,
+  "dev.zio" %% "zio-test-sbt"     % zioVersion % Test
 )
 
 lazy val prometheusDependencies = Seq(
@@ -132,8 +136,6 @@ lazy val http4s = Seq(
   "org.http4s"    %% "http4s-dsl"          % http4sVersion,
   "org.typelevel" %% "cats-effect"         % "2.1.3" //% Optional,
 )
-
-testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
 
 // TODO: enforce scalazzi dialect through the scalaz-plugin
 // addCompilerPlugin("org.scalaz" % "scalaz-plugin_2.12.4" % "0.0.7")

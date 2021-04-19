@@ -13,7 +13,7 @@ object StatsDEncoderTest extends DefaultRunnableSpec {
         testCounter.map(
           tup =>
             assert(tup._1)(isSome(equalTo("foobar:1|c"))) &&
-              assert(tup._2)(isSome(equalTo("foobar:1|c|@0,5")))
+              assert(tup._2)(isSome(equalTo("foobar:1|c|@0.5")))
         )
       },
       testM("StatsD Encoder encodes gauges") {

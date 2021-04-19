@@ -16,9 +16,9 @@ object ClientTest extends DefaultRunnableSpec {
         val messages = List(1.0, 2.2, 3.4, 4.6)
         val expectedSentMetricsSet = List(
           "clientbar:1|c",
-          "clientbar:2,2|c",
-          "clientbar:3,4|c",
-          "clientbar:4,6|c"
+          "clientbar:2.2|c",
+          "clientbar:3.4|c",
+          "clientbar:4.6|c"
         ).toSet
 
         val createClient = Client.withListener[Chunk, Int] { l: Chunk[Metric] =>

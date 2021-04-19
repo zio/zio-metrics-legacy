@@ -50,7 +50,7 @@ object ReportersTest extends DefaultRunnableSpec {
           // Console reporter just prints to console
           for {
             r <- getCurrentRegistry()
-            _ <- console(r, 2, TimeUnit.SECONDS)
+            _ <- console(r, 5, TimeUnit.SECONDS)
             c <- counter.register("ReportersTestCnt", Array("test", "counter"))
             _ <- c.inc() *> c.inc(2.0)
           } yield assert(true)(isTrue)

@@ -34,8 +34,8 @@ object DogStatsDClientTest extends DefaultRunnableSpec {
               eventMetric        <- agent.nextReceivedMetric
             } yield {
               assert(timerMetric)(equalTo("TestTimer:12|ms")) &&
-              assert(counterMetric)(equalTo("TestCounter:1|c|@0,9")) &&
-              assert(histMetric)(equalTo("TestHistogram:1|h0,9")) &&
+              assert(counterMetric)(equalTo("TestCounter:1|c|@0.9")) &&
+              assert(histMetric)(equalTo("TestHistogram:1|h0.9")) &&
               assert(distributionMetric)(equalTo("TestDistribution:20|d")) &&
               assert(serviceCheckMetric)(containsString("TestServiceCheck|0|d")) &&
               assert(eventMetric)(containsString("_e{9,26}:TestEvent|something amazing happened|d:"))
