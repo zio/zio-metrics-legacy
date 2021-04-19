@@ -39,7 +39,7 @@ object StatsDClientTest extends DefaultRunnableSpec {
               assert(timerMetric)(equalTo("TestTimer:0.44|ms|@0.9"))
             }
         }
-      }.provideCustomLayer(Encoder.statsd ++ Clock.live) @@ timeout(30.seconds) @@ flaky
+      }.provideCustomLayer(Encoder.statsd ++ Clock.live) @@ timeout(5.seconds) @@ flaky(5)
     )
 
 }
