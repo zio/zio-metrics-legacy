@@ -7,7 +7,7 @@ import zio.metrics.statsd._
 import zio.test._
 import zio.test.Assertion._
 import zio.duration._
-import zio.test.TestAspect.timeout
+import zio.test.TestAspect.{timeout, flaky}
 import zio.URIO
 
 object StatsDClientTest extends DefaultRunnableSpec {
@@ -39,7 +39,7 @@ object StatsDClientTest extends DefaultRunnableSpec {
               assert(timerMetric)(equalTo("TestTimer:0.44|ms|@0.9"))
             }
         }
-      }.provideCustomLayer(Encoder.statsd ++ Clock.live) @@ timeout(300.seconds)
+      }.provideCustomLayer(Encoder.statsd ++ Clock.live) @@ timeout(30.seconds) @@ flaky
     )
 
 }
