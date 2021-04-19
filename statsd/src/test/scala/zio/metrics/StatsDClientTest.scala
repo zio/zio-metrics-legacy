@@ -1,5 +1,6 @@
 package zio.metrics
 
+import zio.{URIO, ZIO}
 import zio.clock.Clock
 import zio.metrics.encoders._
 import zio.metrics.statsd._
@@ -7,6 +8,7 @@ import zio.test._
 import zio.test.Assertion._
 import zio.duration._
 import zio.test.TestAspect.timeout
+import zio.ZManaged
 
 object StatsDClientTest extends DefaultRunnableSpec {
   private val port = 8922
@@ -14,9 +16,10 @@ object StatsDClientTest extends DefaultRunnableSpec {
   override def spec =
     suite("StatsDClient")(
       testM("sends correct metrics via UDP") {
-        val clientWithAgent = for {
-          d <- StatsDClient(500, 5000, 100, Some("localhost"), Some(port))
+        val clientWithAgent: ZManaged[Client.ClientEnv,Throwable,(StatsDClient, UDPAgent)] = for {
           u <- UDPAgent(port)
+          _ <- ZIO.sleep(10.seconds).toManaged(_ => URIO.unit)
+          d <- StatsDClient(500, 5000, 100, Some("localhost"), Some(port))
         } yield (d, u)
 
         clientWithAgent.use {
@@ -32,6 +35,6 @@ object StatsDClientTest extends DefaultRunnableSpec {
             }
         }
       }
-    ).provideCustomLayer(Encoder.statsd ++ Clock.live) @@ timeout(120.seconds)
+    ).provideCustomLayer(Encoder.statsd ++ Clock.live) @@ timeout(180.seconds)
 
 }
