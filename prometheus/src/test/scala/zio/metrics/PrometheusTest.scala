@@ -1,16 +1,17 @@
 package zio.metrics
 
-import java.util
 import io.prometheus.client.CollectorRegistry
-import zio.{ RIO, UIO, ZIO }
 import zio.clock.Clock
-import zio.metrics.prometheus._
-import zio.metrics.prometheus.helpers._
-import zio.metrics.prometheus.exporters.Exporters
 import zio.duration._
-import zio.test.environment.TestClock
-import zio.test.{ assert, DefaultRunnableSpec }
+import zio.metrics.prometheus._
+import zio.metrics.prometheus.exporters.Exporters
+import zio.metrics.prometheus.helpers._
 import zio.test.Assertion._
+import zio.test.environment.TestClock
+import zio.test.{DefaultRunnableSpec, assert}
+import zio.{RIO, UIO, ZIO}
+
+import java.util
 
 object PrometheusTest extends DefaultRunnableSpec {
 
@@ -144,7 +145,7 @@ object PrometheusTest extends DefaultRunnableSpec {
           } yield {
             assert(count)(equalTo(3.0)) &&
             assert(sum)(isGreaterThanEqualTo(3.1)) &&
-            assert(sum)(isLessThanEqualTo(5.0))
+            assert(sum)(isLessThan(10.0))
           }
         }
       ),

@@ -5,6 +5,8 @@ import zio.metrics.encoders._
 import zio.metrics.statsd._
 import zio.test._
 import zio.test.Assertion._
+import zio.duration._
+import zio.test.TestAspect.timeout
 
 object StatsDClientTest extends DefaultRunnableSpec {
   private val port = 8922
@@ -25,11 +27,11 @@ object StatsDClientTest extends DefaultRunnableSpec {
               _            <- client.timer("TestTimer", 0.44, 0.9)
               timerMetric  <- agent.nextReceivedMetric
             } yield {
-              assert(clientMetric)(equalTo("TestCounter:1|c|@0,9")) &&
-              assert(timerMetric)(equalTo("TestTimer:0,44|ms|@0,9"))
+              assert(clientMetric)(equalTo("TestCounter:1|c|@0.9")) &&
+              assert(timerMetric)(equalTo("TestTimer:0.44|ms|@0.9"))
             }
         }
       }
-    ).provideCustomLayer(Encoder.statsd ++ Clock.live)
+    ).provideCustomLayer(Encoder.statsd ++ Clock.live) @@ timeout(10.seconds)
 
 }

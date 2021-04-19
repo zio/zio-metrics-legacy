@@ -11,7 +11,7 @@ object DogStatsDEncoderTest extends DefaultRunnableSpec {
   override def spec =
     suite("DogStatsDEncoder")(
       testM("DogStatsD Encoder encodes counters") {
-        testCounter.map(tup => assert(tup)(equalTo((Some("foobar:1|c"), Some("foobar:1|c|@0,5|#metric:counter")))))
+        testCounter.map(tup => assert(tup)(equalTo((Some("foobar:1|c"), Some("foobar:1|c|@0.5|#metric:counter")))))
       },
       testM("DogStatsD Encoder encodes gauges") {
         testGauge.map(tup => assert(tup)(equalTo((Some("foobar:1|g|#metric:gauge"), None, None))))
@@ -20,7 +20,7 @@ object DogStatsDEncoderTest extends DefaultRunnableSpec {
         testTimer.map(
           tup =>
             assert(tup)(
-              equalTo((Some("foobar:1|ms"), Some("foobar:1|ms|@0,5|#metric:timer"), Some("foobar:1|ms|#metric:timer")))
+              equalTo((Some("foobar:1|ms"), Some("foobar:1|ms|@0.5|#metric:timer"), Some("foobar:1|ms|#metric:timer")))
             )
         )
       },
@@ -29,7 +29,7 @@ object DogStatsDEncoderTest extends DefaultRunnableSpec {
           (first, second, third) <- testHistogram
         } yield {
           assert(first)(isSome(equalTo("foobar:1|h"))) &&
-          assert(second)(isSome(equalTo("foobar:1|h|@0,5|#metric:histogram"))) &&
+          assert(second)(isSome(equalTo("foobar:1|h|@0.5|#metric:histogram"))) &&
           assert(third)(isSome(equalTo("foobar:1|h|#metric:histogram")))
         }
       },
@@ -75,7 +75,7 @@ object DogStatsDEncoderTest extends DefaultRunnableSpec {
           tup <- testDistribution
         } yield {
           assert(tup._1)(isSome(equalTo("foobar:1|d"))) &&
-          assert(tup._2)(isSome(equalTo("foobar:1|d|@0,5|#metric:distribution"))) &&
+          assert(tup._2)(isSome(equalTo("foobar:1|d|@0.5|#metric:distribution"))) &&
           assert(tup._3)(isSome(equalTo("foobar:1|d|#metric:distribution")))
         }
       }
