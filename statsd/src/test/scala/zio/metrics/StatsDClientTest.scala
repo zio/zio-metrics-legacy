@@ -1,6 +1,6 @@
 package zio.metrics
 
-import zio.{URIO, ZIO}
+import zio.{ URIO, ZIO }
 import zio.clock.Clock
 import zio.metrics.encoders._
 import zio.metrics.statsd._
@@ -16,7 +16,7 @@ object StatsDClientTest extends DefaultRunnableSpec {
   override def spec =
     suite("StatsDClient")(
       testM("sends correct metrics via UDP") {
-        val clientWithAgent: ZManaged[Client.ClientEnv,Throwable,(StatsDClient, UDPAgent)] = for {
+        val clientWithAgent: ZManaged[Client.ClientEnv, Throwable, (StatsDClient, UDPAgent)] = for {
           u <- UDPAgent(port)
           _ <- ZIO.sleep(10.seconds).toManaged(_ => URIO.unit)
           d <- StatsDClient(500, 5000, 100, Some("localhost"), Some(port))
