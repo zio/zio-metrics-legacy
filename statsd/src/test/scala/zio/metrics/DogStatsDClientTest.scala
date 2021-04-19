@@ -1,45 +1,47 @@
 package zio.metrics
 
-import java.util.concurrent.TimeUnit
-
 import zio.clock.Clock
-import zio.console._
-import zio.duration.Duration
 import zio.metrics.dogstatsd._
-import zio.metrics.encoders._
-import zio.{ RIO, Runtime, Schedule }
+import zio.metrics.encoders.Encoder
+import zio.test._
+import zio.test.Assertion._
 
-object DogStatsDClientTest {
+object DogStatsDClientTest extends DefaultRunnableSpec {
+  private val port = 8900
 
-  val rt = Runtime.unsafeFromLayer(Encoder.dogstatsd ++ Console.live ++ Clock.live)
+  override def spec =
+    suite("DogStatsDClient")(
+      testM("Sends correct information via UDP") {
+        val clientWithAgent = for {
+          d <- DogStatsDClient(500, 5000, 100, Some("localhost"), Some(port))
+          u <- UDPAgent(port)
+        } yield (d, u)
 
-  val schd = Schedule.recurs(10)
+        clientWithAgent.use {
+          case (client, agent) =>
+            for {
+              _                  <- client.timer("TestTimer", 12)
+              timerMetric        <- agent.nextReceivedMetric
+              _                  <- client.increment("TestCounter", 0.9)
+              counterMetric      <- agent.nextReceivedMetric
+              _                  <- client.histogram("TestHistogram", 1)
+              histMetric         <- agent.nextReceivedMetric
+              _                  <- client.distribution("TestDistribution", 20)
+              distributionMetric <- agent.nextReceivedMetric
+              _                  <- client.serviceCheck("TestServiceCheck", ServiceCheckOk)
+              serviceCheckMetric <- agent.nextReceivedMetric
+              _                  <- client.event("TestEvent", "something amazing happened")
+              eventMetric        <- agent.nextReceivedMetric
+            } yield {
+              assert(timerMetric)(equalTo("TestTimer:12|ms")) &&
+              assert(counterMetric)(equalTo("TestCounter:1|c|@0,9")) &&
+              assert(histMetric)(equalTo("TestHistogram:1|h0,9")) &&
+              assert(distributionMetric)(equalTo("TestDistribution:20|d")) &&
+              assert(serviceCheckMetric)(containsString("TestServiceCheck|0|d")) &&
+              assert(eventMetric)(containsString("_e{9,26}:TestEvent|something amazing happened|d:"))
+            }
+        }
 
-  def program(r: Long)(client: DogStatsDClient) =
-    for {
-      clock <- RIO.environment[Clock]
-      t1    <- clock.get.currentTime(TimeUnit.MILLISECONDS)
-      _     <- client.increment("zmetrics.dog.counter", 0.9)
-      _     <- putStrLn(s"waiting for $r ms") *> clock.get.sleep(Duration(r, TimeUnit.MILLISECONDS))
-      t2    <- clock.get.currentTime(TimeUnit.MILLISECONDS)
-      d     = (t2 - t1).toDouble
-      _     <- client.timer("zmetrics.dog.timer", d, 0.9)
-      _     <- client.histogram("zmetrics.dog.hist", d)
-      _     <- client.distribution("zmetrics.dog.dist", d)
-      _     <- client.serviceCheck("zmetrics.dog.check", ServiceCheckOk)
-      _     <- client.event("zmetrics.dog.event", "something amazing happened")
-    } yield ()
-
-  def main(args: Array[String]): Unit = {
-    val timeouts = Seq(34L, 76L, 52L)
-    rt.unsafeRun(
-      DogStatsDClient().use { client =>
-        RIO
-          .foreach(timeouts)(l => program(l)(client))
-          .repeat(schd)
       }
-    )
-    Thread.sleep(10000)
-  }
-
+    ).provideCustomLayer(Encoder.dogstatsd ++ Clock.live)
 }

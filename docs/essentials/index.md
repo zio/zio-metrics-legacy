@@ -4,9 +4,9 @@ title:  "Overview"
 ---
 
 ZIO-Metrics is  both: 
-1. a thin wrapper over both Prometheus and Dropwizard intrumentation
+1. a thin wrapper over both Prometheus and Dropwizard instrumentation
 libraries allowing you to measure the behaviour of your application in a
-performant purely functional manner.
+performant, purely functional manner.
 2. a pure ZIO StatsD/DogStatsD client heavily inspired on [Censorinus](https://github.com/gphat/censorinus)
 
 `If it can affect your code's business value, measure it.` -- Coda Hale

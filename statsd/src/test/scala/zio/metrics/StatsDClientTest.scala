@@ -1,40 +1,35 @@
 package zio.metrics
 
-import java.util.concurrent.TimeUnit
-
 import zio.clock.Clock
-import zio.console._
-import zio.duration.Duration
 import zio.metrics.encoders._
 import zio.metrics.statsd._
-import zio.{ RIO, Runtime, Schedule }
+import zio.test._
+import zio.test.Assertion._
 
-object StatsDClientTest {
+object StatsDClientTest extends DefaultRunnableSpec {
+  private val port = 8922
 
-  val rt = Runtime.unsafeFromLayer(Encoder.statsd ++ Console.live ++ Clock.live)
+  override def spec =
+    suite("StatsDClient")(
+      testM("sends correct metrics via UDP") {
+        val clientWithAgent = for {
+          d <- StatsDClient(500, 5000, 100, Some("localhost"), Some(port))
+          u <- UDPAgent(port)
+        } yield (d, u)
 
-  val schd = Schedule.recurs(10)
-
-  def program(r: Long)(client: StatsDClient) =
-    for {
-      clock <- RIO.environment[Clock]
-      t1    <- clock.get.currentTime(TimeUnit.MILLISECONDS)
-      _     <- client.increment("zmetrics.counter", 0.9)
-      _     <- putStrLn(s"waiting for $r s") *> clock.get.sleep(Duration(r, TimeUnit.SECONDS))
-      t2    <- clock.get.currentTime(TimeUnit.MILLISECONDS)
-      _     <- client.timer("zmetrics.timer", (t2 - t1).toDouble, 0.9)
-    } yield ()
-
-  def main(args: Array[String]): Unit = {
-    val timeouts = Seq(4L, 6L, 2L)
-    rt.unsafeRun(
-      StatsDClient().use { client =>
-        RIO
-          .foreach(timeouts)(l => program(l)(client))
-          .repeat(schd)
+        clientWithAgent.use {
+          case (client, agent) =>
+            for {
+              _            <- client.increment("TestCounter", 0.9)
+              clientMetric <- agent.nextReceivedMetric
+              _            <- client.timer("TestTimer", 0.44, 0.9)
+              timerMetric  <- agent.nextReceivedMetric
+            } yield {
+              assert(clientMetric)(equalTo("TestCounter:1|c|@0,9")) &&
+              assert(timerMetric)(equalTo("TestTimer:0,44|ms|@0,9"))
+            }
+        }
       }
-    )
-    Thread.sleep(10000)
-  }
+    ).provideCustomLayer(Encoder.statsd ++ Clock.live)
 
 }
