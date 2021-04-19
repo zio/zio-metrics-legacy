@@ -1,25 +1,132 @@
 package zio.metrics
 
-import zio.{ RIO, Runtime, Task }
-import zio.console._
-import testz.{ assert, Harness, PureHarness }
-import com.codahale.metrics.{ MetricRegistry }
+import zio.{ RIO, Task, UIO }
+import com.codahale.metrics.MetricRegistry
 import zio.metrics.dropwizard._
 import zio.metrics.dropwizard.helpers._
 import com.codahale.metrics.UniformReservoir
 import com.codahale.metrics.ExponentiallyDecayingReservoir
 import com.codahale.metrics.SlidingTimeWindowArrayReservoir
+import zio.test._
+import zio.test.Assertion._
+
 import java.util.concurrent.TimeUnit
 
-object DropwizardTest {
+object DropwizardTest extends DefaultRunnableSpec {
+  private val metricName = "DropwizardTest"
 
-  val rt = Runtime.unsafeFromLayer(Registry.live ++ Console.live)
+  override def spec =
+    suite("DropwizardTest")(
+      suite("Counter")(
+        testM("counter increases by `inc` amount") {
+          val name = MetricRegistry.name(metricName, Array("test", "counter"): _*)
+
+          for {
+            r        <- counterTestRegistry
+            counters <- UIO(r.getCounters())
+            count    <- UIO(if (counters.get(name) == null) 0 else counters.get(name).getCount)
+          } yield assert(count)(equalTo(3.toLong))
+        }
+      ),
+      suite("Gauge")(
+        testM("gauge increases in time") {
+          val name = MetricRegistry.name("DropwizardGauge", Array("test", "gauge"): _*)
+          for {
+            r      <- testGauge
+            gauges <- UIO(r._1.getGauges())
+            g      <- UIO(if (gauges.get(name) == null) Long.MaxValue else gauges.get(name).getValue.asInstanceOf[Long])
+          } yield {
+            assert(r._2)(isLessThan(g)) &&
+            assert(g)(isLessThan(tester()))
+          }
+        }
+      ),
+      suite("Histogram")(
+        testM("histogram increases in time") {
+          val name = MetricRegistry.name("DropwizardHistogram", Array("test", "histogram"): _*)
+          for {
+            r        <- testHistogram
+            perc75th <- UIO(r.getHistograms().get(name).getSnapshot.get75thPercentile())
+          } yield assert(perc75th)(equalTo(53.5))
+        },
+        testM("customized uniform histogram increases in time") {
+          val name = MetricRegistry.name("DropwizardUniformHistogram", Array("uniform", "histogram"): _*)
+          for {
+            registry <- testUniformHistogram
+            perc75th <- UIO(registry.getHistograms().get(name).getSnapshot.get75thPercentile())
+          } yield assert(perc75th)(equalTo(53.5))
+        },
+        testM("exponential histogram increases in time") {
+          val name = MetricRegistry.name("DropwizardExponentialHistogram", Array("exponential", "histogram"): _*)
+
+          for {
+            r        <- testExponentialHistogram
+            perc75th <- UIO(r.getHistograms().get(name).getSnapshot.get75thPercentile())
+          } yield assert(perc75th)(equalTo(50.0))
+        },
+        testM("sliding time window histogram increases in time") {
+          val name = MetricRegistry.name("DropwizardSlidingHistogram", Array("sliding", "histogram"): _*)
+
+          for {
+            r        <- testSlidingTimeWindowHistogram
+            perc75th <- UIO(r.getHistograms().get(name).getSnapshot.get75thPercentile())
+          } yield assert(perc75th)(equalTo(53.5))
+        }
+      ),
+      suite("Meter")(
+        testM("Meter count and mean rate are within bounds") {
+          val name = MetricRegistry.name("DropwizardMeter", Array("test", "meter"): _*)
+
+          for {
+            r        <- testMeter
+            count    <- UIO(r.getMeters.get(name).getCount)
+            meanRate <- UIO(r.getMeters().get(name).getMeanRate)
+          } yield {
+            assert(count)(equalTo(15.toLong)) &&
+            assert(meanRate)(isGreaterThan(300.toDouble)) &&
+            assert(meanRate)(isLessThanEqualTo(3000.toDouble))
+          }
+        }
+      ),
+      suite("Timer")(
+        testM("Timer called 3 times") {
+          val name = MetricRegistry.name("DropwizardTimer", Array("test", "timer"): _*)
+
+          for {
+            r     <- testTimer
+            count <- UIO(r._1.getTimers().get(name).getCount)
+          } yield {
+            assert(count.toInt)(equalTo(r._2.size)) &&
+            assert(count.toInt)(equalTo(3))
+          }
+        },
+        testM("Timer mean rate for 6 calls within bounds") {
+          val name = MetricRegistry.name("DropwizardTimer", Array("test", "timer"): _*)
+
+          for {
+            r        <- testTimer
+            meanRate <- UIO(r._1.getTimers().get(name).getMeanRate)
+          } yield {
+            assert(meanRate)(isGreaterThan(0.78)) &&
+            assert(meanRate)(isLessThan(0.84))
+          }
+        }
+      ),
+      suite("Report printer")(
+        testM("Report printer is consistent") {
+          for {
+            registry <- getCurrentRegistry()
+            _        <- DropwizardExtractor.writeJson(registry)(None)
+          } yield assert(true)(isTrue)
+        }
+      )
+    ).provideCustomLayer(Registry.live)
 
   val tester: () => Long = () => System.nanoTime()
 
-  val testCounter: RIO[Registry, MetricRegistry] = for {
+  val counterTestRegistry: RIO[Registry, MetricRegistry] = for {
     dwr <- RIO.environment[Registry]
-    dwc <- dwr.get.registerCounter(Label(DropwizardTest.getClass(), Array("test", "counter"), ""))
+    dwc <- dwr.get.registerCounter(Label(metricName, Array("test", "counter"), ""))
     c   <- Task(new Counter(dwc))
     _   <- c.inc()
     _   <- c.inc(2.0)
@@ -41,13 +148,13 @@ object DropwizardTest {
 
   val testHistogram: RIO[Registry, MetricRegistry] = for {
     h <- histogram.register("DropwizardHistogram", Array("test", "histogram"))
-    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
+    _ <- RIO.foreach_(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update)
     r <- getCurrentRegistry()
   } yield r
 
   val testUniformHistogram: RIO[Registry, MetricRegistry] = for {
     h <- histogram.register("DropwizardUniformHistogram", Array("uniform", "histogram"), new UniformReservoir(512))
-    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
+    _ <- RIO.foreach_(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update)
     r <- getCurrentRegistry()
   } yield r
 
@@ -57,7 +164,7 @@ object DropwizardTest {
           Array("exponential", "histogram"),
           new ExponentiallyDecayingReservoir
         )
-    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
+    _ <- RIO.foreach_(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update)
     r <- getCurrentRegistry()
   } yield r
 
@@ -67,13 +174,13 @@ object DropwizardTest {
           Array("sliding", "histogram"),
           new SlidingTimeWindowArrayReservoir(30, TimeUnit.SECONDS)
         )
-    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
+    _ <- RIO.foreach_(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update)
     r <- getCurrentRegistry()
   } yield r
 
   val testMeter: RIO[Registry, MetricRegistry] = for {
     m <- meter.register("DropwizardMeter", Array("test", "meter"))
-    _ <- RIO.foreach(Seq(1L, 2L, 3L, 4L, 5L))(m.mark(_))
+    _ <- RIO.foreach_(Seq(1L, 2L, 3L, 4L, 5L))(m.mark)
     r <- getCurrentRegistry()
   } yield r
 
@@ -90,126 +197,4 @@ object DropwizardTest {
         )(_ => t.stop(ctx))
   } yield (r, l)
 
-  def tests[T](harness: Harness[T]): T = {
-    import harness._
-
-    section(
-      test("counter increases by `inc` amount") { () =>
-        val name = MetricRegistry.name(Show.fixClassName(DropwizardTest.getClass()), Array("test", "counter"): _*)
-        val r    = rt.unsafeRun(testCounter)
-        val cs   = r.getCounters()
-        val c    = if (cs.get(name) == null) 0 else cs.get(name).getCount
-        assert(c == 3d)
-      },
-      test("gauge increases in time") { () =>
-        val name = MetricRegistry.name("DropwizardGauge", Array("test", "gauge"): _*)
-        val r    = rt.unsafeRun(testGauge)
-        val gs   = r._1.getGauges()
-        val g    = if (gs.get(name) == null) Long.MaxValue else gs.get(name).getValue().asInstanceOf[Long]
-        assert(r._2 < g && g < tester())
-      },
-      test("histogram increases in time") { () =>
-        val name = MetricRegistry.name("DropwizardHistogram", Array("test", "histogram"): _*)
-        val r    = rt.unsafeRun(testHistogram)
-        val perc75th = r
-          .getHistograms()
-          .get(name)
-          .getSnapshot
-          .get75thPercentile
-
-        assert(perc75th == 53.5)
-      },
-      test("customized uniform histogram increases in time") { () =>
-        val name = MetricRegistry.name("DropwizardUniformHistogram", Array("uniform", "histogram"): _*)
-        val r    = rt.unsafeRun(testUniformHistogram)
-        val perc75th = r
-          .getHistograms()
-          .get(name)
-          .getSnapshot
-          .get75thPercentile
-
-        assert(perc75th == 53.5)
-      },
-      test("exponential histogram increases in time") { () =>
-        val name = MetricRegistry.name("DropwizardExponentialHistogram", Array("exponential", "histogram"): _*)
-        val r    = rt.unsafeRun(testExponentialHistogram)
-        val perc75th = r
-          .getHistograms()
-          .get(name)
-          .getSnapshot
-          .get75thPercentile
-
-        assert(perc75th == 50.0)
-      },
-      test("sliding time window histogram increases in time") { () =>
-        val name = MetricRegistry.name("DropwizardSlidingHistogram", Array("sliding", "histogram"): _*)
-        val r    = rt.unsafeRun(testSlidingTimeWindowHistogram)
-        val perc75th = r
-          .getHistograms()
-          .get(name)
-          .getSnapshot
-          .get75thPercentile
-
-        assert(perc75th == 53.5)
-      },
-      test("Meter count and mean rate are within bounds") { () =>
-        val name = MetricRegistry.name("DropwizardMeter", Array("test", "meter"): _*)
-        val r    = rt.unsafeRun(testMeter)
-        val count = r
-          .getMeters()
-          .get(name)
-          .getCount
-
-        val meanRate = r
-          .getMeters()
-          .get(name)
-          .getMeanRate
-
-        println(s"count: $count, meanRate: $meanRate")
-        assert(count == 15 && meanRate > 300 && meanRate < 3000)
-      },
-      test("Timer called 3 times") { () =>
-        val name = MetricRegistry.name("DropwizardTimer", Array("test", "timer"): _*)
-        val r    = rt.unsafeRun(testTimer)
-        val count = r._1
-          .getTimers()
-          .get(name)
-          .getCount
-
-        println(r._2)
-
-        assert(count == r._2.size && count == 3)
-      },
-      test("Timer mean rate for 6 calls within bounds") { () =>
-        val name = MetricRegistry.name("DropwizardTimer", Array("test", "timer"): _*)
-        val r    = rt.unsafeRun(testTimer)
-        val meanRate = r._1
-          .getTimers()
-          .get(name)
-          .getMeanRate
-
-        assert(meanRate > 0.78 && meanRate < 0.84)
-      },
-      test("Report printer is consistent") { () =>
-        val program = for {
-          r <- getCurrentRegistry()
-          j <- DropwizardExtractor.writeJson(r)(None)
-          _ <- putStrLn(j.spaces2)
-        } yield ()
-
-        rt.unsafeRun(program)
-
-        assert(true)
-
-      }
-    )
-  }
-
-  val harness: Harness[PureHarness.Uses[Unit]] =
-    PureHarness.makeFromPrinter((result, name) => {
-      println(s"${name.reverse.mkString("[\"", "\"->\"", "\"]:")} $result")
-    })
-
-  def main(args: Array[String]): Unit =
-    tests(harness)((), Nil).print()
 }

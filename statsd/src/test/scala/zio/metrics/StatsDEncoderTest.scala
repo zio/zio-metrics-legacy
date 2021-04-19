@@ -1,14 +1,34 @@
 package zio.metrics
 
-import testz.{ assert, Harness, PureHarness }
-
-import zio.{ RIO, Runtime }
-import zio.console._
+import zio.RIO
 import zio.metrics.encoders._
+import zio.test._
+import zio.test.Assertion._
 
-object StatsDEncoderTest {
+object StatsDEncoderTest extends DefaultRunnableSpec {
 
-  val rt = Runtime.unsafeFromLayer(Encoder.statsd ++ Console.live)
+  override def spec =
+    suite("StatsDEncoder")(
+      testM("StatsD Encoder encodes counters") {
+        testCounter.map(
+          tup =>
+            assert(tup._1)(isSome(equalTo("foobar:1|c"))) &&
+              assert(tup._2)(isSome(equalTo("foobar:1|c|@0,5")))
+        )
+      },
+      testM("StatsD Encoder encodes gauges") {
+        testGauge.map(g => assert(g)(isSome(equalTo("foobar:1|g"))))
+      },
+      testM("StatsD Encoder encodes timers") {
+        testTimer.map(t => assert(t)(isSome(equalTo("foobar:1|ms"))))
+      },
+      testM("StatsD Encoder encodes meters") {
+        testMeter.map(m => assert(m)(isSome(equalTo("foobar:1|m"))))
+      },
+      testM("StatsD Encoder encodes sets") {
+        testSet.map(s => assert(s)(isSome(equalTo("foobar:barfoo|s"))))
+      }
+    ).provideCustomLayer(Encoder.statsd)
 
   val encode: Metric => RIO[Encoder, Option[String]] = metric =>
     for {
@@ -37,38 +57,4 @@ object StatsDEncoderTest {
     enc <- encode(Set(name = "foobar", value = "barfoo", Seq.empty[Tag]))
   } yield enc
 
-  def tests[T](harness: Harness[T]): T = {
-    import harness._
-
-    section(
-      test("StatsD Encoder encodes counters") { () =>
-        val m = rt.unsafeRun(testCounter)
-        assert(m._1 == Some("foobar:1|c") && m._2 == Some("foobar:1|c|@0.5"))
-      },
-      test("StatsD Encoder encodes gauges") { () =>
-        val m = rt.unsafeRun(testGauge)
-        assert(m == Some("foobar:1|g"))
-      },
-      test("StatsD Encoder encodes timers") { () =>
-        val m = rt.unsafeRun(testTimer)
-        assert(m == Some("foobar:1|ms"))
-      },
-      test("StatsD Encoder encodes meters") { () =>
-        val m = rt.unsafeRun(testMeter)
-        assert(m == Some("foobar:1|m"))
-      },
-      test("StatsD Encoder encodes sets") { () =>
-        val m = rt.unsafeRun(testSet)
-        assert(m == Some("foobar:barfoo|s"))
-      }
-    )
-  }
-
-  val harness: Harness[PureHarness.Uses[Unit]] =
-    PureHarness.makeFromPrinter((result, name) => {
-      println(s"${name.reverse.mkString("[\"", "\"->\"", "\"]:")} $result")
-    })
-
-  def main(args: Array[String]): Unit =
-    tests(harness)((), Nil).print()
 }

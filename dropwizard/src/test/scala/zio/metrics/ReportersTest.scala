@@ -1,46 +1,60 @@
 package zio.metrics
 
+import zio.clock.Clock
 import zio.metrics.dropwizard._
 import zio.metrics.dropwizard.helpers._
 import zio.metrics.dropwizard.reporters._
-import zio.{ App, RIO, Runtime }
+import zio.test.environment.TestClock
+import zio.ZIO
+
 import java.util.concurrent.TimeUnit
-import scala.concurrent.duration._
-import zio.console._
-import zio.duration.Duration
-import com.codahale.metrics.MetricRegistry
-import zio.ExitCode
+import zio.duration._
+import zio.test.DefaultRunnableSpec
+import zio.test._
+import zio.test.Assertion._
 
-object ReportersTest extends App {
+object ReportersTest extends DefaultRunnableSpec {
 
-  val rt = Runtime.unsafeFromLayer(Registry.live ++ Reporters.live)
+  override def spec =
+    suite("ReportersTest")(
+      suite("JMX")(
+        testM("reporter works with counter") {
+          val expectedJson = "{\n  \"counters\" : {\n    \"ReportersTestCnt.test.counter\" : 3\n  }\n}"
 
-  val tests: RIO[
-    Registry with Reporters,
-    MetricRegistry
-  ] =
-    for {
-      r   <- getCurrentRegistry()
-      _   <- jmx(r)
-      _   <- console(r, 2, TimeUnit.SECONDS)
-      c   <- counter.register(Show.fixClassName(DropwizardTest.getClass()), Array("test", "counter"))
-      _   <- c.inc()
-      _   <- c.inc(2.0)
-      t   <- timer.register("DropwizardTimer", Array("test", "timer"))
-      ctx <- t.start()
-      _ <- RIO.foreach(
-            List(
-              Thread.sleep(1000L),
-              Thread.sleep(1400L),
-              Thread.sleep(1200L)
-            )
-          )(_ => t.stop(ctx))
-    } yield r
-
-  override def run(args: List[String]) = {
-    println("Starting tests")
-    val json = rt.unsafeRun(tests >>= (r => DropwizardExtractor.writeJson(r)(None)))
-    RIO.sleep(Duration.fromScala(30.seconds))
-    putStrLn(json.spaces2).map(_ => ExitCode.success)
-  }
+          for {
+            r    <- getCurrentRegistry()
+            _    <- jmx(r)
+            c    <- counter.register("ReportersTestCnt", Array("test", "counter"))
+            _    <- c.inc() *> c.inc(2.0)
+            json <- DropwizardExtractor.writeJson(r)(None)
+          } yield assert(json.toString())(equalTo(expectedJson))
+        },
+        testM("reporter works with timer") {
+          for {
+            r   <- getCurrentRegistry()
+            _   <- jmx(r)
+            t   <- timer.register("TimerTest", Array("test", "timer"))
+            ctx <- t.start()
+            _ <- ZIO.foreach_(List(1000, 1400, 1200)) { n =>
+                  TestClock.adjust(n.millis) *> t.stop(ctx).delay(n.millis)
+                }
+            json <- DropwizardExtractor.writeJson(r)(None).map(_.toString())
+          } yield {
+            assert(json)(containsString("\"timers\" : {")) &&
+            assert(json)(containsString("\"TimerTest.test.timer_count\" : 3"))
+          }
+        }
+      ),
+      suite("Console")(
+        testM("reporter works") {
+          // Console reporter just prints to console
+          for {
+            r <- getCurrentRegistry()
+            _ <- console(r, 2, TimeUnit.SECONDS)
+            c <- counter.register("ReportersTestCnt", Array("test", "counter"))
+            _ <- c.inc() *> c.inc(2.0)
+          } yield assert(true)(isTrue)
+        }
+      )
+    ).provideCustomLayer(Reporters.live ++ Registry.live ++ Clock.live)
 }
