@@ -32,6 +32,6 @@ object StatsDClientTest extends DefaultRunnableSpec {
             }
         }
       }
-    ).provideCustomLayer(Encoder.statsd ++ Clock.live) @@ timeout(10.seconds)
+    ).provideCustomLayer(Encoder.statsd ++ Clock.live) @@ timeout(120.seconds)
 
 }
