@@ -27,7 +27,7 @@ object ServerTest extends DefaultRunnableSpec {
       testM("metrics from registry available at /metrics/ALL") {
         for {
           _    <- testServer.flatMap(t => builder(t)).run.fork
-          _    <- ZIO.sleep(5.seconds)
+          _    <- ZIO.sleep(10.seconds)
           body <- getURLContent(s"http://localhost:${port}/metrics/ALL")
         } yield {
           assert(body)(containsString("\"counters\":{\"ServerTest.test.counter\":3}")) &&
