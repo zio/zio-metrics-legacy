@@ -162,7 +162,7 @@ object DropwizardTest extends DefaultRunnableSpec {
       } yield {
         assert(count)(equalTo(15.toLong)) &&
         assert(meanRate)(isGreaterThan(60.toDouble)) &&
-        assert(meanRate)(isLessThanEqualTo(1000.toDouble))
+        assert(meanRate)(isLessThanEqualTo(5000.toDouble))
       }
     }
   ).provideCustomLayer(Registry.live)
