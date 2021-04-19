@@ -7,7 +7,7 @@ import zio.metrics.statsd._
 import zio.test._
 import zio.test.Assertion._
 import zio.duration._
-import zio.test.TestAspect.{timeout, flaky}
+import zio.test.TestAspect.{ flaky, timeout }
 import zio.URIO
 
 object StatsDClientTest extends DefaultRunnableSpec {
