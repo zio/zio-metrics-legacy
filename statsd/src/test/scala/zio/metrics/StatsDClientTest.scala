@@ -41,6 +41,6 @@ object StatsDClientTest { //extends DefaultRunnableSpec {
         }
       }.provideCustomLayer(Encoder.statsd ++ Clock.live) @@ forked @@ timeout(5.seconds) @@ flaky(5)
     )
-  */
+ */
 
 }
