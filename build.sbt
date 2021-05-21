@@ -2,7 +2,7 @@ import Build._
 
 inThisBuild(
   List(
-    scalaVersion in ThisBuild := "2.13.1",
+    ThisBuild / scalaVersion := Scala213,
     organization := "dev.zio",
     homepage := Some(url("https://github.com/zio/zio-metrics/")),
     licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
@@ -19,15 +19,16 @@ inThisBuild(
   )
 )
 
-fork in Test := true
-fork in run := true
+Test / fork := true
+run / fork := true
 
-val http4sVersion     = "0.21.6"
-val zioVersion        = "1.0.4-2"
-val interopVersion    = "2.3.1.0"
+val http4sVersion     = "0.21.22"
+val zioVersion        = "1.0.8"
+val interopVersion    = "2.5.1.0"
+val catsEffectVersion = "2.5.1"
 val zioNIOVersion     = "1.0.0-RC10"
-val prometheusVersion = "0.9.0"
-val dropwizardVersion = "4.1.10.1"
+val prometheusVersion = "0.10.0"
+val dropwizardVersion = "4.1.22"
 val circeVersion      = "0.13.0"
 
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
@@ -111,9 +112,9 @@ lazy val statsdDependencies = Seq(
 lazy val docs = project
   .in(file("zio-metrics-docs"))
   .settings(
-    skip.in(publish) := true,
+    publish / skip := true,
     // skip 2.13 mdoc until mdoc is available for 2.13
-    crossScalaVersions -= "2.13.1",
+    crossScalaVersions -= Scala213,
     moduleName := "zio-metrics-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
@@ -134,7 +135,7 @@ lazy val http4s = Seq(
   "org.http4s"    %% "http4s-circe"        % http4sVersion,
   "org.http4s"    %% "http4s-blaze-server" % http4sVersion,
   "org.http4s"    %% "http4s-dsl"          % http4sVersion,
-  "org.typelevel" %% "cats-effect"         % "2.1.3" //% Optional,
+  "org.typelevel" %% "cats-effect"         % catsEffectVersion //% Optional,
 )
 
 // TODO: enforce scalazzi dialect through the scalaz-plugin
