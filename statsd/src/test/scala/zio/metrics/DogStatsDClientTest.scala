@@ -5,6 +5,9 @@ import zio.metrics.dogstatsd._
 import zio.metrics.encoders.Encoder
 import zio.test._
 import zio.test.Assertion._
+import zio.test.TestAspect.{ flaky, forked, timeout }
+
+import zio.duration._
 
 object DogStatsDClientTest extends DefaultRunnableSpec {
   private val port = 8900
@@ -43,5 +46,5 @@ object DogStatsDClientTest extends DefaultRunnableSpec {
         }
 
       }
-    ).provideCustomLayer(Encoder.dogstatsd ++ Clock.live)
+    ).provideCustomLayer(Encoder.dogstatsd ++ Clock.live) @@ forked @@ timeout(5.seconds) @@ flaky(5)
 }
