@@ -11,7 +11,7 @@ Required imports for presented snippets:
 ```scala mdoc:silent
 import zio.{ RIO, Runtime }
 import io.prometheus.client.CollectorRegistry
-import zio.metrics.{ Label => ZLabel, Show }
+import zio.metrics.{ Label => ZLabel }
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.helpers._
 import zio.metrics.prometheus.exporters._
@@ -65,7 +65,7 @@ may require more parameters). A label is composed of a name and an array of
 labels which may be empty in the case where no labels are required.
 
 ```scala mdoc:silent
-case class Label[A: Show](name: A, labels: Array[String])
+case class Label[A](name: A, labels: Array[String])
 ```
 
 Note that zio-metrics does not depend on either cats or scalaz so this Show is
@@ -135,17 +135,23 @@ If the counter is registered with labels, then you need to increase the counter
 You can run and verify the results so:
 
 ```scala mdoc:silent
-  val set: util.Set[String] = new util.HashSet[String]()
-  set.add("simple_counter")
+  val timeSeriesNames = new util.HashSet[String]() {
+    add("simple_counter_total")
+  }
   val r = rt.unsafeRun(testCounter)
   val count = r
-    .filteredMetricFamilySamples(set)
+    .filteredMetricFamilySamples(timeSeriesNames)
     .nextElement()
     .samples
     .get(0)
     .value
   assert(count == 3.0)
 ```
+Note: starting with Prometheus Java client v0.10 (a dependency of this lib), 
+all Counter samples now must have a "_total" suffix. Without the suffix, 
+the above code snippet will fail with a java.util.NoSuchElementException 
+because no matching name will be found. 
+(See v0.10.0 release note for details: https://github.com/prometheus/client_java/releases/tag/parent-0.10.0)
 
 There's an easier way to observe the state of the `CollectorRegistry` using the
 `write004` Exporter covered later.
