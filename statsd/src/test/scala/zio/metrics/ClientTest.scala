@@ -6,6 +6,8 @@ import zio.metrics.encoders._
 import zio.{ Chunk, RIO, Task }
 import zio.test._
 import zio.test.Assertion._
+import zio.test.TestAspect.{ flaky, forked, timeout }
+import zio.duration._
 
 object ClientTest extends DefaultRunnableSpec {
   private val port = 8126
@@ -36,11 +38,11 @@ object ClientTest extends DefaultRunnableSpec {
               opt     <- RIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
               _       <- RIO.foreach_(opt)(m => client.sendAsync(m))
               metrics <- RIO.foreach(opt)(_ => agent.nextReceivedMetric)
-            } yield assert(metrics.toSet)(equalTo(expectedSentMetricsSet))
+            } yield assert(metrics.toSet)(hasSameElements(expectedSentMetricsSet))
         }
 
       }
-    }.provideCustomLayer(Clock.live ++ Encoder.statsd)
+    }.provideCustomLayer(Clock.live ++ Encoder.statsd) @@ forked @@ timeout(5.seconds) @@ flaky(5)
 
   private val myudp: Chunk[Metric] => RIO[Encoder, Chunk[Int]] = msgs =>
     for {
