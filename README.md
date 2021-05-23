@@ -1,8 +1,8 @@
 # ZIO metrics
 
-| CI | Release | Snapshot | Discord |
-| --- | --- | --- | --- |
-| ![CI][Badge-CI] | [![Release Artifacts][Badge-SonatypeReleases]][Link-SonatypeReleases] | [![Snapshot Artifacts][Badge-SonatypeSnapshots]][Link-SonatypeSnapshots] | [![Badge-Discord]][Link-Discord] |
+| Project Stage | CI | Release | Snapshot | Discord |
+| --- | --- | --- | --- | --- |
+| [![Project stage][Stage]][Stage-Page] | ![CI][Badge-CI] | [![Release Artifacts][Badge-SonatypeReleases]][Link-SonatypeReleases] | [![Snapshot Artifacts][Badge-SonatypeSnapshots]][Link-SonatypeSnapshots] | [![Badge-Discord]][Link-Discord] |
 
 [Badge-SonatypeReleases]: https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-metrics_2.12.svg "Sonatype Releases"
 [Badge-SonatypeSnapshots]: https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-metrics_2.12.svg "Sonatype Snapshots"
@@ -12,6 +12,8 @@
 [Link-SonatypeSnapshots]: https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-metrics_2.12/ "Sonatype Snapshots"
 [Link-Discord]: https://discord.gg/2ccFBr4 "Discord"
 [Badge-CI]: https://github.com/zio/zio-metrics/workflows/CI/badge.svg
+[Stage]: https://img.shields.io/badge/Project%20Stage-Production%20Ready-brightgreen.svg
+[Stage-Page]: https://github.com/zio/zio/wiki/Project-Stages
 
 ## Goal
 A high-performance, purely-functional library for adding instrumentation to any application, with a simple web client and JMX support.

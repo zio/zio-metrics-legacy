@@ -3,7 +3,7 @@ package zio.metrics
 import scala.math.Numeric
 import scala.math.Numeric.Implicits._
 
-case class Label[A: Show](name: A, labels: Array[String], help: String)
+final case class Label[A](name: A, labels: Array[String], help: String)
 
 trait Show[A] {
   def show(value: A): String
@@ -19,16 +19,12 @@ object Show {
     c.getName().replaceAll("\\.", "_").replace("$", "")
 
   implicit class ShowSyntax[A: Show](a: A) {
-    def show() = Show[A].show(a)
+    def show(): String = Show[A].show(a)
   }
 
-  implicit val showString: Show[String] = new Show[String] {
-    def show(value: String): String = value
-  }
+  implicit val showString: Show[String] = s => s
 
-  implicit def showClass[A]: Show[Class[A]] = new Show[Class[A]] {
-    override def show(f: Class[A]): String = fixClassName(f)
-  }
+  implicit def showClass[A]: Show[Class[A]] = (f: Class[A]) => fixClassName(f)
 }
 
 trait Semigroup[A] {
@@ -37,7 +33,7 @@ trait Semigroup[A] {
 
 object Semigroup {
 
-  def apply[A](implicit sg: Semigroup[A]) = sg
+  def apply[A](implicit sg: Semigroup[A]): Semigroup[A] = sg
 
   def combine[A: Semigroup](x: A, y: A): A = Semigroup[A].combine(x, y)
 
@@ -46,11 +42,7 @@ object Semigroup {
     def |+|(y: A): A     = self.combine(y)
   }
 
-  implicit def numericAddSG[N: Numeric[?]]: Semigroup[N] = new Semigroup[N] {
-    def combine(x: N, y: N): N = x + y
-  }
+  implicit def numericAddSG[N: Numeric[*]]: Semigroup[N] = _ + _
 
-  implicit val strConcatSG: Semigroup[String] = new Semigroup[String] {
-    def combine(x: String, y: String): String = x + y
-  }
+  implicit val strConcatSG: Semigroup[String] = _ + _
 }
