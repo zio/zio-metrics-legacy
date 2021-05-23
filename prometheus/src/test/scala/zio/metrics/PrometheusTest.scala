@@ -8,14 +8,14 @@ import zio.metrics.prometheus.exporters.Exporters
 import zio.metrics.prometheus.helpers._
 import zio.test.Assertion._
 import zio.test.environment.TestClock
-import zio.test.{ assert, DefaultRunnableSpec }
+import zio.test.{ assert, DefaultRunnableSpec, ZSpec }
 import zio.{ RIO, UIO, ZIO }
 
 import java.util
 
 object PrometheusTest extends DefaultRunnableSpec {
 
-  val env = Registry.live ++ Exporters.live ++ Clock.live
+  private val env = Registry.live ++ Exporters.live ++ Clock.live
 
   val counterTestRegistry: RIO[Registry, CollectorRegistry] = for {
     c <- Counter("simple_counter", Array("method", "resource"))
@@ -45,7 +45,7 @@ object PrometheusTest extends DefaultRunnableSpec {
     r <- getCurrentRegistry()
   } yield r
 
-  val histogramDurationTestRegistry = {
+  val histogramDurationTestRegistry: ZIO[Registry with TestClock with Clock, Throwable, CollectorRegistry] = {
     for {
       h <- Histogram("duration_histogram", Array("method"), ExponentialBuckets(0.25, 2, 5))
       t <- h.startTimer(Array("time"))
@@ -63,22 +63,23 @@ object PrometheusTest extends DefaultRunnableSpec {
 
   val summaryTestRegistry: RIO[Registry, CollectorRegistry] = for {
     s <- Summary("simple_summary", Array("method"), List((0.5, 0.05), (0.9, 0.01)))
-    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(s.observe(_, Array("put")))
+    _ <- RIO.foreach_(List(10.5, 25.0, 50.7, 57.3, 19.8))(s.observe(_, Array("put")))
     r <- getCurrentRegistry()
   } yield r
 
-  override def spec =
+  override def spec: ZSpec[Environment, Failure] =
     suite("PrometheusLabelsTest")(
       suite("Counter")(
         testM("counter increases by `inc` amount") {
-          val set: util.Set[String] = new util.HashSet[String]()
-          set.add("simple_counter")
+          val timeSeriesNames = new util.HashSet[String]() {
+            add("simple_counter_total")
+          }
 
           for {
             registry <- counterTestRegistry
             counterValue <- ZIO.succeed(
                              registry
-                               .filteredMetricFamilySamples(set)
+                               .filteredMetricFamilySamples(timeSeriesNames)
                                .nextElement()
                                .samples
                                .get(0)

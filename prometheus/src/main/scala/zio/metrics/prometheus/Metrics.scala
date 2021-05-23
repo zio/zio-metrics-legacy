@@ -12,7 +12,7 @@ import zio.metrics.prometheus.helpers._
 
 sealed trait Metric {}
 
-case class Counter(private val pCounter: PCounter) extends Metric {
+final case class Counter(private val pCounter: PCounter) extends Metric {
   def inc(): Task[Unit] = inc(Array.empty[String])
 
   def inc(amount: Double): Task[Unit] = inc(amount, Array.empty[String])
@@ -27,7 +27,7 @@ case class Counter(private val pCounter: PCounter) extends Metric {
 
 }
 
-case class CounterChild(private val pCounter: CChild) extends Metric {
+final case class CounterChild(private val pCounter: CChild) extends Metric {
   def inc(): Task[Unit] = Task(pCounter.inc())
 
   def inc(amount: Double): Task[Unit] = Task(pCounter.inc(amount))
@@ -44,7 +44,7 @@ object Counter {
     } yield new Counter(c)
 }
 
-case class Gauge(private val pGauge: PGauge) extends Metric {
+final case class Gauge(private val pGauge: PGauge) extends Metric {
   def getValue(): Task[Double] =
     getValue(Array.empty[String])
 
@@ -90,6 +90,7 @@ case class Gauge(private val pGauge: PGauge) extends Metric {
   def setToCurrentTime(labelNames: Array[String]): Task[Unit] =
     Task(if (labelNames.isEmpty) pGauge.setToCurrentTime() else pGauge.labels(labelNames: _*).setToCurrentTime())
 
+  @scala.annotation.tailrec
   def setToTime(f: () => Unit): Task[Unit] =
     setToTime(f)
 
@@ -97,13 +98,13 @@ case class Gauge(private val pGauge: PGauge) extends Metric {
     Task {
       val t = if (labelNames.isEmpty) pGauge.startTimer() else pGauge.labels(labelNames: _*).startTimer()
       f()
-      pGauge.set(t.setDuration)
+      pGauge.set(t.setDuration())
     }
 
   def labels(labelNames: Array[String]): GaugeChild = GaugeChild(pGauge.labels(labelNames: _*))
 }
 
-case class GaugeChild(private val pGauge: GChild) extends Metric {
+final case class GaugeChild(private val pGauge: GChild) extends Metric {
 
   def getValue(): Task[Double] = Task(pGauge.get())
 
@@ -123,7 +124,7 @@ case class GaugeChild(private val pGauge: GChild) extends Metric {
     Task {
       val t = pGauge.startTimer()
       f()
-      pGauge.set(t.setDuration)
+      pGauge.set(t.setDuration())
     }
 
 }
@@ -140,7 +141,7 @@ object Gauge {
     } yield new Gauge(g)
 }
 
-case class Histogram(private val pHistogram: PHistogram) extends Metric {
+final case class Histogram(private val pHistogram: PHistogram) extends Metric {
   type HistogramTimer = PHistogram.Timer
 
   def observe(amount: Double): Task[Unit] =
@@ -181,12 +182,12 @@ case class Histogram(private val pHistogram: PHistogram) extends Metric {
 
   def time_[R, A](task: RIO[R, A], labelNames: Array[String]): RIO[R, A] =
     Task(if (labelNames.isEmpty) pHistogram.startTimer() else pHistogram.labels(labelNames: _*).startTimer())
-      .bracket(t => UIO(t.close))(_ => task)
+      .bracket(t => UIO(t.close()))(_ => task)
 
   def labels(labelNames: Array[String]): HistogramChild = HistogramChild(pHistogram.labels(labelNames: _*))
 }
 
-case class HistogramChild(private val pHistogram: HChild) extends Metric {
+final case class HistogramChild(private val pHistogram: HChild) extends Metric {
   type HistogramTimer = PHistogram.Timer
 
   def observe(amount: Double): Task[Unit] =
@@ -212,7 +213,7 @@ case class HistogramChild(private val pHistogram: HChild) extends Metric {
 
   def time_[R, A](task: RIO[R, A]): RIO[R, A] =
     Task(pHistogram.startTimer())
-      .bracket(t => UIO(t.close))(_ => task)
+      .bracket(t => UIO(t.close()))(_ => task)
 }
 
 object Histogram {
@@ -227,7 +228,7 @@ object Histogram {
     } yield new Histogram(h)
 }
 
-case class Summary(private val pSummary: PSummary) extends Metric {
+final case class Summary(private val pSummary: PSummary) extends Metric {
   type SummaryTimer = PSummary.Timer
 
   def observe(amount: Double): Task[Unit] =
@@ -269,12 +270,12 @@ case class Summary(private val pSummary: PSummary) extends Metric {
   def time_[R, A](task: RIO[R, A], labelNames: Array[String]): RIO[R, A] =
     RIO
       .effect(if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer())
-      .bracket(t => UIO(t.close))(_ => task)
+      .bracket(t => UIO(t.close()))(_ => task)
 
   def labels(labelNames: Array[String]): SummaryChild = SummaryChild(pSummary.labels(labelNames: _*))
 }
 
-case class SummaryChild(private val pSummary: SChild) extends Metric {
+final case class SummaryChild(private val pSummary: SChild) extends Metric {
   type SummaryTimer = PSummary.Timer
 
   def observe(amount: Double): Task[Unit] =
@@ -301,7 +302,7 @@ case class SummaryChild(private val pSummary: SChild) extends Metric {
   def time_[R, A](task: RIO[R, A]): RIO[R, A] =
     RIO
       .effect(pSummary.startTimer())
-      .bracket(t => UIO(t.close))(_ => task)
+      .bracket(t => UIO(t.close()))(_ => task)
 
 }
 

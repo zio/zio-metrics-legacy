@@ -15,7 +15,7 @@ object ExportersTest extends DefaultRunnableSpec {
           c              <- Counter("ExportersTest", Array("exporter"), "help text")
           _              <- c.inc(Array("counter"))
           exportedString <- write004(registry)
-        } yield assert(exportedString)(containsString("# HELP ExportersTest help text"))
+        } yield assert(exportedString)(containsString("# HELP ExportersTest_total help text"))
       }
     ).provideCustomLayer(Registry.live ++ Exporters.live)
 }
