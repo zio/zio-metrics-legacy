@@ -9,7 +9,7 @@ import zio.duration.Duration.Finite
 import zio.metrics.encoders._
 import zio.stream.ZStream
 
-class Client(val bufferSize: Int, val timeout: Long, host: Option[String], port: Option[Int])(
+final class Client(val bufferSize: Int, val timeout: Long, host: Option[String], port: Option[Int])(
   private val queue: Queue[Metric]
 ) {
 

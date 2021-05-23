@@ -6,7 +6,7 @@ object Build {
     name := s"zio-$prjName",
     scalacOptions := stdOptions,
     crossScalaVersions := Seq(Scala212, Scala213),
-    scalaVersion in ThisBuild := Scala212,
+    ThisBuild / scalaVersion := Scala213,
     scalacOptions := stdOptions ++ extraOptions(scalaVersion.value),
     libraryDependencies ++=
       Seq(
@@ -18,12 +18,10 @@ object Build {
     incOptions ~= (_.withLogRecompileOnMacro(false))
   )
 
-  val ZioCoreVersion = "1.0.0-RC17"
-  val ZioInteropJava = "1.1.0.0-RC6"
+  val Scala212 = "2.12.13"
+  val Scala213 = "2.13.6"
 
-  private val SilencerVersion = "1.7.1"
-  private val Scala212        = "2.12.12"
-  private val Scala213        = "2.13.3"
+  private val SilencerVersion = "1.7.4"
 
   private val stdOptions = Seq(
     "-encoding",

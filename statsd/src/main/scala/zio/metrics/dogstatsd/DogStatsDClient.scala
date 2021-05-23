@@ -4,97 +4,97 @@ import zio.metrics.Client.ClientEnv
 import zio.{ Task, ZManaged }
 import zio.metrics._
 
-class DogStatsDClient(client: Client) {
+final class DogStatsDClient(client: Client) {
 
   def counter(name: String, value: Double): Task[Unit] =
-    counter(name, value, 1.0, Seq.empty[Tag], false)
+    counter(name, value, 1.0d, Seq.empty[Tag], sync = false)
 
   def counter(name: String, value: Double, sampleRate: Double): Task[Unit] =
-    counter(name, value, sampleRate, Seq.empty[Tag], false)
+    counter(name, value, sampleRate, Seq.empty[Tag], sync = false)
 
   def counter(name: String, value: Double, sampleRate: Double, tags: Seq[Tag]): Task[Unit] =
-    counter(name, value, sampleRate, tags, false)
+    counter(name, value, sampleRate, tags, sync = false)
 
   def counter(name: String, value: Double, sampleRate: Double, tags: Seq[Tag], sync: Boolean): Task[Unit] =
     client.sendM(sync)(Counter(name, value, sampleRate, tags))
 
   def increment(name: String): Task[Unit] =
-    increment(name, 1.0, Seq.empty[Tag], false)
+    increment(name, 1.0d, Seq.empty[Tag], sync = false)
 
   def increment(name: String, sampleRate: Double): Task[Unit] =
-    increment(name, sampleRate, Seq.empty[Tag], false)
+    increment(name, sampleRate, Seq.empty[Tag], sync = false)
 
   def increment(name: String, sampleRate: Double, tags: Seq[Tag]): Task[Unit] =
-    increment(name, sampleRate, tags, false)
+    increment(name, sampleRate, tags, sync = false)
 
   def increment(name: String, sampleRate: Double, tags: Seq[Tag], sync: Boolean): Task[Unit] =
-    client.sendM(sync)(Counter(name, 1.0, sampleRate, tags))
+    client.sendM(sync)(Counter(name, 1.0d, sampleRate, tags))
 
   def decrement(name: String): Task[Unit] =
-    decrement(name, 1.0, Seq.empty[Tag], false)
+    decrement(name, 1.0d, Seq.empty[Tag], sync = false)
 
   def decrement(name: String, sampleRate: Double): Task[Unit] =
-    decrement(name, sampleRate, Seq.empty[Tag], false)
+    decrement(name, sampleRate, Seq.empty[Tag], sync = false)
 
   def decrement(name: String, sampleRate: Double, tags: Seq[Tag]): Task[Unit] =
-    decrement(name, sampleRate, tags, false)
+    decrement(name, sampleRate, tags, sync = false)
 
   def decrement(name: String, sampleRate: Double, tags: Seq[Tag], sync: Boolean): Task[Unit] =
-    client.sendM(sync)(Counter(name, -1.0, sampleRate, tags))
+    client.sendM(sync)(Counter(name, -1.0d, sampleRate, tags))
 
   def gauge(name: String, value: Double): Task[Unit] =
-    gauge(name, value, Seq.empty[Tag], false)
+    gauge(name, value, Seq.empty[Tag], sync = false)
 
   def gauge(name: String, value: Double, tags: Seq[Tag]): Task[Unit] =
-    gauge(name, value, tags, false)
+    gauge(name, value, tags, sync = false)
 
   def gauge(name: String, value: Double, tags: Seq[Tag], sync: Boolean): Task[Unit] =
     client.sendM(sync)(Gauge(name, value, tags))
 
   def meter(name: String, value: Double): Task[Unit] =
-    meter(name, value, Seq.empty[Tag], false)
+    meter(name, value, Seq.empty[Tag], sync = false)
 
   def meter(name: String, value: Double, tags: Seq[Tag]): Task[Unit] =
-    meter(name, value, tags, false)
+    meter(name, value, tags, sync = false)
 
   def meter(name: String, value: Double, tags: Seq[Tag], sync: Boolean): Task[Unit] =
     client.sendM(sync)(Meter(name, value, tags))
 
   def timer(name: String, value: Double): Task[Unit] =
-    timer(name, value, 1.0, Seq.empty[Tag], false)
+    timer(name, value, 1.0, Seq.empty[Tag], sync = false)
 
   def timer(name: String, value: Double, sampleRate: Double): Task[Unit] =
-    timer(name, value, sampleRate, Seq.empty[Tag], false)
+    timer(name, value, sampleRate, Seq.empty[Tag], sync = false)
 
   def timer(name: String, value: Double, sampleRate: Double, tags: Seq[Tag]): Task[Unit] =
-    timer(name, value, sampleRate, tags, false)
+    timer(name, value, sampleRate, tags, sync = false)
 
   def timer(name: String, value: Double, sampleRate: Double, tags: Seq[Tag], sync: Boolean): Task[Unit] =
     client.sendM(sync)(Timer(name, value, sampleRate, tags))
 
   def set(name: String, value: String): Task[Unit] =
-    set(name, value, Seq.empty[Tag], false)
+    set(name, value, Seq.empty[Tag], sync = false)
 
   def set(name: String, value: String, tags: Seq[Tag]): Task[Unit] =
-    set(name, value, tags, false)
+    set(name, value, tags, sync = false)
 
   def set(name: String, value: String, tags: Seq[Tag], sync: Boolean): Task[Unit] =
     client.sendM(sync)(Set(name, value, tags))
 
   def histogram(name: String, value: Double): Task[Unit] =
-    histogram(name, value, 1.0, Seq.empty[Tag], false)
+    histogram(name, value, 1.0d, Seq.empty[Tag], sync = false)
 
   def histogram(name: String, value: Double, sampleRate: Double): Task[Unit] =
-    histogram(name, value, sampleRate, Seq.empty[Tag], false)
+    histogram(name, value, sampleRate, Seq.empty[Tag], sync = false)
 
   def histogram(name: String, value: Double, sampleRate: Double, tags: Seq[Tag]): Task[Unit] =
-    histogram(name, value, sampleRate, tags, false)
+    histogram(name, value, sampleRate, tags, sync = false)
 
   def histogram(name: String, value: Double, sampleRate: Double, tags: Seq[Tag], sync: Boolean): Task[Unit] =
     client.sendM(sync)(Histogram(name, value, sampleRate, tags))
 
   def serviceCheck(name: String, status: ServiceCheckStatus): Task[Unit] =
-    serviceCheck(name, status, None, None, None, Seq.empty[Tag], false)
+    serviceCheck(name, status, None, None, None, Seq.empty[Tag], sync = false)
 
   def serviceCheck(
     name: String,
@@ -108,7 +108,7 @@ class DogStatsDClient(client: Client) {
     client.sendM(sync)(ServiceCheck(name, status, timestamp, hostname, message, tags))
 
   def event(name: String, text: String): Task[Unit] =
-    event(name, text, None, None, None, None, None, None, Seq.empty[Tag], false)
+    event(name, text, None, None, None, None, None, None, Seq.empty[Tag], sync = false)
 
   def event(
     name: String,
@@ -127,13 +127,13 @@ class DogStatsDClient(client: Client) {
     )
 
   def distribution(name: String, value: Double): Task[Unit] =
-    distribution(name, value, 1.0, Seq.empty[Tag], false)
+    distribution(name, value, 1.0d, Seq.empty[Tag], sync = false)
 
   def distribution(name: String, value: Double, sampleRate: Double): Task[Unit] =
-    distribution(name, value, sampleRate, Seq.empty[Tag], false)
+    distribution(name, value, sampleRate, Seq.empty[Tag], sync = false)
 
   def distribution(name: String, value: Double, sampleRate: Double, tags: Seq[Tag]): Task[Unit] =
-    distribution(name, value, sampleRate, tags, false)
+    distribution(name, value, sampleRate, tags, sync = false)
 
   def distribution(name: String, value: Double, sampleRate: Double, tags: Seq[Tag], sync: Boolean): Task[Unit] =
     client.sendM(sync)(Distribution(name, value, sampleRate, tags))
