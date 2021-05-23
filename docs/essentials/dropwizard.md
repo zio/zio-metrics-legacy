@@ -11,7 +11,7 @@ Required imports for presented snippets:
 ```scala mdoc:silent
 import zio.{ RIO, Runtime, Task }
 import com.codahale.metrics.{ MetricRegistry, Counter => DWCounter }
-import zio.metrics.{ Label => ZLabel, Show }
+import zio.metrics.{ Label => ZLabel}
 import zio.metrics.dropwizard._
 import zio.metrics.dropwizard.helpers._
 import zio.metrics.dropwizard.reporters._
@@ -65,7 +65,7 @@ may require more parameters). A label is composed of a name and an array of
 labels which may be empty in the case where no labels are required.
 
 ```scala mdoc:silent
-case class Label[A: Show](name: A, labels: Array[String])
+case class Label[A](name: A, labels: Array[String])
 ```
 
 Note that zio-metrics does not depend on either cats or scalaz so this Show is
