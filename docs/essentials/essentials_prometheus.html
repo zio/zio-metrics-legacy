@@ -9,7 +9,7 @@ exporters all connected through the <code>CollectorRegistry</code>.</p>
 <p>Required imports for presented snippets:</p>
 <pre><code class="hljs css language-scala mdoc:silent"><span class="hljs-keyword">import</span> zio.{ <span class="hljs-type">RIO</span>, <span class="hljs-type">Runtime</span> }
 <span class="hljs-keyword">import</span> io.prometheus.client.<span class="hljs-type">CollectorRegistry</span>
-<span class="hljs-keyword">import</span> zio.metrics.{ <span class="hljs-type">Label</span> =&gt; <span class="hljs-type">ZLabel</span> }
+<span class="hljs-keyword">import</span> zio.metrics.{ <span class="hljs-type">Label</span> =&gt; <span class="hljs-type">ZLabel</span>}
 <span class="hljs-keyword">import</span> zio.metrics.prometheus._
 <span class="hljs-keyword">import</span> zio.metrics.prometheus.helpers._
 <span class="hljs-keyword">import</span> zio.metrics.prometheus.exporters._
@@ -585,7 +585,7 @@ when actually using it, so the requirement for safe-concurrency are quite low.</
   <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">main</span></span>(args: <span class="hljs-type">Array</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">Unit</span> =
     rt.unsafeRunMM(programMM)
 </code></pre>
-</span></div></article></div><div class="docLastUpdate"><em>Last updated on 5/23/2021 by Terry L</em></div><div class="docs-prevnext"></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#registry">Registry</a><ul class="toc-headings"><li><a href="#pass-the-collectorregistry-explicitly">Pass the CollectorRegistry explicitly</a></li></ul></li><li><a href="#counter">Counter</a></li><li><a href="#helpers">Helpers</a></li><li><a href="#gauge">Gauge</a></li><li><a href="#exporters">Exporters</a></li><li><a href="#histogram">Histogram</a></li><li><a href="#summary">Summary</a></li><li><a href="#dependency-injection-with-zlayers">Dependency Injection with ZLayers</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section><div><div class="gitter-open-chat-button">Open Chat</div><script type="text/javascript">
+</span></div></article></div><div class="docLastUpdate"><em>Last updated on 5/23/2021 by toxicafunk</em></div><div class="docs-prevnext"></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#registry">Registry</a><ul class="toc-headings"><li><a href="#pass-the-collectorregistry-explicitly">Pass the CollectorRegistry explicitly</a></li></ul></li><li><a href="#counter">Counter</a></li><li><a href="#helpers">Helpers</a></li><li><a href="#gauge">Gauge</a></li><li><a href="#exporters">Exporters</a></li><li><a href="#histogram">Histogram</a></li><li><a href="#summary">Summary</a></li><li><a href="#dependency-injection-with-zlayers">Dependency Injection with ZLayers</a></li></ul></nav></div><footer class="nav-footer" id="footer"><section><div><div class="gitter-open-chat-button">Open Chat</div><script type="text/javascript">
         ((window.gitter = {}).chat = {}).options = {
           showChatByDefault: false,
           activationElement: '.gitter-open-chat-button',
