@@ -11,7 +11,7 @@ Required imports for presented snippets:
 ```scala mdoc:silent
 import zio.{ RIO, Runtime }
 import io.prometheus.client.CollectorRegistry
-import zio.metrics.{ Label => ZLabel, Show }
+import zio.metrics.{ Label => ZLabel}
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.helpers._
 import zio.metrics.prometheus.exporters._
@@ -65,7 +65,7 @@ may require more parameters). A label is composed of a name and an array of
 labels which may be empty in the case where no labels are required.
 
 ```scala mdoc:silent
-case class Label[A: Show](name: A, labels: Array[String])
+case class Label[A](name: A, labels: Array[String])
 ```
 
 Note that zio-metrics does not depend on either cats or scalaz so this Show is
@@ -136,10 +136,9 @@ You can run and verify the results so:
 
 ```scala mdoc:silent
   val set: util.Set[String] = new util.HashSet[String]()
-  set.add("simple_counter")
+  set.add("simple_counter_labeled")
   val r = rt.unsafeRun(testCounter)
-  val count = r
-    .filteredMetricFamilySamples(set)
+  val count = r.filteredMetricFamilySamples(set)
     .nextElement()
     .samples
     .get(0)
