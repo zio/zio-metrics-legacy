@@ -135,16 +135,23 @@ If the counter is registered with labels, then you need to increase the counter
 You can run and verify the results so:
 
 ```scala mdoc:silent
-  val set: util.Set[String] = new util.HashSet[String]()
-  set.add("simple_counter_labeled")
+  val timeSeriesNames = new util.HashSet[String]() {
+    add("simple_counter_total")
+  }
   val r = rt.unsafeRun(testCounter)
-  val count = r.filteredMetricFamilySamples(set)
+  val count = r
+    .filteredMetricFamilySamples(timeSeriesNames)
     .nextElement()
     .samples
     .get(0)
     .value
   assert(count == 3.0)
 ```
+Note: starting with Prometheus Java client v0.10 (a dependency of this lib), 
+all Counter samples now must have a "_total" suffix. Without the suffix, 
+the above code snippet will fail with a java.util.NoSuchElementException 
+because no matching name will be found. 
+(See v0.10.0 release note for details: https://github.com/prometheus/client_java/releases/tag/parent-0.10.0)
 
 There's an easier way to observe the state of the `CollectorRegistry` using the
 `write004` Exporter covered later.
