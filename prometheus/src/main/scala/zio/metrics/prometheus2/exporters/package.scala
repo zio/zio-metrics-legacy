@@ -25,7 +25,7 @@ package object exporters {
       ): Task[Unit]
     }
 
-    def live: URLayer[Registry, Exporters] = ZLayer.fromService { (registry: Registry.Service) =>
+    def live: URLayer[Registry, Exporters] = ZLayer.fromService { registry =>
       new Service {
         def http(port: Int): TaskManaged[jp.exporter.HTTPServer] =
           for {
@@ -48,7 +48,7 @@ package object exporters {
                     (_, _: Option[Unit]) => ZIO.unit
                   )
                   .fork
-                  .toManaged(fiber => stop.set(true) *> fiber.join)
+                  .toManaged((fiber: Fiber.Runtime[Nothing, Unit]) => stop.set(true) *> fiber.join)
           } yield ()
 
         def pushGateway(
@@ -61,12 +61,14 @@ package object exporters {
         ): Task[Unit] = registry.collectorRegistry >>= { r =>
           ZIO.effect {
             val pg = new jp.exporter.PushGateway(s"$host:$port")
-            (
-              for {
-                u <- user
-                p <- password
-              } yield new jp.exporter.BasicAuthHttpConnectionFactory(u, p)
-            ).orElse(httpConnectionFactory).foreach(pg.setConnectionFactory)
+            val authHttpConnectionFactory = for {
+              u <- user
+              p <- password
+            } yield new jp.exporter.BasicAuthHttpConnectionFactory(u, p)
+
+            authHttpConnectionFactory
+              .orElse(httpConnectionFactory)
+              .foreach(pg.setConnectionFactory)
             pg.pushAdd(r, jobName)
           }
         }
@@ -74,9 +76,12 @@ package object exporters {
     }
   }
 
-  def http(port: Int): RManaged[Exporters, jp.exporter.HTTPServer] = ZManaged.accessManaged(_.get.http(port))
+  def http(port: Int): RManaged[Exporters, jp.exporter.HTTPServer] =
+    ZManaged.accessManaged(_.get.http(port))
+
   def graphite(host: String, port: Int, interval: Duration): RManaged[Exporters with Clock, Unit] =
     ZManaged.accessManaged(_.get.graphite(host, port, interval))
+
   def pushGateway(
     host: String,
     port: Int,
@@ -84,6 +89,6 @@ package object exporters {
     user: Option[String],
     password: Option[String],
     httpConnectionFactory: Option[jp.exporter.HttpConnectionFactory]
-  ): RIO[Exporters, Unit] = ZIO.accessM(_.get.pushGateway(host, port, jobName, user, password, httpConnectionFactory))
-
+  ): RIO[Exporters, Unit] =
+    ZIO.serviceWith(_.pushGateway(host, port, jobName, user, password, httpConnectionFactory))
 }
