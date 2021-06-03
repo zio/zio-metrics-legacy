@@ -46,7 +46,7 @@ package object prometheus2 {
 
     def default: ULayer[Registry] = ServiceImpl.makeWith(jp.CollectorRegistry.defaultRegistry).toLayer
 
-    def provided: URLayer[jp.CollectorRegistry, Registry] = ZLayer.fromFunctionM(ServiceImpl.makeWith)
+    def provided: URLayer[Has[jp.CollectorRegistry], Registry] = ZLayer.fromServiceM(ServiceImpl.makeWith)
 
     def defaultMetrics: RLayer[Registry, Registry] = ZLayer.fromServiceM { registry =>
       registry
