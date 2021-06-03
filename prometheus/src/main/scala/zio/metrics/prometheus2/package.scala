@@ -1,7 +1,7 @@
 package zio.metrics
 
+import com.github.ghik.silencer.silent
 import io.prometheus.{ client => jp }
-
 import zio._
 
 import java.io.StringWriter
@@ -46,6 +46,7 @@ package object prometheus2 {
 
     def default: ULayer[Registry] = ServiceImpl.makeWith(jp.CollectorRegistry.defaultRegistry).toLayer
 
+    @silent("type was inferred to be `Any`")
     def provided: URLayer[Has[jp.CollectorRegistry], Registry] = ZLayer.fromServiceM(ServiceImpl.makeWith)
 
     def defaultMetrics: RLayer[Registry, Registry] = ZLayer.fromServiceM { registry =>
