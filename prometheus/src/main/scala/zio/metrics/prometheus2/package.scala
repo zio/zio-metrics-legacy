@@ -25,6 +25,7 @@ package object prometheus2 {
     }
 
     private final class ServiceImpl(registry: jp.CollectorRegistry, lock: Semaphore) extends Service {
+
       def collectorRegistry: UIO[jp.CollectorRegistry] = ZIO.succeed(registry)
 
       def updateRegistry[A](f: jp.CollectorRegistry => Task[A]): Task[A] = lock.withPermit {
@@ -56,14 +57,12 @@ package object prometheus2 {
     def liveWithDefaultMetrics: TaskLayer[Registry] = live >>> defaultMetrics
   }
 
-  private object Access extends Accessible[Registry.Service]
-
   def collectorRegistry: RIO[Registry, jp.CollectorRegistry] =
-    Access(_.collectorRegistry)
+    ZIO.serviceWith(_.collectorRegistry)
   def updateRegistry[A](f: jp.CollectorRegistry => Task[A]): RIO[Registry, A] =
-    Access(_.updateRegistry(f))
+    ZIO.serviceWith(_.updateRegistry(f))
   def collect: RIO[Registry, ju.Enumeration[jp.Collector.MetricFamilySamples]] =
-    Access(_.collect)
+    ZIO.serviceWith(_.collect)
   def string004: RIO[Registry, String] =
-    Access(_.string004)
+    ZIO.serviceWith(_.string004)
 }
