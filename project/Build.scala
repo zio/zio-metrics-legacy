@@ -18,10 +18,10 @@ object Build {
     incOptions ~= (_.withLogRecompileOnMacro(false))
   )
 
-  val Scala212 = "2.12.13"
+  val Scala212 = "2.12.14"
   val Scala213 = "2.13.6"
 
-  private val SilencerVersion = "1.7.4"
+  private val SilencerVersion = "1.7.5"
 
   private val stdOptions = Seq(
     "-encoding",
