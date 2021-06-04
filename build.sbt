@@ -22,14 +22,14 @@ inThisBuild(
 Test / fork := true
 run / fork := true
 
-val http4sVersion     = "0.21.22"
-val zioVersion        = "1.0.8"
+val http4sVersion     = "0.21.24"
+val zioVersion        = "1.0.9"
 val interopVersion    = "2.5.1.0"
 val catsEffectVersion = "2.5.1"
 //val zioNIOVersion     = "1.0.0-RC11"
-val prometheusVersion = "0.10.0"
-val dropwizardVersion = "4.1.22"
-val circeVersion      = "0.13.0"
+val prometheusVersion = "0.11.0"
+val dropwizardVersion = "4.2.0"
+val circeVersion      = "0.14.1"
 
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")

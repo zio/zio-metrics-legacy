@@ -1,7 +1,7 @@
 package zio.metrics
 
+import com.github.ghik.silencer.silent
 import io.prometheus.{ client => jp }
-
 import zio._
 
 import java.io.StringWriter
@@ -24,36 +24,46 @@ package object prometheus2 {
       }
     }
 
-    private class ServiceImpl(registry: jp.CollectorRegistry, lock: Semaphore) extends Service {
+    private final class ServiceImpl(registry: jp.CollectorRegistry, lock: Semaphore) extends Service {
+
       def collectorRegistry: UIO[jp.CollectorRegistry] = ZIO.succeed(registry)
-      def updateRegistry[A](f: jp.CollectorRegistry => zio.Task[A]): zio.Task[A] = lock.withPermit {
+
+      def updateRegistry[A](f: jp.CollectorRegistry => Task[A]): Task[A] = lock.withPermit {
         f(registry)
       }
+
       def collect: zio.UIO[ju.Enumeration[jp.Collector.MetricFamilySamples]] =
         ZIO.effectTotal(registry.metricFamilySamples())
     }
+    private object ServiceImpl {
+      def makeWith(registry: jp.CollectorRegistry): UIO[ServiceImpl] =
+        Semaphore
+          .make(permits = 1)
+          .map(new ServiceImpl(registry, _))
+    }
 
-    def live: ULayer[Registry] = ZLayer.fromEffect(
-      Semaphore.make(1).map(new ServiceImpl(new jp.CollectorRegistry(), _))
-    )
+    def live: ULayer[Registry] = ServiceImpl.makeWith(new jp.CollectorRegistry()).toLayer
 
-    def default: ULayer[Registry] = ZLayer.fromEffect(
-      Semaphore.make(1).map(new ServiceImpl(jp.CollectorRegistry.defaultRegistry, _))
-    )
+    def default: ULayer[Registry] = ServiceImpl.makeWith(jp.CollectorRegistry.defaultRegistry).toLayer
 
-    def defaultMetrics: ZLayer[Registry, Throwable, Registry] = ZLayer.fromServiceM { registry =>
-      registry.updateRegistry(r => ZIO.effect(jp.hotspot.DefaultExports.register(r))).as(registry)
+    @silent("type was inferred to be `Any`")
+    def provided: URLayer[Has[jp.CollectorRegistry], Registry] = ZLayer.fromServiceM(ServiceImpl.makeWith)
+
+    def defaultMetrics: RLayer[Registry, Registry] = ZLayer.fromServiceM { registry =>
+      registry
+        .updateRegistry(r => ZIO.effect(jp.hotspot.DefaultExports.register(r)))
+        .as(registry)
     }
 
     def liveWithDefaultMetrics: TaskLayer[Registry] = live >>> defaultMetrics
   }
 
   def collectorRegistry: RIO[Registry, jp.CollectorRegistry] =
-    ZIO.accessM(_.get.collectorRegistry)
+    ZIO.serviceWith(_.collectorRegistry)
   def updateRegistry[A](f: jp.CollectorRegistry => Task[A]): RIO[Registry, A] =
-    ZIO.accessM(_.get.updateRegistry(f))
+    ZIO.serviceWith(_.updateRegistry(f))
   def collect: RIO[Registry, ju.Enumeration[jp.Collector.MetricFamilySamples]] =
-    ZIO.accessM(_.get.collect)
+    ZIO.serviceWith(_.collect)
   def string004: RIO[Registry, String] =
-    ZIO.accessM(_.get.string004)
+    ZIO.serviceWith(_.string004)
 }
