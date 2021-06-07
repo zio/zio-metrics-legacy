@@ -161,7 +161,7 @@ object DropwizardTest extends DefaultRunnableSpec {
         meanRate <- UIO(r.getMeters().get(name).getMeanRate)
       } yield {
         assert(count)(equalTo(15.toLong)) &&
-        assert(meanRate)(isGreaterThan(60.toDouble)) &&
+        assert(meanRate)(isGreaterThan(40.toDouble)) &&
         assert(meanRate)(isLessThanEqualTo(5000.toDouble))
       }
     }

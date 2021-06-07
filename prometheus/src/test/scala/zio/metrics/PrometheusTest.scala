@@ -146,7 +146,7 @@ object PrometheusTest extends DefaultRunnableSpec {
           } yield {
             assert(count)(equalTo(3.0)) &&
             assert(sum)(isGreaterThanEqualTo(3.1)) &&
-            assert(sum)(isLessThan(10.0))
+            assert(sum)(isLessThan(15.0))
           }
         }
       ),

@@ -46,5 +46,5 @@ object DogStatsDClientTest extends DefaultRunnableSpec {
         }
 
       }
-    ).provideCustomLayer(Encoder.dogstatsd ++ Clock.live) @@ forked @@ timeout(5.seconds) @@ flaky(5)
+    ).provideCustomLayer(Encoder.dogstatsd ++ Clock.live) @@ forked @@ timeout(10.seconds) @@ flaky(5)
 }
