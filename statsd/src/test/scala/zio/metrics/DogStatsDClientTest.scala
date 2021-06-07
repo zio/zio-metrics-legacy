@@ -10,9 +10,9 @@ import zio.test.TestAspect.{ flaky, forked, timeout }
 import zio.duration._
 
 object DogStatsDClientTest extends DefaultRunnableSpec {
-  val rand = new scala.util.Random()
-  val r = rand.nextInt(100)
-  private val port = 8900 + (if(r <10) r + 10 else r)
+  val rand         = new scala.util.Random()
+  val r            = rand.nextInt(100)
+  private val port = 8900 + (if (r < 10) r + 10 else r)
 
   override def spec =
     suite("DogStatsDClient")(
