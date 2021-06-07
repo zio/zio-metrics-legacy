@@ -81,11 +81,10 @@ lazy val statsd = project
   .dependsOn(common)
 
 lazy val commonDependencies = Seq(
-  "dev.zio" %% "zio"              % zioVersion,
-  "dev.zio" %% "zio-streams"      % zioVersion,
-  "dev.zio" %% "zio-interop-cats" % interopVersion,
-  "dev.zio" %% "zio-test"         % zioVersion % Test,
-  "dev.zio" %% "zio-test-sbt"     % zioVersion % Test
+  "dev.zio" %% "zio"          % zioVersion,
+  "dev.zio" %% "zio-streams"  % zioVersion,
+  "dev.zio" %% "zio-test"     % zioVersion % Test,
+  "dev.zio" %% "zio-test-sbt" % zioVersion % Test
 )
 
 lazy val prometheusDependencies = Seq(
@@ -102,7 +101,8 @@ lazy val dropwizardDependencies = Seq(
   "io.dropwizard.metrics" % "metrics-healthchecks" % dropwizardVersion,
   "io.dropwizard.metrics" % "metrics-jmx"          % dropwizardVersion,
   "io.dropwizard.metrics" % "metrics-graphite"     % dropwizardVersion,
-  "io.circe"              %% "circe-core"          % circeVersion
+  "io.circe"              %% "circe-core"          % circeVersion,
+  "dev.zio"               %% "zio-interop-cats"    % interopVersion
 )
 
 lazy val statsdDependencies = Seq(
