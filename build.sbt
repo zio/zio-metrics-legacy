@@ -22,12 +22,12 @@ inThisBuild(
 Test / fork := true
 run / fork := true
 
-val http4sVersion     = "0.21.24"
-val zioVersion        = "1.0.9"
+val http4sVersion     = "0.22.7"
+val zioVersion        = "1.0.12"
 val interopVersion    = "2.5.1.0"
-val catsEffectVersion = "2.5.1"
+val catsEffectVersion = "2.5.4"
 //val zioNIOVersion     = "1.0.0-RC11"
-val prometheusVersion = "0.11.0"
+val prometheusVersion = "0.12.0"
 val dropwizardVersion = "4.2.0"
 val circeVersion      = "0.14.1"
 
@@ -115,6 +115,7 @@ lazy val docs = project
     publish / skip := true,
     // skip 2.13 mdoc until mdoc is available for 2.13
     crossScalaVersions -= Scala213,
+    crossScalaVersions -= Scala3,
     moduleName := "zio-metrics-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
@@ -124,11 +125,16 @@ lazy val docs = project
   .enablePlugins(MdocPlugin, DocusaurusPlugin)
 
 lazy val settings = Seq(
-  scalacOptions ++= (CrossVersion.partialVersion(scalaBinaryVersion.value) match {
-    case Some((2, 11)) => Seq("-Ypartial-unification", "-Ywarn-value-discard", "-target:jvm-1.8")
-    case Some((2, 13)) => Seq("-Ywarn-value-discard", "-target:jvm-1.8")
-    case _             => Seq("-Ypartial-unification", "-Ywarn-value-discard")
-  })
+  scalacOptions ++=
+    (CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((3, _)) => Seq("-release:8")
+      case _ =>
+        (CrossVersion.partialVersion(scalaBinaryVersion.value) match {
+          case Some((2, 11)) => Seq("-Ypartial-unification", "-Ywarn-value-discard", "-target:jvm-1.8")
+          case Some((2, 13)) => Seq("-Ywarn-value-discard", "-target:jvm-1.8")
+          case _             => Seq("-Ypartial-unification", "-Ywarn-value-discard")
+        })
+    })
 )
 
 lazy val http4s = Seq(

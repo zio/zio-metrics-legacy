@@ -10,9 +10,8 @@ import org.http4s.HttpRoutes
 import org.http4s.Request
 import org.http4s.Response
 import org.http4s.circe._
-import org.http4s.dsl.impl.Root
 import org.http4s.dsl.io._
-import org.http4s.server.blaze._
+import org.http4s.blaze.server._
 import zio.RIO
 import zio.ZIO
 import zio.blocking.Blocking

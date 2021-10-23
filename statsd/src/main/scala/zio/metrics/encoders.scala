@@ -51,7 +51,7 @@ object encoders {
           case _: Metric =>
             Some(encode(metric, None))
 
-          case _ =>
+          case null =>
             None
         }
       }
@@ -102,7 +102,7 @@ object encoders {
           case _: Metric =>
             Some(encode(metric, None, metric.tags))
 
-          case _ =>
+          case null =>
             None
         }
       }

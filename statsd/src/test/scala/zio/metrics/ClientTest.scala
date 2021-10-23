@@ -23,7 +23,7 @@ object ClientTest extends DefaultRunnableSpec {
           "clientbar:4.6|c"
         ).toSet
 
-        val createClient = Client.withListener[Chunk, Int] { l: Chunk[Metric] =>
+        val createClient = Client.withListener[Chunk, Int] { (l: Chunk[Metric]) =>
           myudp(l).provideSomeLayer[Encoder](Console.live)
         }
 
