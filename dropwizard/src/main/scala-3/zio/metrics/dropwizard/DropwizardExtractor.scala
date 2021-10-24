@@ -116,9 +116,12 @@ object DropwizardExtractor {
   import cats.instances.list._
   import zio.metrics.dropwizard.typeclasses._
 
-//  type Filter = Option[String]
+  object types {
+    type Filter = Option[String]
+  }
+  import types._
 
-  val writeJson: MetricRegistry => Option[String] => Task[Json] = registry =>
+  val writeJson: MetricRegistry => Filter => Task[Json] = registry =>
     filter =>
       for {
         j <- RegistryPrinter.report[List, Json](registry, filter)(
