@@ -87,7 +87,7 @@ package object exporters {
     })
 
     def stopHttp(server: HTTPServer): Task[Unit] =
-      Task(server.stop())
+      Task(server.close())
   }
 
 }

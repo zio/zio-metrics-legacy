@@ -34,7 +34,7 @@ package object exporters {
                        .effect(
                          new jp.exporter.HTTPServer(new InetSocketAddress(port), r)
                        )
-                       .toManaged(server => ZIO.effectTotal(server.stop()))
+                       .toManaged(server => ZIO.effectTotal(server.close()))
           } yield server
 
         def graphite(host: String, port: Int, interval: Duration): RManaged[Clock, Unit] =

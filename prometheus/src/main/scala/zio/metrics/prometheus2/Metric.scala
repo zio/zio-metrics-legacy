@@ -27,7 +27,7 @@ object Counter extends LabelledMetric[Registry, Throwable, Counter] {
                        .register(r)
                    )
                  }
-    } yield { labels: Seq[String] =>
+    } yield { (labels: Seq[String]) =>
       val child = pCounter.labels(labels: _*)
       new Counter {
         override def inc(amount: Double): UIO[Unit] = ZIO.effectTotal(child.inc(amount))
@@ -111,7 +111,7 @@ object Gauge extends LabelledMetric[Registry with Clock, Throwable, Gauge] {
                      .register(r)
                  )
                }
-    } yield { labels: Seq[String] =>
+    } yield { (labels: Seq[String]) =>
       val child = pGauge.labels(labels: _*)
       new TimerMetricImpl(clock) with Gauge {
         override def get: UIO[Double]               = ZIO.effectTotal(child.get())
@@ -157,7 +157,7 @@ object Histogram extends LabelledMetricP[Registry with Clock, Throwable, Buckets
                        ).register(r)
                      }
                    }
-    } yield { labels: Seq[String] =>
+    } yield { (labels: Seq[String]) =>
       val child = pHistogram.labels(labels: _*)
       new TimerMetricImpl(clock) with Histogram {
         override def observe(amount: Duration): UIO[Unit] =
@@ -188,7 +188,7 @@ object Summary extends LabelledMetricP[Registry with Clock, Throwable, List[Quan
                        quantiles.foldLeft(builder)((b, c) => b.quantile(c.percentile, c.tolerance)).register(r)
                      }
                    }
-    } yield { labels: Seq[String] =>
+    } yield { (labels: Seq[String]) =>
       val child = pHistogram.labels(labels: _*)
       new TimerMetricImpl(clock) with Summary {
         override def observe(amount: Duration): UIO[Unit] =
