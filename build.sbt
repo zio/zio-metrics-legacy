@@ -127,7 +127,8 @@ lazy val docs = project
 lazy val settings = Seq(
   scalacOptions ++=
     (CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((3, _)) => Seq("-release:8")
+      case Some((3, _)) =>
+        Seq() // Seq("-release:8") has issue running with JDK8 https://github.com/lampepfl/dotty/issues/13810
       case _ =>
         (CrossVersion.partialVersion(scalaBinaryVersion.value) match {
           case Some((2, 11)) => Seq("-Ypartial-unification", "-Ywarn-value-discard", "-target:jvm-1.8")
