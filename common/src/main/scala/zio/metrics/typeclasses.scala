@@ -2,10 +2,6 @@ package zio.metrics
 
 final case class Label[A](name: A, labels: Array[String], help: String)
 
-
-
-
-
 trait Semigroup[A] {
   def combine(x: A, y: A): A
 }
