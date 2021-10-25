@@ -4,42 +4,52 @@ import sbt.Keys._
 object Build {
   def stdSettings(prjName: String) = Seq(
     name := s"zio-$prjName",
-    scalacOptions := stdOptions,
-    crossScalaVersions := Seq(Scala212, Scala213),
+    crossScalaVersions := Seq(Scala212, Scala213, Scala3),
     ThisBuild / scalaVersion := Scala213,
-    scalacOptions := stdOptions ++ extraOptions(scalaVersion.value),
-    libraryDependencies ++=
-      Seq(
-        ("com.github.ghik" % "silencer-lib" % SilencerVersion % Provided)
-          .cross(CrossVersion.full),
-        compilerPlugin(("com.github.ghik" % "silencer-plugin" % SilencerVersion).cross(CrossVersion.full)),
-        compilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3")
-      ),
+    scalacOptions := stdOptions(scalaVersion.value) ++ extraOptions(scalaVersion.value),
+    libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((3, _)) => Seq()
+      case _            => Seq(compilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"))
+    }),
     incOptions ~= (_.withLogRecompileOnMacro(false))
   )
 
   val Scala212 = "2.12.14"
   val Scala213 = "2.13.6"
+  val Scala3   = "3.1.0"
 
-  private val SilencerVersion = "1.7.5"
-
-  private val stdOptions = Seq(
-    "-encoding",
-    "UTF-8",
-    "-explaintypes",
-    "-Yrangepos",
-    "-feature",
-    "-language:higherKinds",
-    "-language:existentials",
-    "-Xlint:_,-type-parameter-shadow",
-    "-Xsource:2.13",
-    "-Ywarn-dead-code",
-    "-Ywarn-numeric-widen",
-    "-Ywarn-value-discard",
-    "-unchecked",
-    "-deprecation",
-    "-Xfatal-warnings"
-  )
+  private def stdOptions(scalaVersion: String) = CrossVersion.partialVersion(scalaVersion) match {
+    case Some((3, _)) =>
+      Seq(
+        "-encoding",
+        "utf8",
+        "-feature",
+        "-deprecation",
+        "-unchecked",
+        "-language:experimental.macros",
+        "-language:higherKinds",
+        "-language:implicitConversions",
+        "-Xfatal-warnings"
+      )
+    case _ =>
+      Seq(
+        "-encoding",
+        "UTF-8",
+        "-explaintypes",
+        "-Yrangepos",
+        "-feature",
+        "-language:higherKinds",
+        "-language:existentials",
+        "-Xlint:_,-type-parameter-shadow",
+        "-Xsource:2.13",
+        "-Ywarn-dead-code",
+        "-Ywarn-numeric-widen",
+        "-Ywarn-value-discard",
+        "-unchecked",
+        "-deprecation",
+        "-Xfatal-warnings"
+      )
+  }
 
   private val stdOpts213 = Seq(
     "-Wunused:imports",
@@ -48,7 +58,9 @@ object Build {
     "-Wunused:privates",
     "-Wunused:params",
     "-Wvalue-discard",
-    "-Wdead-code"
+    "-Wdead-code",
+    "-Xsource:3",
+    "-Wconf:cat=unused-nowarn:s"
   )
 
   private val stdOptsUpto212 = Seq(
@@ -64,6 +76,8 @@ object Build {
 
   private def extraOptions(scalaVersion: String) =
     CrossVersion.partialVersion(scalaVersion) match {
+      case Some((3, _)) =>
+        Seq()
       case Some((2, 13)) =>
         stdOpts213
       case Some((2, 12)) =>

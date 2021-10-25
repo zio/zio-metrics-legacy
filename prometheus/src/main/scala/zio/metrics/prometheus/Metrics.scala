@@ -90,9 +90,12 @@ final case class Gauge(private val pGauge: PGauge) extends Metric {
   def setToCurrentTime(labelNames: Array[String]): Task[Unit] =
     Task(if (labelNames.isEmpty) pGauge.setToCurrentTime() else pGauge.labels(labelNames: _*).setToCurrentTime())
 
-  @scala.annotation.tailrec
   def setToTime(f: () => Unit): Task[Unit] =
-    setToTime(f)
+    Task {
+      val t = pGauge.startTimer()
+      f()
+      pGauge.set(t.setDuration())
+    }
 
   def setToTime(f: () => Unit, labelNames: Array[String]): Task[Unit] =
     Task {
