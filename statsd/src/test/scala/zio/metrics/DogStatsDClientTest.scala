@@ -18,7 +18,7 @@ object DogStatsDClientTest extends DefaultRunnableSpec {
     suite("DogStatsDClient")(
       testM("Sends correct information via UDP") {
         val clientWithAgent = for {
-          d <- DogStatsDClient(500, 5000, 100, Some("localhost"), Some(port))
+          d <- DogStatsDClient(500, 5000, 100, Some("localhost"), Some(port), Some("zio"))
           u <- UDPAgent(port)
         } yield (d, u)
 
@@ -38,12 +38,12 @@ object DogStatsDClientTest extends DefaultRunnableSpec {
               _                  <- client.event("TestEvent", "something amazing happened")
               eventMetric        <- agent.nextReceivedMetric
             } yield {
-              assert(timerMetric)(equalTo("TestTimer:12|ms")) &&
-              assert(counterMetric)(equalTo("TestCounter:1|c|@0.9")) &&
-              assert(histMetric)(equalTo("TestHistogram:1|h0.9")) &&
-              assert(distributionMetric)(equalTo("TestDistribution:20|d")) &&
-              assert(serviceCheckMetric)(containsString("TestServiceCheck|0|d")) &&
-              assert(eventMetric)(containsString("_e{9,26}:TestEvent|something amazing happened|d:"))
+              assert(timerMetric)(equalTo("zio.TestTimer:12|ms")) &&
+              assert(counterMetric)(equalTo("zio.TestCounter:1|c|@0.9")) &&
+              assert(histMetric)(equalTo("zio.TestHistogram:1|h0.9")) &&
+              assert(distributionMetric)(equalTo("zio.TestDistribution:20|d")) &&
+              assert(serviceCheckMetric)(containsString("zio.TestServiceCheck|0|d")) &&
+              assert(eventMetric)(containsString("_e{13,26}:zio.TestEvent|something amazing happened|d:"))
             }
         }
 
