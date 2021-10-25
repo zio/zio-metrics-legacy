@@ -62,20 +62,21 @@ class StatsDClient(client: Client) {
 }
 
 object StatsDClient {
-  def apply(): ZManaged[ClientEnv, Throwable, StatsDClient] = apply(5, 5000, 100, None, None)
+  def apply(): ZManaged[ClientEnv, Throwable, StatsDClient] = apply(5, 5000, 100, None, None, None)
 
   def apply(bufferSize: Int, timeout: Long): ZManaged[ClientEnv, Throwable, StatsDClient] =
-    apply(bufferSize, timeout, 100, None, None)
+    apply(bufferSize, timeout, 100, None, None, None)
 
   def apply(bufferSize: Int, timeout: Long, queueCapacity: Int): ZManaged[ClientEnv, Throwable, StatsDClient] =
-    apply(bufferSize, timeout, queueCapacity, None, None)
+    apply(bufferSize, timeout, queueCapacity, None, None, None)
 
   def apply(
     bufferSize: Int,
     timeout: Long,
     queueCapacity: Int,
     host: Option[String],
-    port: Option[Int]
+    port: Option[Int],
+    prefix: Option[String]
   ): ZManaged[ClientEnv, Throwable, StatsDClient] =
-    Client(bufferSize, timeout, queueCapacity, host, port).map(new StatsDClient(_))
+    Client(bufferSize, timeout, queueCapacity, host, port, prefix).map(new StatsDClient(_))
 }
