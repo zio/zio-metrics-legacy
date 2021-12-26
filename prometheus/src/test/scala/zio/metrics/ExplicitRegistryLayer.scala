@@ -22,7 +22,7 @@ object ExplicitRegistryLayer {
     .register(myRegistry)
   preCounter.inc(9)
 
-  val myCustomLayer = ZLayer.succeed[Option[CollectorRegistry]](Some(myRegistry)) >>> Registry.explicit
+  val myCustomLayer = ZLayer.succeed(myRegistry) >>> Registry.explicit
 
   val rt = Runtime.unsafeFromLayer(MetricMap.live ++ Exporters.live ++ Console.live)
 
