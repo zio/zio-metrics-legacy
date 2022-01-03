@@ -26,7 +26,6 @@ package object prometheus {
     type Percentile = Double
     type Tolerance  = Double
 
-
     val explicit: ZLayer[Has[CollectorRegistry], Nothing, Registry] =
       ZLayer.fromService[CollectorRegistry, Registry.Service](
         registry =>
@@ -35,42 +34,42 @@ package object prometheus {
             def getCurrent(): UIO[CollectorRegistry] = UIO(registry)
 
             def registerCounter[A: Show](label: Label[A]): Task[PCounter] =
-                Task({
-                  val name = Show[A].show(label.name)
-                  PCounter
-                    .build()
-                    .name(name)
-                    .labelNames(label.labels: _*)
-                    .help(label.help)
-                    .register(registry)
-                })
+              Task({
+                val name = Show[A].show(label.name)
+                PCounter
+                  .build()
+                  .name(name)
+                  .labelNames(label.labels: _*)
+                  .help(label.help)
+                  .register(registry)
+              })
 
             def registerGauge[L: Show](label: Label[L]): Task[PGauge] =
-                Task({
-                  val name = Show[L].show(label.name)
-                  PGauge
-                    .build()
-                    .name(name)
-                    .labelNames(label.labels: _*)
-                    .help(label.help)
-                    .register(registry)
-                })
+              Task({
+                val name = Show[L].show(label.name)
+                PGauge
+                  .build()
+                  .name(name)
+                  .labelNames(label.labels: _*)
+                  .help(label.help)
+                  .register(registry)
+              })
 
             def registerHistogram[L: Show](label: Label[L], buckets: Buckets): Task[PHistogram] =
-                Task({
-                  val name = Show[L].show(label.name)
-                  val hb = PHistogram
-                    .build()
-                    .name(name)
-                    .labelNames(label.labels: _*)
-                    .help(label.help)
+              Task({
+                val name = Show[L].show(label.name)
+                val hb = PHistogram
+                  .build()
+                  .name(name)
+                  .labelNames(label.labels: _*)
+                  .help(label.help)
 
-                  val h = buckets match {
-                    case DefaultBuckets(bs)          => if (bs.isEmpty) hb else hb.buckets(bs: _*)
-                    case LinearBuckets(s, w, c)      => hb.linearBuckets(s, w, c)
-                    case ExponentialBuckets(s, f, c) => hb.exponentialBuckets(s, f, c)
-                  }
-                  h.register(registry)
+                val h = buckets match {
+                  case DefaultBuckets(bs)          => if (bs.isEmpty) hb else hb.buckets(bs: _*)
+                  case LinearBuckets(s, w, c)      => hb.linearBuckets(s, w, c)
+                  case ExponentialBuckets(s, f, c) => hb.exponentialBuckets(s, f, c)
+                }
+                h.register(registry)
               })
 
             def registerSummary[L: Show](label: Label[L], quantiles: List[(Percentile, Tolerance)]): Task[PSummary] =
@@ -87,7 +86,8 @@ package object prometheus {
           }
       )
 
-    val live: ZLayer[Any, Nothing, Has[Registry.Service]] = ZLayer.succeed(CollectorRegistry.defaultRegistry) >>> explicit
+    val live
+      : ZLayer[Any, Nothing, Has[Registry.Service]] = ZLayer.succeed(CollectorRegistry.defaultRegistry) >>> explicit
 
   }
 }
