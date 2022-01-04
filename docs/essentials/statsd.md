@@ -180,7 +180,7 @@ Each of them takes a `Client` as a parameter but
 also provides constructors with default values for each such that:
 
 ```scala mdoc:silent
-  Client() == Client(5, 5000, 100, None, None)
+  Client() == Client(5, 5000L, 100, None, None, None)
 ```
 
 The `Client` constructors return a `ZManaged`. You can create your own specific client
@@ -193,7 +193,7 @@ by reusing the default client constructors like this:
 or you can just use one of the custom constructors that wrap this process:
 
 ```scala mdoc:silent
-  StatsDClient() == StatsDClient(5, 5000, 100, None, None)
+  StatsDClient() == StatsDClient(5, 5000L, 100, None, None, None)
 ```
 
 The first two parameters (`bufferSize` and `timeout`) define how to aggregate each
