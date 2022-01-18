@@ -2,15 +2,15 @@ package zio.metrics
 
 import io.prometheus.client.CollectorRegistry
 import zio.Clock
-import zio.metrics.prometheus.*
+import zio.metrics.prometheus._
 import zio.metrics.prometheus.exporters.Exporters
-import zio.metrics.prometheus.helpers.*
-import zio.test.Assertion.*
+import zio.metrics.prometheus.helpers._
+import zio.test.Assertion._
 import zio.test.{ assert, TestClock, TestEnvironment, ZIOSpecDefault, ZSpec }
 import zio.{ RIO, UIO, ZIO }
 
 import java.util
-import zio.*
+import zio._
 
 object PrometheusTest extends ZIOSpecDefault {
 

@@ -1,10 +1,9 @@
 package zio.metrics
 import io.prometheus.{ client => jp }
-import zio.*
+import zio._
 
 import java.io.StringWriter
 import java.{ util => ju }
-import scala.annotation.nowarn
 
 package object prometheus2 {
   type Registry = Registry.Service
@@ -45,7 +44,6 @@ package object prometheus2 {
 
     def default: ULayer[Registry] = ServiceImpl.makeWith(jp.CollectorRegistry.defaultRegistry).toLayer
 
-    @nowarn
     def provided: URLayer[jp.CollectorRegistry, Registry] =
       ZIO.serviceWithZIO(ServiceImpl.makeWith).toLayer
 
