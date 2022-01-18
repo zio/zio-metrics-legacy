@@ -62,18 +62,18 @@ final class Client(
       ints <- RIO.foreach(msgs.collect { case Some(msg) => msg })(s => udpClient.use(_.send(s)))
     } yield ints
 
-  private def listen: URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
+  private def listen: ZManaged[Client.ClientEnv, Nothing, Fiber[Throwable, Unit]] =
     listen[Chunk, Int](udp)
 
   private def listen[F[_], A](
     f: Chunk[Metric] => RIO[Encoder, F[A]]
-  ): URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
+  ): ZManaged[Client.ClientEnv, Nothing, Fiber[Throwable, Unit]] =
     ZStream
       .fromQueue[Encoder, Throwable, Metric](queue)
       .groupedWithin(bufferSize, duration)
       .mapZIO(l => f(l))
       .runDrain
-      .fork
+      .forkManaged
 
   val send: Metric => UIO[Unit] =
     metric =>
@@ -118,14 +118,11 @@ object Client {
     port: Option[Int],
     prefix: Option[String]
   ): ZManaged[ClientEnv, Throwable, Client] =
-    ZManaged.acquireReleaseWith {
-      for {
-        queue  <- ZQueue.bounded[Metric](queueCapacity)
-        client = new Client(bufferSize, timeout, host, port, prefix)(queue)
-        fiber  <- client.listen
-      } yield (client, fiber)
-    } { case (client, fiber) => client.queue.shutdown *> fiber.join.orDie }
-      .map(_._1)
+    for {
+      queue  <- Queue.bounded[Metric](queueCapacity).toManagedWith(_.shutdown)
+      client = new Client(bufferSize, timeout, host, port, prefix)(queue)
+      _      <- client.listen
+    } yield client
 
   def withListener[F[_], A](listener: Chunk[Metric] => RIO[Encoder, F[A]]): ZManaged[ClientEnv, Throwable, Client] =
     withListener(5, 5000, 100, None, None, None)(listener)
@@ -138,13 +135,9 @@ object Client {
     port: Option[Int],
     prefix: Option[String]
   )(listener: Chunk[Metric] => RIO[Encoder, F[A]]): ZManaged[ClientEnv, Throwable, Client] =
-    ZManaged.acquireReleaseWith {
-      for {
-        queue  <- ZQueue.bounded[Metric](queueCapacity)
-        client = new Client(bufferSize, timeout, host, port, prefix)(queue)
-        fiber  <- client.listen(listener)
-      } yield (client, fiber)
-    } { case (client, fiber) => client.queue.shutdown *> fiber.join.orDie }
-      .map(_._1)
-
+    for {
+      queue  <- Queue.bounded[Metric](queueCapacity).toManagedWith(_.shutdown)
+      client = new Client(bufferSize, timeout, host, port, prefix)(queue)
+      _      <- client.listen(listener)
+    } yield client
 }
