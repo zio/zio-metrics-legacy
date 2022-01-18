@@ -17,10 +17,11 @@ import zio.metrics.prometheus.helpers._
 import zio.metrics.prometheus.exporters._
 
 // also for printing debug messages to the console
-import zio.console.{ Console, putStrLn }
+import zio.Console
+import zio.Console.printLine
 // and for sleeping/clocks
-import zio.clock.Clock
-import zio.duration.Duration
+import zio.Clock
+import zio.Duration
 import scala.concurrent.duration._
 // and for inspecting prometheus
 import java.util
@@ -267,11 +268,11 @@ given registry. Let's look at an example of how all this works.
       h  <- histogram.register("export_histogram", Array("exporter", "method"))
       _  <- h.time(() => Thread.sleep(2000), Array("histogram", "get"))
       s  <- write004(r)
-      _  <- putStrLn(s)
+      _  <- printLine(s)
     } yield hs
 
   def main(args: Array[String]): Unit =
-    rt.unsafeRun(exporterTest >>= (server => putStrLn(s"Server port: ${server.getPort()}")))
+    rt.unsafeRun(exporterTest >>= (server => printLine(s"Server port: ${server.getPort()}")))
 ```
 
 Where `>>=` = `flatMap`. Also note that `exporters` refers to the helper object
@@ -362,7 +363,7 @@ when `startTimer` was called and each time we `observeDuration`.
  
 ```scala mdoc:silent
   val f = (n: Long) => {
-    RIO.sleep(Duration.fromScala(n.millis)) *> putStrLn(s"n = $n")
+    RIO.sleep(Duration.fromScala(n.millis)) *> printLine(s"n = $n")
   }
 
   val testHistogramDuration: RIO[Registry with Console with Clock, CollectorRegistry] = for {
@@ -375,7 +376,7 @@ when `startTimer` was called and each time we `observeDuration`.
                d <- h.observeDuration(t)
              } yield d
          )
-    _ <- RIO.foreach(dl)(d => putStrLn(d.toString()))
+    _ <- RIO.foreach(dl)(d => printLine(d.toString()))
     r <- getCurrentRegistry()
   } yield r
 ```
@@ -498,7 +499,7 @@ simply expose methods to use them in your `MeasuringPoints` through the Layer:
   type Env = Registry with Exporters with Console
   val rtLayer = Runtime.unsafeFromLayer(Registry.live ++ Exporters.live ++ Console.live)
 
-  type Metrics = Has[Metrics.Service]
+  type Metrics = Metrics.Service
 
   object Metrics {
     trait Service {
@@ -546,7 +547,7 @@ And then we can use it so:
   ] =
     for {
       m  <- RIO.environment[Metrics]
-      _  <- putStrLn("Exporters")
+      _  <- printLine("Exporters")
       r  <- m.get.getRegistry()
       _  <- initializeDefaultExports(r)
       hs <- http(r, 9090)
@@ -555,10 +556,10 @@ And then we can use it so:
       _  <- m.get.inc(2.0, Array("LoginCounter", "login"))
       _  <- m.get.time(() => Thread.sleep(2000), Array("histogram", "get"))
       s  <- write004(r)
-      _  <- putStrLn(s)
+      _  <- printLine(s)
     } yield hs
 
-  val programL = exporterTest >>= (server => putStrLn(s"Server port: ${server.getPort()}"))
+  val programL = exporterTest >>= (server => printLine(s"Server port: ${server.getPort()}"))
 
   def main(args: Array[String]): Unit =
     rtLayer.unsafeRun(programL.provideSomeLayer[Env](Metrics.live))
@@ -609,7 +610,7 @@ The second approach is somewhat more generic and doesn't need extra calls to
 `Map` inside our custom Layer, here called `MetricsMap`:
 
 ```scala
-  type MetricMap = Has[MetricMap.Service]
+  type MetricMap = MetricMap.Service
 
   case class InvalidMetric(msg: String) extends Exception
 
@@ -691,7 +692,7 @@ and then usinig them downstream wherever you need:
   ] =
     for {
       m  <- RIO.environment[MetricMap]
-      _  <- putStrLn("Exporters")
+      _  <- printLine("Exporters")
       r  <- m.get.getRegistry()
       _  <- initializeDefaultExports(r)
       hs <- http(r, 9090)
@@ -701,10 +702,10 @@ and then usinig them downstream wherever you need:
       h  <- m.get.getHistogram("export_histogram")
       _  <- h.time(() => Thread.sleep(2000), Array("histogram", "get"))
       s  <- write004(r)
-      _  <- putStrLn(s)
+      _  <- printLine(s)
     } yield hs
 
-  val programMM = startup *> exporterTest >>= (server => putStrLn(s"Server port: ${server.getPort()}"))
+  val programMM = startup *> exporterTest >>= (server => printLine(s"Server port: ${server.getPort()}"))
 
   def main(args: Array[String]): Unit =
     rt.unsafeRunMM(programMM)

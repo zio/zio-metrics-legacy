@@ -76,8 +76,8 @@ The number of milliseconds between a start and end time.
 ```scala mdoc:silent
   import java.util.concurrent.TimeUnit
   import zio.RIO
-  import zio.clock.Clock
-  import zio.duration.Duration
+  import zio.Clock
+  import zio.Duration
   
   statsDClient.use { client => 
     for {
@@ -205,8 +205,9 @@ this is a base client, ZIO-Metrics-StatsD also provide `StatsD` and a
 
 ```scala mdoc:silent
   import zio.{ RIO, Runtime, Task }
-  import zio.clock.Clock
-  import zio.console._
+  import zio.Clock
+  import zio.Console
+  import zio.Console.printLine
   import zio.Chunk
   import zio.metrics.encoders._
 
@@ -264,7 +265,7 @@ We can now run our sample client so:
 
 ```scala mdoc:silent
   def main(args: Array[String]): Unit = {
-    rt.unsafeRun(program >>= (lst => putStrLn(s"Main: $lst").provideSomeLayer(Console.live)))
+    rt.unsafeRun(program >>= (lst => printLine(s"Main: $lst").provideSomeLayer(Console.live)))
   }
 ```
 
@@ -280,7 +281,7 @@ from `UDPClient`.
     for {
       sde <- RIO.environment[Encoder]
       opt <- RIO.foreach(msgs)(sde.get.encode(_))
-      _   <- putStrLn(s"udp: $opt")
+      _   <- printLine(s"udp: $opt")
       l   <- RIO.foreach(opt.collect { case Some(msg) => msg })(s => UDPClient().use(_.send(s)))
     } yield l
 ```
@@ -320,7 +321,7 @@ create and offer/send metrics to the queue. Here's a sample of how it's used.
       clock <- RIO.environment[Clock]
       t1 <- clock.get.currentTime(TimeUnit.MILLISECONDS)
       _  <- statsDClient.increment("zmetrics.counter", 0.9)
-      _  <- putStrLn(s"waiting for $r ms") *> clock.get.sleep(Duration(r, TimeUnit.MILLISECONDS))
+      _  <- printLine(s"waiting for $r ms") *> clock.get.sleep(Duration(r, TimeUnit.MILLISECONDS))
       t2 <- clock.get.currentTime(TimeUnit.MILLISECONDS)
       _  <- statsDClient.timer("zmetrics.timer", (t2 - t1).toDouble, 0.9)
     } yield ()
@@ -355,7 +356,7 @@ supported by StatsD.
       clock <- RIO.environment[Clock]
       t1 <- clock.get.currentTime(TimeUnit.MILLISECONDS)
       _  <- dogStatsDClient.increment("zmetrics.dog.counter", 0.9)
-      _  <- putStrLn(s"waiting for $r ms") *> clock.get.sleep(Duration(r, TimeUnit.MILLISECONDS))
+      _  <- printLine(s"waiting for $r ms") *> clock.get.sleep(Duration(r, TimeUnit.MILLISECONDS))
       t2 <- clock.get.currentTime(TimeUnit.MILLISECONDS)
       d  = (t2 - t1).toDouble
       _  <- dogStatsDClient.timer("zmetrics.dog.timer", d, 0.9)
