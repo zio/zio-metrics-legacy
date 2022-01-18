@@ -2,21 +2,21 @@ package zio.metrics
 
 import zio.RIO
 import zio.metrics.encoders._
-import zio.test.DefaultRunnableSpec
 import zio.test._
 import zio.test.Assertion._
+import zio.test.ZIOSpecDefault
 
-object DogStatsDEncoderTest extends DefaultRunnableSpec {
+object DogStatsDEncoderTest extends ZIOSpecDefault {
 
   override def spec =
     suite("DogStatsDEncoder")(
-      testM("DogStatsD Encoder encodes counters") {
+      test("DogStatsD Encoder encodes counters") {
         testCounter.map(tup => assert(tup)(equalTo((Some("foobar:1|c"), Some("foobar:1|c|@0.5|#metric:counter")))))
       },
-      testM("DogStatsD Encoder encodes gauges") {
+      test("DogStatsD Encoder encodes gauges") {
         testGauge.map(tup => assert(tup)(equalTo((Some("foobar:1|g|#metric:gauge"), None, None))))
       },
-      testM("DogStatsD Encoder encodes timers") {
+      test("DogStatsD Encoder encodes timers") {
         testTimer.map(
           tup =>
             assert(tup)(
@@ -24,7 +24,7 @@ object DogStatsDEncoderTest extends DefaultRunnableSpec {
             )
         )
       },
-      testM("DogStatsD Encoder encodes histograms") {
+      test("DogStatsD Encoder encodes histograms") {
         for {
           (first, second, third) <- testHistogram
         } yield {
@@ -33,13 +33,13 @@ object DogStatsDEncoderTest extends DefaultRunnableSpec {
           assert(third)(isSome(equalTo("foobar:1|h|#metric:histogram")))
         }
       },
-      testM("DogStatsD Encoder encodes meters") {
+      test("DogStatsD Encoder encodes meters") {
         testMeter.map(encoded => assert(encoded)(isSome(equalTo("foobar:1|m"))))
       },
-      testM("DogStatsD Encoder encodes sets") {
+      test("DogStatsD Encoder encodes sets") {
         testSet.map(encoded => assert(encoded)(isSome(equalTo("foobar:barfoo|s"))))
       },
-      testM("DogStatsD Encoder encodes serviceChecks") {
+      test("DogStatsD Encoder encodes serviceChecks") {
         for {
           tup <- testServiceCheck
         } yield {
@@ -49,7 +49,7 @@ object DogStatsDEncoderTest extends DefaultRunnableSpec {
           assert(tup._2)(isSome(equalTo("_sc|foobar|1|d:%d|h:host|#metric:serviceCheck|m:wheeee!".format(now))))
         }
       },
-      testM("DogStatsD Encoder encodes events") {
+      test("DogStatsD Encoder encodes events") {
         for {
           tup <- testEvent
         } yield {
@@ -70,7 +70,7 @@ object DogStatsDEncoderTest extends DefaultRunnableSpec {
           )
         }
       },
-      testM("DogStatsD Encoder encodes distribution") {
+      test("DogStatsD Encoder encodes distribution") {
         for {
           tup <- testDistribution
         } yield {

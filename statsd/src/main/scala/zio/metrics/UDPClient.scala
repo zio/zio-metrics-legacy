@@ -25,12 +25,12 @@ class UDPClient(channel: DatagramChannel) {
 }
 object UDPClient {
   def apply(channel: DatagramChannel): ZManaged[Any, Throwable, UDPClient] =
-    ZManaged.make(Task(new UDPClient(channel)))(_.close().orDie)
+    ZManaged.acquireReleaseWith(Task(new UDPClient(channel)))(_.close().orDie)
 
   def apply(): ZManaged[Any, Throwable, UDPClient] = apply("localhost", 8125)
 
   def apply(host: String, port: Int): ZManaged[Any, Throwable, UDPClient] =
-    ZManaged.make(Task {
+    ZManaged.acquireReleaseWith(Task {
       val address = new InetSocketAddress(host, port)
       new UDPClient(DatagramChannel.open().connect(address))
     })(_.close().orDie)

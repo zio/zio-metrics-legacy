@@ -20,5 +20,5 @@ final class UDPAgent(port: Int) {
 
 object UDPAgent {
   def apply(port: Int): Managed[Throwable, UDPAgent] =
-    ZManaged.make(Task(new UDPAgent(port)))(_.close.orDie)
+    ZManaged.acquireReleaseWith(Task(new UDPAgent(port)))(_.close.orDie)
 }

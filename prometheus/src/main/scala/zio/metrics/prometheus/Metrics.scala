@@ -177,7 +177,7 @@ final case class Histogram(private val pHistogram: PHistogram) extends Metric {
 
   def time[R, A](task: RIO[R, A], labelNames: Array[String]): RIO[R, (Double, A)] = {
     val t = if (labelNames.isEmpty) pHistogram.startTimer() else pHistogram.labels(labelNames: _*).startTimer()
-    task >>= (a => Task((t.observeDuration(), a)))
+    task flatMap (a => Task((t.observeDuration(), a)))
   }
 
   def time_[R, A](task: RIO[R, A]): RIO[R, A] =
@@ -185,7 +185,7 @@ final case class Histogram(private val pHistogram: PHistogram) extends Metric {
 
   def time_[R, A](task: RIO[R, A], labelNames: Array[String]): RIO[R, A] =
     Task(if (labelNames.isEmpty) pHistogram.startTimer() else pHistogram.labels(labelNames: _*).startTimer())
-      .bracket(t => UIO(t.close()))(_ => task)
+      .acquireReleaseWith(t => UIO(t.close()))(_ => task)
 
   def labels(labelNames: Array[String]): HistogramChild = HistogramChild(pHistogram.labels(labelNames: _*))
 }
@@ -211,12 +211,12 @@ final case class HistogramChild(private val pHistogram: HChild) extends Metric {
 
   def time[R, A](task: RIO[R, A]): RIO[R, (Double, A)] = {
     val t = pHistogram.startTimer()
-    task >>= (a => Task((t.observeDuration(), a)))
+    task flatMap (a => Task((t.observeDuration(), a)))
   }
 
   def time_[R, A](task: RIO[R, A]): RIO[R, A] =
     Task(pHistogram.startTimer())
-      .bracket(t => UIO(t.close()))(_ => task)
+      .acquireReleaseWith(t => UIO(t.close()))(_ => task)
 }
 
 object Histogram {
@@ -264,7 +264,7 @@ final case class Summary(private val pSummary: PSummary) extends Metric {
 
   def time[R, A](task: RIO[R, A], labelNames: Array[String]): RIO[R, (Double, A)] = {
     val t = if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer()
-    task >>= (a => RIO((t.observeDuration(), a)))
+    task flatMap (a => RIO((t.observeDuration(), a)))
   }
 
   def time_[R, A](task: RIO[R, A]): RIO[R, A] =
@@ -272,8 +272,8 @@ final case class Summary(private val pSummary: PSummary) extends Metric {
 
   def time_[R, A](task: RIO[R, A], labelNames: Array[String]): RIO[R, A] =
     RIO
-      .effect(if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer())
-      .bracket(t => UIO(t.close()))(_ => task)
+      .attempt(if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer())
+      .acquireReleaseWith(t => UIO(t.close()))(_ => task)
 
   def labels(labelNames: Array[String]): SummaryChild = SummaryChild(pSummary.labels(labelNames: _*))
 }
@@ -299,13 +299,13 @@ final case class SummaryChild(private val pSummary: SChild) extends Metric {
 
   def time[R, A](task: RIO[R, A]): RIO[R, (Double, A)] = {
     val t = pSummary.startTimer()
-    task >>= (a => RIO((t.observeDuration(), a)))
+    task flatMap (a => RIO((t.observeDuration(), a)))
   }
 
   def time_[R, A](task: RIO[R, A]): RIO[R, A] =
     RIO
-      .effect(pSummary.startTimer())
-      .bracket(t => UIO(t.close()))(_ => task)
+      .attempt(pSummary.startTimer())
+      .acquireReleaseWith(t => UIO(t.close()))(_ => task)
 
 }
 

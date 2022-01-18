@@ -3,9 +3,9 @@ package zio.metrics
 import java.util.concurrent.ThreadLocalRandom
 
 import zio._
-import zio.clock.Clock
-import zio.duration.Duration
-import zio.duration.Duration.Finite
+import zio.Clock
+import zio.Duration
+import zio.Duration.Finite
 import zio.metrics.encoders._
 import zio.stream.ZStream
 
@@ -71,7 +71,7 @@ final class Client(
     ZStream
       .fromQueue[Encoder, Throwable, Metric](queue)
       .groupedWithin(bufferSize, duration)
-      .mapM(l => f(l))
+      .mapZIO(l => f(l))
       .runDrain
       .fork
 
@@ -118,7 +118,7 @@ object Client {
     port: Option[Int],
     prefix: Option[String]
   ): ZManaged[ClientEnv, Throwable, Client] =
-    ZManaged.make {
+    ZManaged.acquireReleaseWith {
       for {
         queue  <- ZQueue.bounded[Metric](queueCapacity)
         client = new Client(bufferSize, timeout, host, port, prefix)(queue)
@@ -138,7 +138,7 @@ object Client {
     port: Option[Int],
     prefix: Option[String]
   )(listener: Chunk[Metric] => RIO[Encoder, F[A]]): ZManaged[ClientEnv, Throwable, Client] =
-    ZManaged.make {
+    ZManaged.acquireReleaseWith {
       for {
         queue  <- ZQueue.bounded[Metric](queueCapacity)
         client = new Client(bufferSize, timeout, host, port, prefix)(queue)

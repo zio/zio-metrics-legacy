@@ -1,22 +1,23 @@
 package zio.metrics
 
-import zio.clock.Clock
+import zio.Clock
 import zio.metrics.dogstatsd._
 import zio.metrics.encoders.Encoder
 import zio.test._
 import zio.test.Assertion._
 import zio.test.TestAspect.{ flaky, forked, timeout }
 
-import zio.duration._
+import zio._
+import zio.test.ZIOSpecDefault
 
-object DogStatsDClientTest extends DefaultRunnableSpec {
+object DogStatsDClientTest extends ZIOSpecDefault {
   val rand         = new scala.util.Random()
   val r            = rand.nextInt(100)
   private val port = 8900 + (if (r < 10) r + 10 else r)
 
   override def spec =
     suite("DogStatsDClient")(
-      testM("Sends correct information via UDP") {
+      test("Sends correct information via UDP") {
         val clientWithAgent = for {
           d <- DogStatsDClient(500, 5000, 100, Some("localhost"), Some(port), Some("zio"))
           u <- UDPAgent(port)

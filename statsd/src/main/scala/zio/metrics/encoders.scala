@@ -3,11 +3,11 @@ package zio.metrics
 import java.text.DecimalFormat
 import java.time.Instant
 
-import zio.{ Has, Layer, Task, ZLayer }
+import zio.{ Layer, Task, ZLayer }
 
 object encoders {
 
-  type Encoder = Has[Encoder.Service[Metric]]
+  type Encoder = Encoder.Service[Metric]
 
   object Encoder {
     trait Service[M] {
