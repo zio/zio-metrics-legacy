@@ -81,10 +81,10 @@ package object exporters {
   }
 
   def http(port: Int): RManaged[Exporters, jp.exporter.HTTPServer] =
-    ZManaged.environmentWithManaged(_.get[Exporters].http(port))
+    ZManaged.serviceWithManaged(_.http(port))
 
   def graphite(host: String, port: Int, interval: Duration): RManaged[Exporters with Clock, Unit] =
-    ZManaged.environmentWithManaged(_.get[Exporters].graphite(host, port, interval))
+    ZManaged.serviceWithManaged[Exporters](_.graphite(host, port, interval))
 
   def pushGateway(
     host: String,

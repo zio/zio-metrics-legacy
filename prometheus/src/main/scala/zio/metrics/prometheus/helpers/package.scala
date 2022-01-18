@@ -14,58 +14,58 @@ import zio.metrics.prometheus.Registry.{ Percentile, Tolerance }
 package object helpers {
 
   def getCurrentRegistry(): URIO[Registry, CollectorRegistry] =
-    ZIO.environmentWithZIO(_.get.getCurrent())
+    ZIO.serviceWithZIO(_.getCurrent())
 
   def registerCounter(name: String): RIO[Registry, PCounter] =
-    ZIO.environmentWithZIO(_.get.registerCounter(Label(name, Array.empty[String], s"$name counter")))
+    ZIO.serviceWithZIO(_.registerCounter(Label(name, Array.empty[String], s"$name counter")))
 
   def registerCounter(name: String, help: String): RIO[Registry, PCounter] =
-    RIO.environmentWithZIO(_.get.registerCounter(Label(name, Array.empty[String], help)))
+    RIO.serviceWithZIO(_.registerCounter(Label(name, Array.empty[String], help)))
 
   def registerCounter(name: String, labels: Array[String]): RIO[Registry, PCounter] =
-    RIO.environmentWithZIO(_.get.registerCounter(Label(name, labels, s"$name counter")))
+    RIO.serviceWithZIO(_.registerCounter(Label(name, labels, s"$name counter")))
 
   def registerCounter(name: String, labels: Array[String], help: String): RIO[Registry, PCounter] =
-    RIO.environmentWithZIO(_.get.registerCounter(Label(name, labels, help)))
+    RIO.serviceWithZIO(_.registerCounter(Label(name, labels, help)))
 
   def registerGauge(name: String): RIO[Registry, PGauge] =
-    RIO.environmentWithZIO(_.get.registerGauge(Label(name, Array.empty[String], s"$name gauge")))
+    RIO.serviceWithZIO(_.registerGauge(Label(name, Array.empty[String], s"$name gauge")))
 
   def registerGauge(name: String, help: String): RIO[Registry, PGauge] =
-    RIO.environmentWithZIO(_.get.registerGauge(Label(name, Array.empty[String], help)))
+    RIO.serviceWithZIO(_.registerGauge(Label(name, Array.empty[String], help)))
 
   def registerGauge(name: String, labels: Array[String]): RIO[Registry, PGauge] =
-    RIO.environmentWithZIO(_.get.registerGauge(Label(name, labels, s"$name gauge")))
+    RIO.serviceWithZIO(_.registerGauge(Label(name, labels, s"$name gauge")))
 
   def registerGauge(name: String, labels: Array[String], help: String): RIO[Registry, PGauge] =
-    RIO.environmentWithZIO(_.get.registerGauge(Label(name, labels, help)))
+    RIO.serviceWithZIO(_.registerGauge(Label(name, labels, help)))
 
   def registerHistogram(name: String): RIO[Registry, PHistogram] =
-    RIO.environmentWithZIO(
-      _.get.registerHistogram(Label(name, Array.empty[String], s"$name histogram"), DefaultBuckets(Seq.empty[Double]))
+    RIO.serviceWithZIO(
+      _.registerHistogram(Label(name, Array.empty[String], s"$name histogram"), DefaultBuckets(Seq.empty[Double]))
     )
 
   def registerHistogram(name: String, help: String): RIO[Registry, PHistogram] =
-    RIO.environmentWithZIO(
-      _.get.registerHistogram(Label(name, Array.empty[String], help), DefaultBuckets(Seq.empty[Double]))
+    RIO.serviceWithZIO(
+      _.registerHistogram(Label(name, Array.empty[String], help), DefaultBuckets(Seq.empty[Double]))
     )
 
   def registerHistogram(name: String, labels: Array[String]): RIO[Registry, PHistogram] =
-    RIO.environmentWithZIO(
-      _.get.registerHistogram(Label(name, labels, s"$name histogram"), DefaultBuckets(Seq.empty[Double]))
+    RIO.serviceWithZIO(
+      _.registerHistogram(Label(name, labels, s"$name histogram"), DefaultBuckets(Seq.empty[Double]))
     )
 
   def registerHistogram(name: String, labels: Array[String], help: String): RIO[Registry, PHistogram] =
-    RIO.environmentWithZIO(_.get.registerHistogram(Label(name, labels, help), DefaultBuckets(Seq.empty[Double])))
+    RIO.serviceWithZIO(_.registerHistogram(Label(name, labels, help), DefaultBuckets(Seq.empty[Double])))
 
   def registerHistogram(name: String, buckets: Buckets): RIO[Registry, PHistogram] =
-    RIO.environmentWithZIO(_.get.registerHistogram(Label(name, Array.empty[String], s"$name histogram"), buckets))
+    RIO.serviceWithZIO(_.registerHistogram(Label(name, Array.empty[String], s"$name histogram"), buckets))
 
   def registerHistogram(name: String, buckets: Buckets, help: String): RIO[Registry, PHistogram] =
-    RIO.environmentWithZIO(_.get.registerHistogram(Label(name, Array.empty[String], help), buckets))
+    RIO.serviceWithZIO(_.registerHistogram(Label(name, Array.empty[String], help), buckets))
 
   def registerHistogram(name: String, labels: Array[String], buckets: Buckets): RIO[Registry, PHistogram] =
-    RIO.environmentWithZIO(_.get.registerHistogram(Label(name, labels, s"$name histogram"), buckets))
+    RIO.serviceWithZIO(_.registerHistogram(Label(name, labels, s"$name histogram"), buckets))
 
   def registerHistogram(
     name: String,
@@ -73,34 +73,34 @@ package object helpers {
     buckets: Buckets,
     help: String
   ): RIO[Registry, PHistogram] =
-    RIO.environmentWithZIO(_.get.registerHistogram(Label(name, labels, help), buckets))
+    RIO.serviceWithZIO(_.registerHistogram(Label(name, labels, help), buckets))
 
   def registerSummary(name: String): RIO[Registry, PSummary] =
-    RIO.environmentWithZIO(
-      _.get.registerSummary(Label(name, Array.empty[String], s"$name summary"), List.empty[(Double, Double)])
+    RIO.serviceWithZIO(
+      _.registerSummary(Label(name, Array.empty[String], s"$name summary"), List.empty[(Double, Double)])
     )
 
   def registerSummary(name: String, help: String): RIO[Registry, PSummary] =
-    RIO.environmentWithZIO(_.get.registerSummary(Label(name, Array.empty[String], help), List.empty[(Double, Double)]))
+    RIO.serviceWithZIO(_.registerSummary(Label(name, Array.empty[String], help), List.empty[(Double, Double)]))
 
   def registerSummary(name: String, labels: Array[String]): RIO[Registry, PSummary] =
-    RIO.environmentWithZIO(_.get.registerSummary(Label(name, labels, s"$name summary"), List.empty[(Double, Double)]))
+    RIO.serviceWithZIO(_.registerSummary(Label(name, labels, s"$name summary"), List.empty[(Double, Double)]))
 
   def registerSummary(name: String, labels: Array[String], help: String): RIO[Registry, PSummary] =
-    RIO.environmentWithZIO(_.get.registerSummary(Label(name, labels, help), List.empty[(Double, Double)]))
+    RIO.serviceWithZIO(_.registerSummary(Label(name, labels, help), List.empty[(Double, Double)]))
 
   def registerSummary(name: String, percentiles: List[(Percentile, Tolerance)]): RIO[Registry, PSummary] =
-    RIO.environmentWithZIO(_.get.registerSummary(Label(name, Array.empty[String], s"$name summary"), percentiles))
+    RIO.serviceWithZIO(_.registerSummary(Label(name, Array.empty[String], s"$name summary"), percentiles))
 
   def registerSummary(name: String, percentiles: List[(Percentile, Tolerance)], help: String): RIO[Registry, PSummary] =
-    RIO.environmentWithZIO(_.get.registerSummary(Label(name, Array.empty[String], help), percentiles))
+    RIO.serviceWithZIO(_.registerSummary(Label(name, Array.empty[String], help), percentiles))
 
   def registerSummary(
     name: String,
     labels: Array[String],
     percentiles: List[(Percentile, Tolerance)]
   ): RIO[Registry, PSummary] =
-    RIO.environmentWithZIO(_.get.registerSummary(Label(name, labels, s"$name summary"), percentiles))
+    RIO.serviceWithZIO(_.registerSummary(Label(name, labels, s"$name summary"), percentiles))
 
   def registerSummary(
     name: String,
@@ -108,58 +108,58 @@ package object helpers {
     percentiles: List[(Percentile, Tolerance)],
     help: String
   ): RIO[Registry, PSummary] =
-    RIO.environmentWithZIO(_.get.registerSummary(Label(name, labels, help), percentiles))
+    RIO.serviceWithZIO(_.registerSummary(Label(name, labels, help), percentiles))
 
   def registerCounter(name: Class[_]): RIO[Registry, PCounter] =
-    RIO.environmentWithZIO(_.get.registerCounter(Label(name, Array.empty[String], s"$name counter")))
+    RIO.serviceWithZIO(_.registerCounter(Label(name, Array.empty[String], s"$name counter")))
 
   def registerCounter(name: Class[_], help: String): RIO[Registry, PCounter] =
-    RIO.environmentWithZIO(_.get.registerCounter(Label(name, Array.empty[String], help)))
+    RIO.serviceWithZIO(_.registerCounter(Label(name, Array.empty[String], help)))
 
   def registerCounter(name: Class[_], labels: Array[String]): RIO[Registry, PCounter] =
-    RIO.environmentWithZIO(_.get.registerCounter(Label(name, labels, s"$name counter")))
+    RIO.serviceWithZIO(_.registerCounter(Label(name, labels, s"$name counter")))
 
   def registerCounter(name: Class[_], labels: Array[String], help: String): RIO[Registry, PCounter] =
-    RIO.environmentWithZIO(_.get.registerCounter(Label(name, labels, help)))
+    RIO.serviceWithZIO(_.registerCounter(Label(name, labels, help)))
 
   def registerGauge(name: Class[_]): RIO[Registry, PGauge] =
-    RIO.environmentWithZIO(_.get.registerGauge(Label(name, Array.empty[String], s"$name gauge")))
+    RIO.serviceWithZIO(_.registerGauge(Label(name, Array.empty[String], s"$name gauge")))
 
   def registerGauge(name: Class[_], help: String): RIO[Registry, PGauge] =
-    RIO.environmentWithZIO(_.get.registerGauge(Label(name, Array.empty[String], help)))
+    RIO.serviceWithZIO(_.registerGauge(Label(name, Array.empty[String], help)))
 
   def registerGauge(name: Class[_], labels: Array[String]): RIO[Registry, PGauge] =
-    RIO.environmentWithZIO(_.get.registerGauge(Label(name, labels, s"$name gauge")))
+    RIO.serviceWithZIO(_.registerGauge(Label(name, labels, s"$name gauge")))
 
   def registerGauge(name: Class[_], labels: Array[String], help: String): RIO[Registry, PGauge] =
-    RIO.environmentWithZIO(_.get.registerGauge(Label(name, labels, help)))
+    RIO.serviceWithZIO(_.registerGauge(Label(name, labels, help)))
 
   def registerHistogram(name: Class[_]): RIO[Registry, PHistogram] =
-    RIO.environmentWithZIO(
-      _.get.registerHistogram(Label(name, Array.empty[String], s"$name gauge"), DefaultBuckets(Seq.empty[Double]))
+    RIO.serviceWithZIO(
+      _.registerHistogram(Label(name, Array.empty[String], s"$name gauge"), DefaultBuckets(Seq.empty[Double]))
     )
 
   def registerHistogram(name: Class[_], help: String): RIO[Registry, PHistogram] =
-    RIO.environmentWithZIO(
-      _.get.registerHistogram(Label(name, Array.empty[String], help), DefaultBuckets(Seq.empty[Double]))
+    RIO.serviceWithZIO(
+      _.registerHistogram(Label(name, Array.empty[String], help), DefaultBuckets(Seq.empty[Double]))
     )
 
   def registerHistogram(name: Class[_], labels: Array[String]): RIO[Registry, PHistogram] =
-    RIO.environmentWithZIO(
-      _.get.registerHistogram(Label(name, labels, s"$name histogram"), DefaultBuckets(Seq.empty[Double]))
+    RIO.serviceWithZIO(
+      _.registerHistogram(Label(name, labels, s"$name histogram"), DefaultBuckets(Seq.empty[Double]))
     )
 
   def registerHistogram(name: Class[_], labels: Array[String], help: String): RIO[Registry, PHistogram] =
-    RIO.environmentWithZIO(_.get.registerHistogram(Label(name, labels, help), DefaultBuckets(Seq.empty[Double])))
+    RIO.serviceWithZIO(_.registerHistogram(Label(name, labels, help), DefaultBuckets(Seq.empty[Double])))
 
   def registerHistogram(name: Class[_], buckets: Buckets): RIO[Registry, PHistogram] =
-    RIO.environmentWithZIO(_.get.registerHistogram(Label(name, Array.empty[String], s"$name histogram"), buckets))
+    RIO.serviceWithZIO(_.registerHistogram(Label(name, Array.empty[String], s"$name histogram"), buckets))
 
   def registerHistogram(name: Class[_], buckets: Buckets, help: String): RIO[Registry, PHistogram] =
-    RIO.environmentWithZIO(_.get.registerHistogram(Label(name, Array.empty[String], help), buckets))
+    RIO.serviceWithZIO(_.registerHistogram(Label(name, Array.empty[String], help), buckets))
 
   def registerHistogram(name: Class[_], labels: Array[String], buckets: Buckets): RIO[Registry, PHistogram] =
-    RIO.environmentWithZIO(_.get.registerHistogram(Label(name, labels, s"$name histogram"), buckets))
+    RIO.serviceWithZIO(_.registerHistogram(Label(name, labels, s"$name histogram"), buckets))
 
   def registerHistogram(
     name: Class[_],
@@ -167,38 +167,38 @@ package object helpers {
     buckets: Buckets,
     help: String
   ): RIO[Registry, PHistogram] =
-    RIO.environmentWithZIO(_.get.registerHistogram(Label(name, labels, help), buckets))
+    RIO.serviceWithZIO(_.registerHistogram(Label(name, labels, help), buckets))
 
   def registerSummary(name: Class[_]): RIO[Registry, PSummary] =
-    RIO.environmentWithZIO(
-      _.get.registerSummary(Label(name, Array.empty[String], s"$name summary"), List.empty[(Double, Double)])
+    RIO.serviceWithZIO(
+      _.registerSummary(Label(name, Array.empty[String], s"$name summary"), List.empty[(Double, Double)])
     )
 
   def registerSummary(name: Class[_], help: String): RIO[Registry, PSummary] =
-    RIO.environmentWithZIO(_.get.registerSummary(Label(name, Array.empty[String], help), List.empty[(Double, Double)]))
+    RIO.serviceWithZIO(_.registerSummary(Label(name, Array.empty[String], help), List.empty[(Double, Double)]))
 
   def registerSummary(name: Class[_], labels: Array[String]): RIO[Registry, PSummary] =
-    RIO.environmentWithZIO(_.get.registerSummary(Label(name, labels, s"$name summary"), List.empty[(Double, Double)]))
+    RIO.serviceWithZIO(_.registerSummary(Label(name, labels, s"$name summary"), List.empty[(Double, Double)]))
 
   def registerSummary(name: Class[_], labels: Array[String], help: String): RIO[Registry, PSummary] =
-    RIO.environmentWithZIO(_.get.registerSummary(Label(name, labels, help), List.empty[(Double, Double)]))
+    RIO.serviceWithZIO(_.registerSummary(Label(name, labels, help), List.empty[(Double, Double)]))
 
   def registerSummary(name: Class[_], percentiles: List[(Percentile, Tolerance)]): RIO[Registry, PSummary] =
-    RIO.environmentWithZIO(_.get.registerSummary(Label(name, Array.empty[String], s"$name summary"), percentiles))
+    RIO.serviceWithZIO(_.registerSummary(Label(name, Array.empty[String], s"$name summary"), percentiles))
 
   def registerSummary(
     name: Class[_],
     percentiles: List[(Percentile, Tolerance)],
     help: String
   ): RIO[Registry, PSummary] =
-    RIO.environmentWithZIO(_.get.registerSummary(Label(name, Array.empty[String], help), percentiles))
+    RIO.serviceWithZIO(_.registerSummary(Label(name, Array.empty[String], help), percentiles))
 
   def registerSummary(
     name: Class[_],
     labels: Array[String],
     percentiles: List[(Percentile, Tolerance)]
   ): RIO[Registry, PSummary] =
-    RIO.environmentWithZIO(_.get.registerSummary(Label(name, labels, s"$name summary"), percentiles))
+    RIO.serviceWithZIO(_.registerSummary(Label(name, labels, s"$name summary"), percentiles))
 
   def registerSummary(
     name: Class[_],
@@ -206,7 +206,7 @@ package object helpers {
     percentiles: List[(Percentile, Tolerance)],
     help: String
   ): RIO[Registry, PSummary] =
-    RIO.environmentWithZIO(_.get.registerSummary(Label(name, labels, help), percentiles))
+    RIO.serviceWithZIO(_.registerSummary(Label(name, labels, help), percentiles))
 
   object counter {
     def register(name: String) =
@@ -289,7 +289,7 @@ package object helpers {
   }
 
   def http(r: CollectorRegistry, port: Int): RIO[Exporters, HTTPServer] =
-    RIO.environmentWithZIO(_.get.http(r, port))
+    RIO.serviceWithZIO(_.http(r, port))
 
   def graphite(
     r: CollectorRegistry,
@@ -297,7 +297,7 @@ package object helpers {
     port: Int,
     intervalSeconds: Int
   ): RIO[Exporters, Thread] =
-    RIO.environmentWithZIO(_.get.graphite(r, host, port, intervalSeconds))
+    RIO.serviceWithZIO(_.graphite(r, host, port, intervalSeconds))
 
   def pushGateway(r: CollectorRegistry, host: String, port: Int, jobName: String): RIO[Exporters, Unit] =
     pushGateway(r, host, port, jobName, None, None, None)
@@ -330,13 +330,13 @@ package object helpers {
     password: Option[String],
     httpConnectionFactory: Option[HttpConnectionFactory]
   ): RIO[Exporters, Unit] =
-    RIO.environmentWithZIO(_.get.pushGateway(r, host, port, jobName, user, password, httpConnectionFactory))
+    RIO.serviceWithZIO(_.pushGateway(r, host, port, jobName, user, password, httpConnectionFactory))
 
   def write004(r: CollectorRegistry): RIO[Exporters, String] =
-    RIO.environmentWithZIO(_.get.write004(r))
+    RIO.serviceWithZIO(_.write004(r))
 
   def initializeDefaultExports(r: CollectorRegistry): RIO[Exporters, Unit] =
-    RIO.environmentWithZIO(_.get.initializeDefaultExports(r))
+    RIO.serviceWithZIO(_.initializeDefaultExports(r))
 
   def stopHttp(s: HTTPServer): RIO[Exporters, Unit] =
     Exporters.stopHttp(s)
