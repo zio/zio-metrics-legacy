@@ -1,6 +1,6 @@
 package zio.metrics.dropwizard
 
-import zio.{ Has, Layer, Task, ZLayer }
+import zio.{ Layer, Task, ZLayer }
 import java.util.Locale
 import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
@@ -20,7 +20,7 @@ package object reporters {
   import com.codahale.metrics.jmx.JmxReporter
   import com.codahale.metrics.Reporter
 
-  type Reporters = Has[Reporters.Service]
+  type Reporters = Reporters.Service
 
   object Reporters {
     trait Service {

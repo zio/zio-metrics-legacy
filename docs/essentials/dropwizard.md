@@ -21,11 +21,12 @@ import com.codahale.metrics.SlidingTimeWindowArrayReservoir
 
 
 // also for printing debug messages to the console
-import zio.console.{ Console, putStrLn }
+import zio.Console
+import zio.Console.printLine
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
-import zio.duration.Duration
+import zio.Duration
 ```
 
 We will also provide our own `Runtime` which will use ZIOMetric Dropwizard's
@@ -172,7 +173,7 @@ results:
   val str = for {
     r <- getCurrentRegistry()
     j <- DropwizardExtractor.writeJson(r)(None)
-    _ <- putStrLn(j.spaces2)
+    _ <- printLine(j.spaces2)
   } yield ()
 
   rt.unsafeRun(str)
@@ -224,7 +225,7 @@ Let's combine a couple of them:
     val json = rt.unsafeRun(tests >>= (r =>
     DropwizardExtractor.writeJson(r)(None))) // JSON Registry Printer
     RIO.sleep(Duration.fromScala(60.seconds))
-    putStrLn(json.spaces2).map(_ => 0)
+    printLine(json.spaces2).map(_ => 0)
   }
 ```
 
@@ -404,7 +405,7 @@ finally, we just have to call `Server.builder` and provide the environment:
     val app: RIO[HttpEnvironment, Unit] = kApp >>= builder
 
     app
-      .catchAll(t => putStrLn(s"$t"))
+      .catchAll(t => printLine(s"$t"))
       .run
       .map(r => { println(s"Exiting $r"); 0})
   }

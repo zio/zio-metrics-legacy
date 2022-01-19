@@ -1,6 +1,6 @@
 package zio.metrics.prometheus
 
-import zio.{ Has, Layer, Task, ZLayer }
+import zio.{ Layer, Task, ZLayer }
 
 import io.prometheus.client.CollectorRegistry
 import io.prometheus.client.exporter.{ HTTPServer, PushGateway }
@@ -15,7 +15,7 @@ import java.io.StringWriter
 
 package object exporters {
 
-  type Exporters = Has[Exporters.Service]
+  type Exporters = Exporters.Service
 
   object Exporters {
     trait Service {

@@ -14,8 +14,8 @@ object Build {
     incOptions ~= (_.withLogRecompileOnMacro(false))
   )
 
-  val Scala212 = "2.12.14"
-  val Scala213 = "2.13.6"
+  val Scala212 = "2.12.15"
+  val Scala213 = "2.13.8"
   val Scala3   = "3.1.0"
 
   private def stdOptions(scalaVersion: String) = CrossVersion.partialVersion(scalaVersion) match {
