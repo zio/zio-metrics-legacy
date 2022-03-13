@@ -119,7 +119,7 @@ passed as a parameter along with optional labels.
 Or with labels:
 
 ```scala mdoc:silent
-  val testLabeledCounter: RIO[Registry, MetricRegistry] = for {
+  val testLabelledCounter: RIO[Registry, MetricRegistry] = for {
     c   <- counter.register("DropwizardCounterHelper", Array("test", "counter"))
     _   <- c.inc()
     _   <- c.inc(2.0)

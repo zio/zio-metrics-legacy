@@ -125,8 +125,8 @@ If the counter is registered with labels, then you need to increase the counter
   passing the same number of labels when registered.
 
 ```scala mdoc:silent
-  val testLabeledCounter: RIO[Registry, CollectorRegistry] = for {
-    c  <- Counter("simple_counter_labeled", Array("method", "resource"))
+  val testLabelledCounter: RIO[Registry, CollectorRegistry] = for {
+    c  <- Counter("simple_counter_labelled", Array("method", "resource"))
     _  <- c.inc(Array("get", "users"))
     _  <- c.inc(2.0, Array("get", "users"))
     r  <- getCurrentRegistry()
@@ -205,7 +205,7 @@ method](https://github.com/zio/zio-metrics/blob/master/prometheus/src/main/scala
 With labels it looks like this:
 
 ```scala mdoc:silent
-  val testLabeledGauge: RIO[Registry, (CollectorRegistry, Double)] = for {
+  val testLabelledGauge: RIO[Registry, (CollectorRegistry, Double)] = for {
     g  <- Gauge("simple_gauge", Array("method"))
     _  <- g.inc(Array("get"))
     _  <- g.inc(2.0, Array("get"))

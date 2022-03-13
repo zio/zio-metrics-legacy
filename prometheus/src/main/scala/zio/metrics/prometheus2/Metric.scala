@@ -10,7 +10,7 @@ trait Counter {
   def inc(amount: Double): UIO[Unit]
 }
 object Counter extends LabelledMetric[Registry, Throwable, Counter] {
-  def unsafeLabeled(
+  def unsafeLabelled(
     name: String,
     help: Option[String],
     labels: Seq[String]
@@ -93,7 +93,7 @@ trait Gauge extends TimerMetric {
   override def observe(amount: Duration): UIO[Unit] = set(amount.toNanos() * 1e-9)
 }
 object Gauge extends LabelledMetric[Registry with Clock, Throwable, Gauge] {
-  def unsafeLabeled(
+  def unsafeLabelled(
     name: String,
     help: Option[String],
     labels: Seq[String]
@@ -131,7 +131,7 @@ object Buckets {
 
 trait Histogram extends TimerMetric
 object Histogram extends LabelledMetricP[Registry with Clock, Throwable, Buckets, Histogram] {
-  def unsafeLabeled(
+  def unsafeLabelled(
     name: String,
     buckets: Buckets,
     help: Option[String],
@@ -169,7 +169,7 @@ final case class Quantile(percentile: Double, tolerance: Double)
 
 trait Summary extends TimerMetric
 object Summary extends LabelledMetricP[Registry with Clock, Throwable, List[Quantile], Summary] {
-  def unsafeLabeled(
+  def unsafeLabelled(
     name: String,
     quantiles: List[Quantile],
     help: Option[String],
