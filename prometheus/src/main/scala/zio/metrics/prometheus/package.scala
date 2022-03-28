@@ -31,10 +31,10 @@ package object prometheus {
         .map { registry =>
           new Service {
 
-            def getCurrent(): UIO[CollectorRegistry] = UIO(registry)
+            def getCurrent(): UIO[CollectorRegistry] = UIO.succeed(registry)
 
             def registerCounter[A: Show](label: Label[A]): Task[PCounter] =
-              Task({
+              Task.succeed({
                 val name = Show[A].show(label.name)
                 PCounter
                   .build()
@@ -45,7 +45,7 @@ package object prometheus {
               })
 
             def registerGauge[L: Show](label: Label[L]): Task[PGauge] =
-              Task({
+              Task.succeed({
                 val name = Show[L].show(label.name)
                 PGauge
                   .build()
@@ -56,7 +56,7 @@ package object prometheus {
               })
 
             def registerHistogram[L: Show](label: Label[L], buckets: Buckets): Task[PHistogram] =
-              Task({
+              Task.succeed({
                 val name = Show[L].show(label.name)
                 val hb = PHistogram
                   .build()
@@ -73,7 +73,7 @@ package object prometheus {
               })
 
             def registerSummary[L: Show](label: Label[L], quantiles: List[(Percentile, Tolerance)]): Task[PSummary] =
-              Task({
+              Task.succeed({
                 val name = Show[L].show(label.name)
                 val sb = PSummary
                   .build()

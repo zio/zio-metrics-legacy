@@ -108,7 +108,7 @@ object MetricsLayer {
   )
 
   val rLayer: Layer[Nothing, Metrics] = Metrics.receiver(c, h)
-  val rtReceiver: Runtime.Managed[Metrics with Exporters with Console] =
+  val rtReceiver: Runtime.Scoped[Metrics with Exporters with Console] =
     Runtime.unsafeFromLayer(rLayer ++ Exporters.live ++ Console.live)
 
   /*val chHas: ULayer[Has[(Counter, Histogram)]] = ZLayer.succeed[(Counter, Histogram)]((c, h))

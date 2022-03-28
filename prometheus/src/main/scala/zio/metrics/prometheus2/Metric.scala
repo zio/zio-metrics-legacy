@@ -52,10 +52,11 @@ trait TimerMetric {
   def startTimer: UIO[Timer]
 
   /** A managed timer resource. */
-  def timer: UManaged[Timer] = startTimer.toManagedWith(_.stop)
+  def timer: URIO[Scope, Timer] = ZIO.acquireRelease(startTimer)(_.stop)
 
   /** Runs the given effect and records in the metric how much time it took to succeed or fail. */
-  def observe[R, E, A](zio: ZIO[R, E, A]): ZIO[R, E, A] = timer.use(_ => zio)
+  def observe[R, E, A](zio: ZIO[R, E, A]): ZIO[R, E, A] =
+    ZIO.scoped(timer).flatMap(_ => zio)
 
   /**
    * Runs the given effect and records in the metric how much time it took to succeed. Do not

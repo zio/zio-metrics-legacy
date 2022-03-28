@@ -20,6 +20,8 @@ object MetricMapLayer {
   case class InvalidMetric(msg: String) extends Exception
 
   object MetricMap {
+    import zio.metrics.prometheus.Metric
+
     trait Service {
       def getRegistry(): Task[CollectorRegistry]
 
@@ -38,13 +40,15 @@ object MetricMapLayer {
         getCurrentRegistry().provideLayer(Registry.live)
 
       def put(key: String, metric: Metric): Task[Unit] =
-        Task(
-          this.metricsMap =
-            if (metricsMap.contains(key))
-              metricsMap.updated(key, metric)
-            else
-              metricsMap + (key -> metric)
-        ).unit
+        Task
+          .succeed(
+            this.metricsMap =
+              if (metricsMap.contains(key))
+                metricsMap.updated(key, metric)
+              else
+                metricsMap + (key -> metric)
+          )
+          .unit
 
       def getHistogram(key: String): IO[InvalidMetric, Histogram] =
         metricsMap(key) match {

@@ -6,7 +6,7 @@ import zio.metrics.dropwizard.Server.builder
 import zio.metrics.dropwizard._
 import zio.metrics.dropwizard.helpers._
 import zio.metrics.dropwizard.reporters._
-import zio.{ Managed, Task, ZIO }
+import zio.{ Task, ZIO }
 
 import scala.util.Properties.envOrNone
 import zio.interop.catz._
@@ -37,9 +37,11 @@ object ServerTest extends ZIOSpecDefault {
     ).provideCustomLayer(Registry.live ++ Reporters.live ++ Clock.live)
 
   private def getURLContent(url: String): Task[String] = {
-    val managed = Managed.acquireReleaseWith(ZIO(Source.fromURL(url)))(s => ZIO(s.close()).orDie)
+    val managed = ZIO.acquireRelease(ZIO.succeed(Source.fromURL(url)))(s => ZIO.attempt(s.close()).orDie)
 
-    managed.use(s => ZIO(s.mkString))
+    ZIO.scoped {
+      managed.flatMap(s => ZIO.succeed(s.mkString))
+    }
   }
 
   private val testServer =
@@ -51,7 +53,7 @@ object ServerTest extends ZIOSpecDefault {
       t       <- timer.register(testMetricName, Array("test", "timer"))
       ctx     <- t.start()
       _       <- ZIO.foreachDiscard(List(1000, 1400, 1200L))(n => t.stop(ctx).delay(n.millis))
-      httpApp <- ZIO(Router("/metrics" -> Server.serveMetrics(r)).orNotFound)
+      httpApp <- ZIO.succeed(Router("/metrics" -> Server.serveMetrics(r)).orNotFound)
     } yield httpApp
 
 }

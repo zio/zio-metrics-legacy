@@ -7,11 +7,10 @@ import zio.nio.core.SocketAddress
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.DatagramChannel
-
-import zio.{ IO, Task, ZManaged }
+import zio.{ IO, Scope, Task, ZIO }
 
 class UDPClient(channel: DatagramChannel) {
-  def send(data: String): Task[Int] = IO {
+  def send(data: String): Task[Int] = IO.succeed {
     val buf: ByteBuffer = ByteBuffer.allocate(512)
     buf.clear()
     buf.put(data.getBytes())
@@ -21,27 +20,27 @@ class UDPClient(channel: DatagramChannel) {
   }
 
   def close(): Task[Unit] =
-    IO(channel.close())
+    IO.succeed(channel.close())
 }
 object UDPClient {
-  def apply(channel: DatagramChannel): ZManaged[Any, Throwable, UDPClient] =
-    ZManaged.acquireReleaseWith(Task(new UDPClient(channel)))(_.close().orDie)
+  def apply(channel: DatagramChannel): ZIO[Scope, Throwable, UDPClient] =
+    ZIO.acquireRelease(Task.succeed(new UDPClient(channel)))(_.close().orDie)
 
-  def apply(): ZManaged[Any, Throwable, UDPClient] = apply("localhost", 8125)
+  def apply(): ZIO[Scope, Throwable, UDPClient] = apply("localhost", 8125)
 
-  def apply(host: String, port: Int): ZManaged[Any, Throwable, UDPClient] =
-    ZManaged.acquireReleaseWith(Task {
+  def apply(host: String, port: Int): ZIO[Scope, Throwable, UDPClient] =
+    ZIO.acquireRelease(Task.succeed {
       val address = new InetSocketAddress(host, port)
       new UDPClient(DatagramChannel.open().connect(address))
     })(_.close().orDie)
 }
 /*
 object UDPClient {
-  val clientM: ZManaged[Any, Exception, DatagramChannel] = clientM("localhost", 8125)
+  val clientM: ZIO[Any, Exception, DatagramChannel] = clientM("localhost", 8125)
 
-  def clientM(host: String, port: Int): ZManaged[Any, Exception, DatagramChannel] =
+  def clientM(host: String, port: Int): ZIO[Any, Exception, DatagramChannel] =
     for {
-      address  <- SocketAddress.inetSocketAddress(host, port).toManaged_
+      address  <- SocketAddress.inetSocketAddress(host, port)
       datagram <- DatagramChannel.connect(address)
     } yield datagram
 }

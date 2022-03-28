@@ -37,9 +37,9 @@ package object reporters {
 
     val live: Layer[Nothing, Reporters] = ZLayer.succeed(new Service {
 
-      def jmx(r: MetricRegistry): zio.Task[JmxReporter] = Task(JmxReporter.forRegistry(r).build())
+      def jmx(r: MetricRegistry): zio.Task[JmxReporter] = Task.succeed(JmxReporter.forRegistry(r).build())
 
-      def console(r: MetricRegistry): Task[ConsoleReporter] = Task(
+      def console(r: MetricRegistry): Task[ConsoleReporter] = Task.succeed(
         ConsoleReporter
           .forRegistry(r)
           .convertRatesTo(TimeUnit.SECONDS)
@@ -48,7 +48,7 @@ package object reporters {
       )
 
       def slf4j(r: MetricRegistry, duration: Int, unit: TimeUnit, loggerName: String): Task[Slf4jReporter] =
-        Task(
+        Task.succeed(
           Slf4jReporter
             .forRegistry(r)
             .outputTo(LoggerFactory.getLogger(loggerName))
@@ -57,7 +57,7 @@ package object reporters {
             .build()
         )
 
-      def csv(r: MetricRegistry, file: File, locale: ju.Locale): zio.Task[Reporter] = Task(
+      def csv(r: MetricRegistry, file: File, locale: ju.Locale): zio.Task[Reporter] = Task.succeed(
         CsvReporter
           .forRegistry(r)
           .formatFor(locale)
@@ -67,7 +67,7 @@ package object reporters {
       )
 
       def graphite(r: MetricRegistry, host: String, port: Int, prefix: String): zio.Task[GraphiteReporter] =
-        Task {
+        Task.succeed {
           val graphite = new Graphite(new InetSocketAddress(host, port))
           GraphiteReporter
             .forRegistry(r)

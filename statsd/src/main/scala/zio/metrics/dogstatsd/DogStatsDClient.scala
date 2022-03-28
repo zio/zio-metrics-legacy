@@ -1,7 +1,7 @@
 package zio.metrics.dogstatsd
 
 import zio.metrics.Client.ClientEnv
-import zio.{ Task, ZManaged }
+import zio.{ Scope, Task, ZIO }
 import zio.metrics._
 
 final class DogStatsDClient(client: Client) {
@@ -142,12 +142,12 @@ final class DogStatsDClient(client: Client) {
 
 object DogStatsDClient {
 
-  def apply(): ZManaged[ClientEnv, Throwable, DogStatsDClient] = apply(5, 5000, 100, None, None, None)
+  def apply(): ZIO[Scope with ClientEnv, Throwable, DogStatsDClient] = apply(5, 5000, 100, None, None, None)
 
-  def apply(bufferSize: Int, timeout: Long): ZManaged[ClientEnv, Throwable, DogStatsDClient] =
+  def apply(bufferSize: Int, timeout: Long): ZIO[Scope with ClientEnv, Throwable, DogStatsDClient] =
     apply(bufferSize, timeout, 100, None, None, None)
 
-  def apply(bufferSize: Int, timeout: Long, queueCapacity: Int): ZManaged[ClientEnv, Throwable, DogStatsDClient] =
+  def apply(bufferSize: Int, timeout: Long, queueCapacity: Int): ZIO[Scope with ClientEnv, Throwable, DogStatsDClient] =
     apply(bufferSize, timeout, queueCapacity, None, None, None)
 
   def apply(
@@ -157,7 +157,7 @@ object DogStatsDClient {
     host: Option[String],
     port: Option[Int],
     prefix: Option[String]
-  ): ZManaged[ClientEnv, Throwable, DogStatsDClient] =
+  ): ZIO[Scope with ClientEnv, Throwable, DogStatsDClient] =
     Client(bufferSize, timeout, queueCapacity, host, port, prefix).map { new DogStatsDClient(_) }
 
 }

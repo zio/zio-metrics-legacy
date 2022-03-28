@@ -13,8 +13,8 @@ package object exporters {
 
   object Exporters {
     trait Service {
-      def http(port: Int): TaskManaged[jp.exporter.HTTPServer]
-      def graphite(host: String, port: Int, interval: Duration): RManaged[Clock, Unit]
+      def http(port: Int): RIO[Scope, jp.exporter.HTTPServer]
+      def graphite(host: String, port: Int, interval: Duration): RIO[Scope with Clock, Unit]
       def pushGateway(
         host: String,
         port: Int,
@@ -30,28 +30,27 @@ package object exporters {
         .service[Registry]
         .map { registry =>
           new Service {
-            def http(port: Int): TaskManaged[jp.exporter.HTTPServer] =
+            def http(port: Int): RIO[Scope, jp.exporter.HTTPServer] =
               for {
-                r <- registry.collectorRegistry.toManaged
-                server <- ZIO
-                           .attempt(
-                             new jp.exporter.HTTPServer(new InetSocketAddress(port), r)
-                           )
-                           .toManagedWith(server => ZIO.succeed(server.close()))
+                r <- registry.collectorRegistry
+                server <- ZIO.acquireRelease(ZIO.attempt(new jp.exporter.HTTPServer(new InetSocketAddress(port), r)))(
+                           server => ZIO.succeed(server.close())
+                         )
               } yield server
 
-            def graphite(host: String, port: Int, interval: Duration): RManaged[Clock, Unit] =
+            def graphite(host: String, port: Int, interval: Duration): RIO[Scope with Clock, Unit] =
               for {
-                g    <- ZIO.attempt(new jp.bridge.Graphite(host, port)).toManaged
-                stop <- Ref.make(false).toManaged
-                _ <- registry.collectorRegistry
-                      .flatMap(r => ZIO.attempt(g.push(r)))
-                      .repeatOrElse(
-                        Schedule.fixed(interval) *> Schedule.recurUntilZIO((_: Unit) => stop.get),
-                        (_, _: Option[Unit]) => ZIO.unit
-                      )
-                      .fork
-                      .toManagedWith((fiber: Fiber.Runtime[Nothing, Unit]) => stop.set(true) *> fiber.join)
+                g    <- ZIO.attempt(new jp.bridge.Graphite(host, port))
+                stop <- Ref.make(false)
+                _ <- ZIO.acquireRelease(
+                      registry.collectorRegistry
+                        .flatMap(r => ZIO.attempt(g.push(r)))
+                        .repeatOrElse(
+                          Schedule.fixed(interval) *> Schedule.recurUntilZIO((_: Unit) => stop.get),
+                          (_, _: Option[Unit]) => ZIO.unit
+                        )
+                        .fork
+                    )((fiber: Fiber.Runtime[Nothing, Unit]) => stop.set(true) *> fiber.join)
               } yield ()
 
             def pushGateway(
@@ -80,11 +79,11 @@ package object exporters {
         .toLayer
   }
 
-  def http(port: Int): RManaged[Exporters, jp.exporter.HTTPServer] =
-    ZManaged.serviceWithManaged(_.http(port))
+  def http(port: Int): ZIO[Scope with Exporters, Throwable, jp.exporter.HTTPServer] =
+    ZIO.serviceWithZIO[Exporters](_.http(port))
 
-  def graphite(host: String, port: Int, interval: Duration): RManaged[Exporters with Clock, Unit] =
-    ZManaged.serviceWithManaged[Exporters](_.graphite(host, port, interval))
+  def graphite(host: String, port: Int, interval: Duration): ZIO[Scope with Exporters with Clock, Throwable, Unit] =
+    ZIO.serviceWithZIO[Exporters](_.graphite(host, port, interval))
 
   def pushGateway(
     host: String,
