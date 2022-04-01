@@ -59,7 +59,7 @@ final class Client(
       sde  <- RIO.environment[Encoder]
       flt  <- sample(metrics)
       msgs <- RIO.foreach(flt)(sde.get.encode(_))
-      ints <- RIO.foreach(msgs.collect { case Some(msg) => msg })(s => ZIO.scoped(udpClient).flatMap(_.send(s)))
+      ints <- RIO.foreach(msgs.collect { case Some(msg) => msg })(s => ZIO.scoped(udpClient.flatMap(_.send(s))))
     } yield ints
 
   private def listen: ZIO[Scope with Client.ClientEnv, Nothing, Fiber[Throwable, Unit]] =

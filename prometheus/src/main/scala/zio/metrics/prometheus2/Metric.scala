@@ -56,7 +56,11 @@ trait TimerMetric {
 
   /** Runs the given effect and records in the metric how much time it took to succeed or fail. */
   def observe[R, E, A](zio: ZIO[R, E, A]): ZIO[R, E, A] =
-    ZIO.scoped(timer).flatMap(_ => zio)
+    for {
+      timer <- startTimer
+      a     <- zio.tapError(_ => timer.stop)
+      _     <- timer.stop
+    } yield a
 
   /**
    * Runs the given effect and records in the metric how much time it took to succeed. Do not

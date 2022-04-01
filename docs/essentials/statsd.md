@@ -286,7 +286,7 @@ from `UDPClient`.
       sde <- RIO.environment[Encoder]
       opt <- RIO.foreach(msgs)(sde.get.encode(_))
       _   <- printLine(s"udp: $opt")
-      l   <- RIO.foreach(opt.collect { case Some(msg) => msg })(s => ZIO.scoped(UDPClient()).flatMap(_.send(s)))
+      l   <- RIO.foreach(opt.collect { case Some(msg) => msg })(s => ZIO.scoped(UDPClient().flatMap(_.send(s))))
     } yield l
 ```
 
