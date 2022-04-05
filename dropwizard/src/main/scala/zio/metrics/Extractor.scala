@@ -33,12 +33,13 @@ object RegistryPrinter {
       ("meters", E.extractMeters(r)(filter))
     )
 
-    fs.foldLeft(RIO(M.empty))(
-      (accT, f) =>
+    fs.foldLeft(RIO.attempt(M.empty))(
+      (accT, f) => {
         for {
           acc <- accT
           m   <- f._2.provideLayer(Registry.live)
         } yield acc |+| L.foldMap(m)(a => cons(f._1, a))
+      }
     )
   }
 }

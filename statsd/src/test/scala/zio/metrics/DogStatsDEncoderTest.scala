@@ -26,11 +26,11 @@ object DogStatsDEncoderTest extends ZIOSpecDefault {
       },
       test("DogStatsD Encoder encodes histograms") {
         for {
-          (first, second, third) <- testHistogram
+          res <- testHistogram
         } yield {
-          assert(first)(isSome(equalTo("foobar:1|h"))) &&
-          assert(second)(isSome(equalTo("foobar:1|h|@0.5|#metric:histogram"))) &&
-          assert(third)(isSome(equalTo("foobar:1|h|#metric:histogram")))
+          assert(res._1)(isSome(equalTo("foobar:1|h"))) &&
+          assert(res._2)(isSome(equalTo("foobar:1|h|@0.5|#metric:histogram"))) &&
+          assert(res._3)(isSome(equalTo("foobar:1|h|#metric:histogram")))
         }
       },
       test("DogStatsD Encoder encodes meters") {

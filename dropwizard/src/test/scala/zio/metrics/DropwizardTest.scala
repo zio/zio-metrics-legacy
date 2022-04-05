@@ -21,7 +21,7 @@ object DropwizardTest extends ZIOSpecDefault {
   val counterTestRegistry: RIO[Registry, MetricRegistry] = for {
     dwr <- RIO.environment[Registry]
     dwc <- dwr.get.registerCounter(Label(metricName, Array("test", "counter"), ""))
-    c   <- Task(new Counter(dwc))
+    c   <- Task.succeed(new Counter(dwc))
     _   <- c.inc()
     _   <- c.inc(2.0)
     r   <- dwr.get.getCurrent()
@@ -96,8 +96,8 @@ object DropwizardTest extends ZIOSpecDefault {
       val name = MetricRegistry.name(metricName, Array("test", "counter"): _*)
       val r = for {
         r        <- counterTestRegistry
-        counters <- UIO(r.getCounters())
-        count    <- UIO(if (counters.get(name) == null) 0 else counters.get(name).getCount)
+        counters <- UIO.succeed(r.getCounters())
+        count    <- UIO.succeed(if (counters.get(name) == null) 0 else counters.get(name).getCount)
       } yield count
 
       assertM(r)(equalTo(3.toLong))
@@ -109,8 +109,8 @@ object DropwizardTest extends ZIOSpecDefault {
       val name = MetricRegistry.name("DropwizardGauge", Array("test", "gauge"): _*)
       for {
         r      <- testGauge
-        gauges <- UIO(r._1.getGauges())
-        g      <- UIO(if (gauges.get(name) == null) Long.MaxValue else gauges.get(name).getValue.asInstanceOf[Long])
+        gauges <- UIO.succeed(r._1.getGauges())
+        g      <- UIO.succeed(if (gauges.get(name) == null) Long.MaxValue else gauges.get(name).getValue.asInstanceOf[Long])
       } yield {
         assert(r._2)(isLessThan(g)) &&
         assert(g)(isLessThan(tester()))
@@ -123,14 +123,14 @@ object DropwizardTest extends ZIOSpecDefault {
       val name = MetricRegistry.name("DropwizardHistogram", Array("test", "histogram"): _*)
       for {
         r        <- testHistogram
-        perc75th <- UIO(r.getHistograms().get(name).getSnapshot.get75thPercentile())
+        perc75th <- UIO.succeed(r.getHistograms().get(name).getSnapshot.get75thPercentile())
       } yield assert(perc75th)(equalTo(53.5))
     },
     test("customized uniform histogram increases in time") {
       val name = MetricRegistry.name("DropwizardUniformHistogram", Array("uniform", "histogram"): _*)
       for {
         registry <- testUniformHistogram
-        perc75th <- UIO(registry.getHistograms().get(name).getSnapshot.get75thPercentile())
+        perc75th <- UIO.succeed(registry.getHistograms().get(name).getSnapshot.get75thPercentile())
       } yield assert(perc75th)(equalTo(53.5))
     },
     test("exponential histogram increases in time") {
@@ -138,7 +138,7 @@ object DropwizardTest extends ZIOSpecDefault {
 
       for {
         r        <- testExponentialHistogram
-        perc75th <- UIO(r.getHistograms().get(name).getSnapshot.get75thPercentile())
+        perc75th <- UIO.succeed(r.getHistograms().get(name).getSnapshot.get75thPercentile())
       } yield assert(perc75th)(equalTo(50.0))
     },
     test("sliding time window histogram increases in time") {
@@ -146,7 +146,7 @@ object DropwizardTest extends ZIOSpecDefault {
 
       for {
         r        <- testSlidingTimeWindowHistogram
-        perc75th <- UIO(r.getHistograms().get(name).getSnapshot.get75thPercentile())
+        perc75th <- UIO.succeed(r.getHistograms().get(name).getSnapshot.get75thPercentile())
       } yield assert(perc75th)(equalTo(53.5))
     }
   ).provideCustomLayer(Registry.live)
@@ -157,8 +157,8 @@ object DropwizardTest extends ZIOSpecDefault {
 
       for {
         r        <- testMeter
-        count    <- UIO(r.getMeters.get(name).getCount)
-        meanRate <- UIO(r.getMeters().get(name).getMeanRate)
+        count    <- UIO.succeed(r.getMeters.get(name).getCount)
+        meanRate <- UIO.succeed(r.getMeters().get(name).getMeanRate)
       } yield {
         assert(count)(equalTo(15.toLong)) &&
         assert(meanRate)(isGreaterThan(40.toDouble)) &&
@@ -173,7 +173,7 @@ object DropwizardTest extends ZIOSpecDefault {
 
       for {
         r     <- testTimer
-        count <- UIO(r._1.getTimers().get(name).getCount)
+        count <- UIO.succeed(r._1.getTimers().get(name).getCount)
       } yield {
         assert(count.toInt)(equalTo(r._2.size)) &&
         assert(count.toInt)(equalTo(3))
@@ -184,7 +184,7 @@ object DropwizardTest extends ZIOSpecDefault {
 
       for {
         r        <- testTimer
-        meanRate <- UIO(r._1.getTimers().get(name).getMeanRate)
+        meanRate <- UIO.succeed(r._1.getTimers().get(name).getMeanRate)
       } yield {
         assert(meanRate)(isGreaterThan(0.78)) &&
         assert(meanRate)(isLessThan(0.84))

@@ -51,7 +51,7 @@ object PrometheusTest extends ZIOSpecDefault {
       _ <- ZIO.foreachDiscard(List(75L, 750L, 2000L))(
             n =>
               for {
-                _ <- UIO(n).delay(n.millis)
+                _ <- UIO.succeed(n).delay(n.millis)
                 _ <- TestClock.adjust(n.millis)
                 d <- h.observeDuration(t)
               } yield d

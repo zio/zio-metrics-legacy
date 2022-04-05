@@ -1,7 +1,7 @@
 package zio.metrics.statsd
 
 import zio.metrics.Client.ClientEnv
-import zio.{ Task, ZManaged }
+import zio.{ Scope, Task, ZIO }
 import zio.metrics._
 
 class StatsDClient(client: Client) {
@@ -62,12 +62,12 @@ class StatsDClient(client: Client) {
 }
 
 object StatsDClient {
-  def apply(): ZManaged[ClientEnv, Throwable, StatsDClient] = apply(5, 5000, 100, None, None, None)
+  def apply(): ZIO[Scope with ClientEnv, Throwable, StatsDClient] = apply(5, 5000, 100, None, None, None)
 
-  def apply(bufferSize: Int, timeout: Long): ZManaged[ClientEnv, Throwable, StatsDClient] =
+  def apply(bufferSize: Int, timeout: Long): ZIO[Scope with ClientEnv, Throwable, StatsDClient] =
     apply(bufferSize, timeout, 100, None, None, None)
 
-  def apply(bufferSize: Int, timeout: Long, queueCapacity: Int): ZManaged[ClientEnv, Throwable, StatsDClient] =
+  def apply(bufferSize: Int, timeout: Long, queueCapacity: Int): ZIO[Scope with ClientEnv, Throwable, StatsDClient] =
     apply(bufferSize, timeout, queueCapacity, None, None, None)
 
   def apply(
@@ -77,6 +77,6 @@ object StatsDClient {
     host: Option[String],
     port: Option[Int],
     prefix: Option[String]
-  ): ZManaged[ClientEnv, Throwable, StatsDClient] =
+  ): ZIO[Scope with ClientEnv, Throwable, StatsDClient] =
     Client(bufferSize, timeout, queueCapacity, host, port, prefix).map(new StatsDClient(_))
 }
