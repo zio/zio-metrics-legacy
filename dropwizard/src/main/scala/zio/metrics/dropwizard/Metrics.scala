@@ -11,10 +11,10 @@ sealed trait Metric {}
 
 class Counter(private val dwCounter: DWCounter) extends Metric {
   def inc(): Task[Unit] =
-    Task(dwCounter.inc())
+    Task.succeed(dwCounter.inc())
 
   def inc(amount: Double): Task[Unit] =
-    Task(dwCounter.inc(amount.toLong))
+    Task.succeed(dwCounter.inc(amount.toLong))
 }
 
 object Counter {
@@ -26,7 +26,7 @@ object Counter {
 
 class Gauge(private val dwGauge: DWGauge[_]) extends Metric {
   def getValue[A](): Task[A] =
-    Task(dwGauge.getValue().asInstanceOf[A])
+    Task.succeed(dwGauge.getValue().asInstanceOf[A])
 }
 
 object Gauge {
@@ -38,10 +38,10 @@ object Gauge {
 
 class Timer(private val dwTimer: DWTimer) extends Metric {
   def start(): zio.Task[DWTimer.Context] =
-    Task(dwTimer.time())
+    Task.succeed(dwTimer.time())
 
   def stop(c: DWTimer.Context): Task[Long] =
-    Task(c.stop())
+    Task.succeed(c.stop())
 }
 
 object Timer {
@@ -53,10 +53,10 @@ object Timer {
 
 class Meter(private val dwMeter: DWMeter) extends Metric {
   def mark(): zio.Task[Unit] =
-    Task(dwMeter.mark())
+    Task.succeed(dwMeter.mark())
 
   def mark(amount: Long): zio.Task[Unit] =
-    Task(dwMeter.mark(amount))
+    Task.succeed(dwMeter.mark(amount))
 }
 
 object Meter {
@@ -68,7 +68,7 @@ object Meter {
 
 class Histogram(private val dwHistogram: DWHistogram) extends Metric {
   def update(amount: Double): Task[Unit] =
-    Task(dwHistogram.update(amount.toLong))
+    Task.succeed(dwHistogram.update(amount.toLong))
 }
 
 object Histogram {

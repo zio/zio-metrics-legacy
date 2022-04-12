@@ -3,7 +3,6 @@ package zio.metrics.prometheus2
 import zio.metrics.prometheus2.LabelList._
 
 import zio._
-import zio.clock._
 
 object example {
 
@@ -15,8 +14,8 @@ object example {
 
   object MyMetrics {
     // The layer to register the metrics in the Registry
-    def live: ZLayer[Registry with Clock, Throwable, Has[MyMetrics]] =
-      ZLayer.fromEffect(
+    def live: ZLayer[Registry with Clock, Throwable, MyMetrics] =
+      ZLayer.fromZIO(
         for {
           counterWithoutLabels <- Counter("my_counter", Some("Counting something"))
           latencyWithLabels <- Histogram(
@@ -38,7 +37,7 @@ object example {
 
     // Start a timer, do something, record how much time it took
     timer <- metrics.latencyWithLabels("GET" :: "/foo" :: LNil).startTimer
-    _ <- ZIO.effect {
+    _ <- ZIO.attempt {
           // Do something
         }
     _ <- timer.stop
@@ -47,7 +46,7 @@ object example {
     _ <- metrics
           .latencyWithLabels("GET" :: "/foo" :: LNil)
           .observe(
-            ZIO.effect {
+            ZIO.attempt {
               // Do something
             }
           )
@@ -56,5 +55,5 @@ object example {
     // _ <- metrics.latencyWithLabels("GET" ::: LNil).startTimer
   } yield ()
 
-  val runnableApp = app.provideCustomLayer((Registry.live ++ ZLayer.requires[Clock]) >>> MyMetrics.live)
+  val runnableApp = app.provideCustomLayer((Registry.live ++ ZLayer.environment[Clock]) >>> MyMetrics.live)
 }

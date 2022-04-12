@@ -1,25 +1,27 @@
 package zio.metrics
 
 import zio.Runtime
-import zio.console.putStrLn
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.helpers._
 import zio.metrics.prometheus.exporters.Exporters
 import io.prometheus.client.exporter.HTTPServer
-import zio.console.Console
-import zio.{ Has, Layer, ZLayer }
+import zio.{ Layer, ZLayer }
 import zio.{ IO, RIO, Task }
 import io.prometheus.client.CollectorRegistry
+import zio.Console
+import zio.Console.printLine
 
 object MetricMapLayer {
 
   val rt = Runtime.unsafeFromLayer(MetricMap.live ++ Registry.live ++ Exporters.live ++ Console.live)
 
-  type MetricMap = Has[MetricMap.Service]
+  type MetricMap = MetricMap.Service
 
   case class InvalidMetric(msg: String) extends Exception
 
   object MetricMap {
+    import zio.metrics.prometheus.Metric
+
     trait Service {
       def getRegistry(): Task[CollectorRegistry]
 
@@ -38,13 +40,15 @@ object MetricMapLayer {
         getCurrentRegistry().provideLayer(Registry.live)
 
       def put(key: String, metric: Metric): Task[Unit] =
-        Task(
-          this.metricsMap =
-            if (metricsMap.contains(key))
-              metricsMap.updated(key, metric)
-            else
-              metricsMap + (key -> metric)
-        ).unit
+        Task
+          .succeed(
+            this.metricsMap =
+              if (metricsMap.contains(key))
+                metricsMap.updated(key, metric)
+              else
+                metricsMap + (key -> metric)
+          )
+          .unit
 
       def getHistogram(key: String): IO[InvalidMetric, Histogram] =
         metricsMap(key) match {
@@ -82,7 +86,7 @@ object MetricMapLayer {
   ] =
     for {
       m  <- RIO.environment[MetricMap]
-      _  <- putStrLn("MetricMapLayer")
+      _  <- printLine("MetricMapLayer")
       r  <- m.get.getRegistry()
       _  <- initializeDefaultExports(r)
       hs <- http(r, 9090)
@@ -92,10 +96,10 @@ object MetricMapLayer {
       h  <- m.get.getHistogram("metricmap_histogram")
       _  <- h.time(() => Thread.sleep(2000), Array("histogram", "get"))
       s  <- write004(r)
-      _  <- putStrLn(s)
+      _  <- printLine(s)
     } yield hs
 
-  val program = startup *> exporterTest >>= (server => putStrLn(s"Server port: ${server.getPort()}"))
+  val program = startup *> exporterTest flatMap (server => Console.printLine(s"Server port: ${server.getPort()}"))
 
   def main(args: Array[String]): Unit =
     rt.unsafeRun(program)

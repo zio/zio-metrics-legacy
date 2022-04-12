@@ -1,20 +1,22 @@
 package zio.metrics
 
-import zio.clock.Clock
-import zio.console._
+import zio.Clock
+
 import zio.metrics.encoders._
 import zio.{ Chunk, RIO, Task }
 import zio.test._
 import zio.test.Assertion._
 import zio.test.TestAspect.{ flaky, forked, timeout }
-import zio.duration._
 
-object ClientTest extends DefaultRunnableSpec {
+import zio._
+import zio.test.ZIOSpecDefault
+
+object ClientTest extends ZIOSpecDefault {
   private val port = 8126
 
-  override def spec =
+  override def spec: ZSpec[TestEnvironment, Any] =
     suite("ClientTest") {
-      testM("client with sendAsync works") {
+      test("client with sendAsync works") {
         val messages = List(1.0, 2.2, 3.4, 4.6)
         val expectedSentMetricsSet = List(
           "clientbar:1|c",
@@ -32,13 +34,17 @@ object ClientTest extends DefaultRunnableSpec {
           a <- UDPAgent(port)
         } yield (c, a)
 
-        clientWithAgent.use {
-          case (client, agent) =>
-            for {
-              opt     <- RIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
-              _       <- RIO.foreach_(opt)(m => client.sendAsync(m))
-              metrics <- RIO.foreach(opt)(_ => agent.nextReceivedMetric)
-            } yield assert(metrics.toSet)(hasSameElements(expectedSentMetricsSet))
+        ZIO.scoped {
+          clientWithAgent.flatMap {
+            case (client, agent) =>
+              for {
+                opt <- RIO.foreach(messages)(
+                        d => Task.succeed(Counter("clientbar", d, 1.0, Seq.empty[zio.metrics.Tag]))
+                      )
+                _       <- RIO.foreachDiscard(opt)(m => client.sendAsync(m))
+                metrics <- RIO.foreach(opt)(_ => agent.nextReceivedMetric)
+              } yield assert(metrics.toSet)(hasSameElements(expectedSentMetricsSet))
+          }
         }
 
       }
@@ -48,7 +54,9 @@ object ClientTest extends DefaultRunnableSpec {
     for {
       sde <- RIO.environment[Encoder]
       opt <- RIO.foreach(msgs)(sde.get.encode(_))
-      l   <- RIO.foreach(opt.collect { case Some(msg) => msg })(s => UDPClient("localhost", port).use(_.send(s)))
+      l <- RIO.foreach(opt.collect { case Some(msg) => msg })(
+            s => ZIO.scoped(UDPClient("localhost", port).flatMap(_.send(s)))
+          )
     } yield l
 
 }

@@ -3,22 +3,21 @@ package zio.metrics.prometheus2
 import io.prometheus.{ client => jPrometheus }
 
 import zio._
-import zio.clock._
-import zio.duration.Duration
+import zio.Duration
 
 trait Counter {
   def inc: UIO[Unit] = inc(1)
   def inc(amount: Double): UIO[Unit]
 }
 object Counter extends LabelledMetric[Registry, Throwable, Counter] {
-  def unsafeLabeled(
+  def unsafeLabelled(
     name: String,
     help: Option[String],
     labels: Seq[String]
   ): ZIO[Registry, Throwable, Seq[String] => Counter] =
     for {
       pCounter <- updateRegistry { r =>
-                   ZIO.effect(
+                   ZIO.attempt(
                      jPrometheus.Counter
                        .build()
                        .name(name)
@@ -30,7 +29,7 @@ object Counter extends LabelledMetric[Registry, Throwable, Counter] {
     } yield { (labels: Seq[String]) =>
       val child = pCounter.labels(labels: _*)
       new Counter {
-        override def inc(amount: Double): UIO[Unit] = ZIO.effectTotal(child.inc(amount))
+        override def inc(amount: Double): UIO[Unit] = ZIO.succeed(child.inc(amount))
       }
     }
 }
@@ -53,10 +52,15 @@ trait TimerMetric {
   def startTimer: UIO[Timer]
 
   /** A managed timer resource. */
-  def timer: UManaged[Timer] = startTimer.toManaged(_.stop)
+  def timer: URIO[Scope, Timer] = ZIO.acquireRelease(startTimer)(_.stop)
 
   /** Runs the given effect and records in the metric how much time it took to succeed or fail. */
-  def observe[R, E, A](zio: ZIO[R, E, A]): ZIO[R, E, A] = timer.use(_ => zio)
+  def observe[R, E, A](zio: ZIO[R, E, A]): ZIO[R, E, A] =
+    for {
+      timer <- startTimer
+      a     <- zio.tapError(_ => timer.stop)
+      _     <- timer.stop
+    } yield a
 
   /**
    * Runs the given effect and records in the metric how much time it took to succeed. Do not
@@ -72,7 +76,7 @@ trait TimerMetric {
   def observe(amount: Duration): UIO[Unit]
 }
 
-private abstract class TimerMetricImpl(clock: Clock.Service) extends TimerMetric {
+private abstract class TimerMetricImpl(clock: Clock) extends TimerMetric {
   override def startTimer: UIO[Timer] =
     clock.instant.map { startTime =>
       new Timer {
@@ -94,15 +98,15 @@ trait Gauge extends TimerMetric {
   override def observe(amount: Duration): UIO[Unit] = set(amount.toNanos() * 1e-9)
 }
 object Gauge extends LabelledMetric[Registry with Clock, Throwable, Gauge] {
-  def unsafeLabeled(
+  def unsafeLabelled(
     name: String,
     help: Option[String],
     labels: Seq[String]
   ): ZIO[Registry with Clock, Throwable, Seq[String] => Gauge] =
     for {
-      clock <- ZIO.service[Clock.Service]
+      clock <- ZIO.service[Clock]
       pGauge <- updateRegistry { r =>
-                 ZIO.effect(
+                 ZIO.attempt(
                    jPrometheus.Gauge
                      .build()
                      .name(name)
@@ -114,10 +118,10 @@ object Gauge extends LabelledMetric[Registry with Clock, Throwable, Gauge] {
     } yield { (labels: Seq[String]) =>
       val child = pGauge.labels(labels: _*)
       new TimerMetricImpl(clock) with Gauge {
-        override def get: UIO[Double]               = ZIO.effectTotal(child.get())
-        override def set(value: Double): UIO[Unit]  = ZIO.effectTotal(child.set(value))
-        override def inc(amount: Double): UIO[Unit] = ZIO.effectTotal(child.inc(amount))
-        override def dec(amount: Double): UIO[Unit] = ZIO.effectTotal(child.dec(amount))
+        override def get: UIO[Double]               = ZIO.succeed(child.get())
+        override def set(value: Double): UIO[Unit]  = ZIO.succeed(child.set(value))
+        override def inc(amount: Double): UIO[Unit] = ZIO.succeed(child.inc(amount))
+        override def dec(amount: Double): UIO[Unit] = ZIO.succeed(child.dec(amount))
       }
     }
 }
@@ -132,16 +136,16 @@ object Buckets {
 
 trait Histogram extends TimerMetric
 object Histogram extends LabelledMetricP[Registry with Clock, Throwable, Buckets, Histogram] {
-  def unsafeLabeled(
+  def unsafeLabelled(
     name: String,
     buckets: Buckets,
     help: Option[String],
     labels: Seq[String]
   ): ZIO[Registry with Clock, Throwable, Seq[String] => Histogram] =
     for {
-      clock <- ZIO.service[Clock.Service]
+      clock <- ZIO.service[Clock]
       pHistogram <- updateRegistry { r =>
-                     ZIO.effect {
+                     ZIO.attempt {
                        val builder = jPrometheus.Histogram
                          .build()
                          .name(name)
@@ -161,7 +165,7 @@ object Histogram extends LabelledMetricP[Registry with Clock, Throwable, Buckets
       val child = pHistogram.labels(labels: _*)
       new TimerMetricImpl(clock) with Histogram {
         override def observe(amount: Duration): UIO[Unit] =
-          ZIO.effectTotal(child.observe(amount.toNanos() * 1e-9))
+          ZIO.succeed(child.observe(amount.toNanos() * 1e-9))
       }
     }
 }
@@ -170,16 +174,16 @@ final case class Quantile(percentile: Double, tolerance: Double)
 
 trait Summary extends TimerMetric
 object Summary extends LabelledMetricP[Registry with Clock, Throwable, List[Quantile], Summary] {
-  def unsafeLabeled(
+  def unsafeLabelled(
     name: String,
     quantiles: List[Quantile],
     help: Option[String],
     labels: Seq[String]
   ): ZIO[Registry with Clock, Throwable, Seq[String] => Summary] =
     for {
-      clock <- ZIO.service[Clock.Service]
+      clock <- ZIO.service[Clock]
       pHistogram <- updateRegistry { r =>
-                     ZIO.effect {
+                     ZIO.attempt {
                        val builder = jPrometheus.Summary
                          .build()
                          .name(name)
@@ -192,7 +196,7 @@ object Summary extends LabelledMetricP[Registry with Clock, Throwable, List[Quan
       val child = pHistogram.labels(labels: _*)
       new TimerMetricImpl(clock) with Summary {
         override def observe(amount: Duration): UIO[Unit] =
-          ZIO.effectTotal(child.observe(amount.toNanos() * 1e-9))
+          ZIO.succeed(child.observe(amount.toNanos() * 1e-9))
       }
     }
 }

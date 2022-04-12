@@ -1,24 +1,24 @@
 package zio.metrics
 
-import zio.clock.Clock
+import zio.Clock
 import zio.metrics.dropwizard._
 import zio.metrics.dropwizard.helpers._
 import zio.metrics.dropwizard.reporters._
-import zio.test.environment.TestClock
 import zio.ZIO
 
 //import java.util.concurrent.TimeUnit
-import zio.duration._
-import zio.test.DefaultRunnableSpec
+
 import zio.test._
 import zio.test.Assertion._
+import zio._
+import zio.test.ZIOSpecDefault
 
-object ReportersTest extends DefaultRunnableSpec {
+object ReportersTest extends ZIOSpecDefault {
 
   override def spec =
     suite("ReportersTest")(
       suite("JMX")(
-        testM("reporter works with counter") {
+        test("reporter works with counter") {
           val expectedJson = "{\n  \"counters\" : {\n    \"ReportersTestCnt.test.counter\" : 3\n  }\n}"
 
           for {
@@ -29,13 +29,13 @@ object ReportersTest extends DefaultRunnableSpec {
             json <- DropwizardExtractor.writeJson(r)(None)
           } yield assert(json.toString())(equalTo(expectedJson))
         },
-        testM("reporter works with timer") {
+        test("reporter works with timer") {
           for {
             r   <- getCurrentRegistry()
             _   <- jmx(r)
             t   <- timer.register("TimerTest", Array("test", "timer"))
             ctx <- t.start()
-            _ <- ZIO.foreach_(List(1000, 1400, 1200)) { n =>
+            _ <- ZIO.foreachDiscard(List(1000, 1400, 1200)) { n =>
                   TestClock.adjust(n.millis) *> t.stop(ctx).delay(n.millis)
                 }
             json <- DropwizardExtractor.writeJson(r)(None).map(_.toString())
@@ -46,7 +46,7 @@ object ReportersTest extends DefaultRunnableSpec {
         }
       ),
       suite("Console")(
-        testM("reporter works") {
+        test("reporter works") {
           // Console reporter just prints to console
           for {
             //r <- getCurrentRegistry()

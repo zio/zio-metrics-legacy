@@ -21,4 +21,3 @@ object Show {
 
   implicit def showClass[A]: Show[Class[_]] = (f: Class[_]) => fixClassName(f)
 }
-

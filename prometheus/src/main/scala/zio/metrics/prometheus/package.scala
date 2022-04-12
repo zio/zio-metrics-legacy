@@ -1,7 +1,6 @@
 package zio.metrics
 
-import zio.{ Has, ZLayer }
-import zio.{ Task, UIO }
+import zio.{ Task, UIO, ZIO, ZLayer }
 
 package object prometheus {
 
@@ -11,7 +10,7 @@ package object prometheus {
   import io.prometheus.client.CollectorRegistry
   import io.prometheus.client.{ Summary => PSummary }
 
-  type Registry = Has[Registry.Service]
+  type Registry = Registry.Service
 
   object Registry {
     trait Service {
@@ -26,15 +25,16 @@ package object prometheus {
     type Percentile = Double
     type Tolerance  = Double
 
-    val explicit: ZLayer[Has[CollectorRegistry], Nothing, Registry] =
-      ZLayer.fromService[CollectorRegistry, Registry.Service](
-        registry =>
+    val explicit: ZLayer[CollectorRegistry, Nothing, Registry] =
+      ZIO
+        .service[CollectorRegistry]
+        .map { registry =>
           new Service {
 
-            def getCurrent(): UIO[CollectorRegistry] = UIO(registry)
+            def getCurrent(): UIO[CollectorRegistry] = UIO.succeed(registry)
 
             def registerCounter[A: Show](label: Label[A]): Task[PCounter] =
-              Task({
+              Task.succeed({
                 val name = Show[A].show(label.name)
                 PCounter
                   .build()
@@ -45,7 +45,7 @@ package object prometheus {
               })
 
             def registerGauge[L: Show](label: Label[L]): Task[PGauge] =
-              Task({
+              Task.succeed({
                 val name = Show[L].show(label.name)
                 PGauge
                   .build()
@@ -56,7 +56,7 @@ package object prometheus {
               })
 
             def registerHistogram[L: Show](label: Label[L], buckets: Buckets): Task[PHistogram] =
-              Task({
+              Task.succeed({
                 val name = Show[L].show(label.name)
                 val hb = PHistogram
                   .build()
@@ -73,7 +73,7 @@ package object prometheus {
               })
 
             def registerSummary[L: Show](label: Label[L], quantiles: List[(Percentile, Tolerance)]): Task[PSummary] =
-              Task({
+              Task.succeed({
                 val name = Show[L].show(label.name)
                 val sb = PSummary
                   .build()
@@ -84,10 +84,10 @@ package object prometheus {
                 quantiles.foldLeft(sb)((acc, c) => acc.quantile(c._1, c._2)).register(registry)
               })
           }
-      )
+        }
+        .toLayer
 
-    val live
-      : ZLayer[Any, Nothing, Has[Registry.Service]] = ZLayer.succeed(CollectorRegistry.defaultRegistry) >>> explicit
+    val live: ZLayer[Any, Nothing, Registry.Service] = ZLayer.succeed(CollectorRegistry.defaultRegistry) >>> explicit
 
   }
 }
