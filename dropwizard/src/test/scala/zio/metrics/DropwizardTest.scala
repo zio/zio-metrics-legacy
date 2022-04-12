@@ -162,7 +162,7 @@ object DropwizardTest extends ZIOSpecDefault {
       } yield {
         assert(count)(equalTo(15.toLong)) &&
         assert(meanRate)(isGreaterThan(40.toDouble)) &&
-        assert(meanRate)(isLessThanEqualTo(5000.toDouble))
+        assert(meanRate)(isLessThanEqualTo(10000.toDouble))
       }
     }
   ).provideCustomLayer(Registry.live)
