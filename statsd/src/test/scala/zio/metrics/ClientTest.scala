@@ -1,7 +1,5 @@
 package zio.metrics
 
-import zio.Clock
-
 import zio.metrics.encoders._
 import zio.{ Chunk, RIO, Task }
 import zio.test._
@@ -26,7 +24,7 @@ object ClientTest extends ZIOSpecDefault {
         ).toSet
 
         val createClient = Client.withListener[Chunk, Int] { (l: Chunk[Metric]) =>
-          myudp(l).provideSomeLayer[Encoder](Console.live)
+          myudp(l)
         }
 
         val clientWithAgent = for {
@@ -48,7 +46,7 @@ object ClientTest extends ZIOSpecDefault {
         }
 
       }
-    }.provideCustomLayer(Clock.live ++ Encoder.statsd) @@ forked @@ timeout(5.seconds) @@ flaky(5)
+    }.provideCustomLayer(Encoder.statsd) @@ forked @@ timeout(5.seconds) @@ flaky(5) @@ TestAspect.withLiveClock
 
   private val myudp: Chunk[Metric] => RIO[Encoder, Chunk[Int]] = msgs =>
     for {

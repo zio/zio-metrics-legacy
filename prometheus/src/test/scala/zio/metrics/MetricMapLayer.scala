@@ -13,7 +13,7 @@ import zio.Console.printLine
 
 object MetricMapLayer {
 
-  val rt = Runtime.unsafeFromLayer(MetricMap.live ++ Registry.live ++ Exporters.live ++ Console.live)
+  val rt = Runtime.unsafeFromLayer(MetricMap.live ++ Registry.live ++ Exporters.live)
 
   type MetricMap = MetricMap.Service
 
@@ -81,7 +81,7 @@ object MetricMapLayer {
     } yield ()
 
   val exporterTest: RIO[
-    MetricMap with Exporters with Console,
+    MetricMap with Exporters,
     HTTPServer
   ] =
     for {

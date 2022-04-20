@@ -3,7 +3,6 @@ package zio.metrics
 import java.util.concurrent.ThreadLocalRandom
 
 import zio._
-import zio.Clock
 import zio.Duration
 import zio.Duration.Finite
 import zio.metrics.encoders._
@@ -18,8 +17,6 @@ final class Client(
 )(
   private val queue: Queue[Metric]
 ) {
-
-  type UDPQueue = ZQueue[Nothing, Any, Encoder, Throwable, Nothing, Metric]
 
   private val duration: Duration = Finite(timeout)
 
@@ -69,9 +66,11 @@ final class Client(
     f: Chunk[Metric] => RIO[Encoder, F[A]]
   ): ZIO[Scope with Client.ClientEnv, Nothing, Fiber[Throwable, Unit]] =
     ZStream
-      .fromQueue[Encoder, Throwable, Metric](queue)
+      .fromQueue[Metric](queue)
       .groupedWithin(bufferSize, duration)
-      .mapZIO(l => f(l))
+      .mapZIO { l =>
+        f(l)
+      }
       .runDrain
       .forkScoped
 
@@ -100,7 +99,7 @@ final class Client(
 
 object Client {
 
-  type ClientEnv = Encoder with Clock //with Console
+  type ClientEnv = Encoder
 
   def apply(): ZIO[Scope with ClientEnv, Throwable, Client] = apply(5, 5000, 100, None, None, None)
 

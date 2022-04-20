@@ -1,6 +1,5 @@
 package zio.metrics
 
-import zio.Clock
 import zio.metrics.dropwizard._
 import zio.metrics.dropwizard.helpers._
 import zio.metrics.dropwizard.reporters._
@@ -56,5 +55,5 @@ object ReportersTest extends ZIOSpecDefault {
           } yield assert(true)(isTrue)
         }
       )
-    ).provideCustomLayer(Reporters.live ++ Registry.live ++ Clock.live)
+    ).provideCustomLayer(Reporters.live ++ Registry.live) @@ TestAspect.withLiveClock
 }

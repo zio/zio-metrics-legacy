@@ -24,7 +24,7 @@ object ExplicitRegistryLayer {
 
   val myCustomLayer = ZLayer.succeed(myRegistry) >>> Registry.explicit
 
-  val rt = Runtime.unsafeFromLayer(MetricMap.live ++ Exporters.live ++ Console.live)
+  val rt = Runtime.unsafeFromLayer(MetricMap.live ++ Exporters.live)
 
   type MetricMap = MetricMap.Service
 
@@ -92,7 +92,7 @@ object ExplicitRegistryLayer {
     } yield ()
 
   val exporterTest: RIO[
-    MetricMap with Exporters with Console,
+    MetricMap with Exporters,
     HTTPServer
   ] =
     for {

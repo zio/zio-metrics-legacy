@@ -1,12 +1,11 @@
 package zio.metrics
 
 import io.prometheus.client.CollectorRegistry
-import zio.Clock
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.exporters.Exporters
 import zio.metrics.prometheus.helpers._
 import zio.test.Assertion._
-import zio.test.{ assert, TestClock, TestEnvironment, ZIOSpecDefault, ZSpec }
+import zio.test.{ assert, TestAspect, TestClock, TestEnvironment, ZIOSpecDefault, ZSpec }
 import zio.{ RIO, UIO, ZIO }
 
 import java.util
@@ -14,7 +13,7 @@ import zio._
 
 object PrometheusTest extends ZIOSpecDefault {
 
-  private val env = Registry.live ++ Exporters.live ++ Clock.live
+  private val env = Registry.live ++ Exporters.live
 
   val counterTestRegistry: RIO[Registry, CollectorRegistry] = for {
     c <- Counter("simple_counter", Array("method", "resource"))
@@ -44,7 +43,7 @@ object PrometheusTest extends ZIOSpecDefault {
     r <- getCurrentRegistry()
   } yield r
 
-  val histogramDurationTestRegistry: ZIO[Registry with TestClock with Clock, Throwable, CollectorRegistry] = {
+  val histogramDurationTestRegistry: ZIO[Registry, Throwable, CollectorRegistry] = {
     for {
       h <- Histogram("duration_histogram", Array("method"), ExponentialBuckets(0.25, 2, 5))
       t <- h.startTimer(Array("time"))
@@ -165,5 +164,5 @@ object PrometheusTest extends ZIOSpecDefault {
           }
         }
       )
-    ).provideCustomLayer(env)
+    ).provideCustomLayer(env) @@ TestAspect.withLiveClock
 }
