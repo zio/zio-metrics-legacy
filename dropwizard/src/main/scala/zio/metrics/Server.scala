@@ -15,16 +15,14 @@ import org.http4s.blaze.server._
 import zio.RIO
 import zio.ZIO
 
-import zio.Clock
 import zio.interop.catz._
 import zio.metrics.dropwizard.DropwizardExtractor._
 import zio.metrics.dropwizard.typeclasses._
-import zio.{ Console, Random, System }
 
 object Server {
   val port: Int = envOrNone("HTTP_PORT").fold(9090)(_.toInt)
 
-  type HttpEnvironment = Clock with Console with System with Random with Any
+  type HttpEnvironment = Any
   type HttpTask[A]     = RIO[HttpEnvironment, A]
 
   type KleisliApp = Kleisli[HttpTask, Request[HttpTask], Response[HttpTask]]

@@ -40,21 +40,22 @@ package object prometheus2 {
           .map(new ServiceImpl(registry, _))
     }
 
-    def live: ULayer[Registry] = ServiceImpl.makeWith(new jp.CollectorRegistry()).toLayer
+    def live: ULayer[Registry] = ZLayer.fromZIO(ServiceImpl.makeWith(new jp.CollectorRegistry()))
 
-    def default: ULayer[Registry] = ServiceImpl.makeWith(jp.CollectorRegistry.defaultRegistry).toLayer
+    def default: ULayer[Registry] = ZLayer.fromZIO(ServiceImpl.makeWith(jp.CollectorRegistry.defaultRegistry))
 
     def provided: URLayer[jp.CollectorRegistry, Registry] =
-      ZIO.serviceWithZIO(ServiceImpl.makeWith).toLayer
+      ZLayer.fromZIO(ZIO.serviceWithZIO(ServiceImpl.makeWith))
 
     def defaultMetrics: RLayer[Registry, Registry] =
-      ZIO
-        .serviceWithZIO[Registry] { registry =>
-          registry
-            .updateRegistry(r => ZIO.attempt(jp.hotspot.DefaultExports.register(r)))
-            .as(registry)
-        }
-        .toLayer
+      ZLayer.fromZIO {
+        ZIO
+          .serviceWithZIO[Registry] { registry =>
+            registry
+              .updateRegistry(r => ZIO.attempt(jp.hotspot.DefaultExports.register(r)))
+              .as(registry)
+          }
+      }
 
     def liveWithDefaultMetrics: TaskLayer[Registry] = live >>> defaultMetrics
   }

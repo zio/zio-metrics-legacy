@@ -1,6 +1,5 @@
 package zio.metrics
 
-import zio.Clock
 import zio.metrics.dogstatsd._
 import zio.metrics.encoders.Encoder
 import zio.test._
@@ -49,5 +48,5 @@ object DogStatsDClientTest extends ZIOSpecDefault {
           }
         }
       }
-    ).provideCustomLayer(Encoder.dogstatsd ++ Clock.live) @@ forked @@ timeout(10.seconds) @@ flaky(5)
+    ).provideCustomLayer(Encoder.dogstatsd) @@ forked @@ timeout(10.seconds) @@ flaky(5) @@ TestAspect.withLiveClock
 }

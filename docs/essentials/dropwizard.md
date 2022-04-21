@@ -30,10 +30,10 @@ import zio.Duration
 ```
 
 We will also provide our own `Runtime` which will use ZIOMetric Dropwizard's
-`Registry` layer  plus its Reporters layer plus ZIO's `Console` layer:
+`Registry` layer  plus its Reporters layer:
 
 ```scala mdoc:silent
-  val rt = Runtime.unsafeFromLayer(Registry.live ++ Reporters.live ++ Console.live)
+  val rt = Runtime.unsafeFromLayer(Registry.live ++ Reporters.live)
 ```
 
 We will assume the reader has working knowledge for Dropwizard already, if
@@ -101,7 +101,7 @@ In this example we create a `MetricRegistry` external to `zio-metrics`
 `myRegistry` to a layer (i.e. create a Layer that takes `Nothing` and outputs
 `Option[MetricRegistry]`) and compose it with `Registry.explicit`. The you
 just need to use `myCustomLayer` wherever you would have used `Registry.live`,
-i.e. `counter.register(name, Array("exporter")).provideLayer(myCustomLayer)` or `val rt = Runtime.unsafeFromLayer(myCustomLayer ++ Console.live)`
+i.e. `counter.register(name, Array("exporter")).provideLayer(myCustomLayer)` or `val rt = Runtime.unsafeFromLayer(myCustomLayer)`
 
 ## Counter
 Counter has methods to increase a counter by 1 or by an arbitrary double

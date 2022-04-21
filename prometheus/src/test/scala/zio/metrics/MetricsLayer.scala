@@ -11,9 +11,9 @@ import zio.Console.printLine
 
 object MetricsLayer {
 
-  type Env = Registry with Exporters with Console
+  type Env = Registry with Exporters
 
-  val rt = Runtime.unsafeFromLayer(Registry.live ++ Exporters.live ++ Console.live)
+  val rt = Runtime.unsafeFromLayer(Registry.live ++ Exporters.live)
 
   type Metrics = Metrics.Service
 
@@ -81,10 +81,10 @@ object MetricsLayer {
               inc(1.0, tags)
 
             def inc(amount: Double, tags: Array[String]): Task[Unit] =
-              minst.get._1.inc(amount, tags)
+              minst._1.inc(amount, tags)
 
             def time(f: () => Unit, tags: Array[String]): Task[Double] =
-              minst.get._2.time(f, tags)
+              minst._2.time(f, tags)
           }
       )
   }
@@ -108,19 +108,19 @@ object MetricsLayer {
   )
 
   val rLayer: Layer[Nothing, Metrics] = Metrics.receiver(c, h)
-  val rtReceiver: Runtime.Scoped[Metrics with Exporters with Console] =
-    Runtime.unsafeFromLayer(rLayer ++ Exporters.live ++ Console.live)
+  val rtReceiver: Runtime.Scoped[Metrics with Exporters] =
+    Runtime.unsafeFromLayer(rLayer ++ Exporters.live)
 
   /*val chHas: ULayer[Has[(Counter, Histogram)]] = ZLayer.succeed[(Counter, Histogram)]((c, h))
   val rLayerHas: ZLayer[Any, Nothing, Metrics] = chHas >>> Metrics.receiverHas
   println(s"defining ReceiverHas RT: $rLayerHas")
-  val combinedLayer: ZLayer[Any, Nothing, Metrics with Console] = rLayerHas ++ Console.live
+  val combinedLayer: ZLayer[Any, Nothing, Metrics with Console] = rLayerHas
   println(s"combined: $combinedLayer")
   val rtReceiverHas = Runtime.unsafeFromLayer(combinedLayer)*/
 
   println("defining Test program")
   val exporterTest: RIO[
-    Metrics with Exporters with Console,
+    Metrics with Exporters,
     HTTPServer
   ] =
     for {

@@ -23,8 +23,8 @@ Test / fork := true
 run / fork := true
 
 val http4sVersion     = "0.23.11"
-val zioVersion        = "2.0.0-RC3"
-val interopVersion    = "3.3.0-RC3-2"
+val zioVersion        = "2.0.0-RC5"
+val interopVersion    = "3.3.0-RC5"
 val catsEffectVersion = "3.3.9"
 //val zioNIOVersion     = "1.0.0-RC11"
 val prometheusVersion = "0.12.0"

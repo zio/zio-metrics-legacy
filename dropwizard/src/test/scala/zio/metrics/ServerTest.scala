@@ -1,7 +1,6 @@
 package zio.metrics
 
 import org.http4s.server.Router
-import zio.Clock
 import zio.metrics.dropwizard.Server.builder
 import zio.metrics.dropwizard._
 import zio.metrics.dropwizard.helpers._
@@ -34,7 +33,7 @@ object ServerTest extends ZIOSpecDefault {
           assert(body)(containsString("\"timers\":"))
         }
       }
-    ).provideCustomLayer(Registry.live ++ Reporters.live ++ Clock.live)
+    ).provideCustomLayer(Registry.live ++ Reporters.live) @@ TestAspect.withLiveClock
 
   private def getURLContent(url: String): Task[String] = {
     val managed = ZIO.acquireRelease(ZIO.succeed(Source.fromURL(url)))(s => ZIO.attempt(s.close()).orDie)

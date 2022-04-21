@@ -97,14 +97,14 @@ trait Gauge extends TimerMetric {
   def dec(amount: Double): UIO[Unit]
   override def observe(amount: Duration): UIO[Unit] = set(amount.toNanos() * 1e-9)
 }
-object Gauge extends LabelledMetric[Registry with Clock, Throwable, Gauge] {
+object Gauge extends LabelledMetric[Registry, Throwable, Gauge] {
   def unsafeLabelled(
     name: String,
     help: Option[String],
     labels: Seq[String]
-  ): ZIO[Registry with Clock, Throwable, Seq[String] => Gauge] =
+  ): ZIO[Registry, Throwable, Seq[String] => Gauge] =
     for {
-      clock <- ZIO.service[Clock]
+      clock <- ZIO.clock
       pGauge <- updateRegistry { r =>
                  ZIO.attempt(
                    jPrometheus.Gauge
@@ -135,15 +135,15 @@ object Buckets {
 }
 
 trait Histogram extends TimerMetric
-object Histogram extends LabelledMetricP[Registry with Clock, Throwable, Buckets, Histogram] {
+object Histogram extends LabelledMetricP[Registry, Throwable, Buckets, Histogram] {
   def unsafeLabelled(
     name: String,
     buckets: Buckets,
     help: Option[String],
     labels: Seq[String]
-  ): ZIO[Registry with Clock, Throwable, Seq[String] => Histogram] =
+  ): ZIO[Registry, Throwable, Seq[String] => Histogram] =
     for {
-      clock <- ZIO.service[Clock]
+      clock <- ZIO.clock
       pHistogram <- updateRegistry { r =>
                      ZIO.attempt {
                        val builder = jPrometheus.Histogram
@@ -173,15 +173,15 @@ object Histogram extends LabelledMetricP[Registry with Clock, Throwable, Buckets
 final case class Quantile(percentile: Double, tolerance: Double)
 
 trait Summary extends TimerMetric
-object Summary extends LabelledMetricP[Registry with Clock, Throwable, List[Quantile], Summary] {
+object Summary extends LabelledMetricP[Registry, Throwable, List[Quantile], Summary] {
   def unsafeLabelled(
     name: String,
     quantiles: List[Quantile],
     help: Option[String],
     labels: Seq[String]
-  ): ZIO[Registry with Clock, Throwable, Seq[String] => Summary] =
+  ): ZIO[Registry, Throwable, Seq[String] => Summary] =
     for {
-      clock <- ZIO.service[Clock]
+      clock <- ZIO.clock
       pHistogram <- updateRegistry { r =>
                      ZIO.attempt {
                        val builder = jPrometheus.Summary

@@ -14,7 +14,7 @@ object example {
 
   object MyMetrics {
     // The layer to register the metrics in the Registry
-    def live: ZLayer[Registry with Clock, Throwable, MyMetrics] =
+    def live: ZLayer[Registry, Throwable, MyMetrics] =
       ZLayer.fromZIO(
         for {
           counterWithoutLabels <- Counter("my_counter", Some("Counting something"))
@@ -55,5 +55,5 @@ object example {
     // _ <- metrics.latencyWithLabels("GET" ::: LNil).startTimer
   } yield ()
 
-  val runnableApp = app.provideCustomLayer((Registry.live ++ ZLayer.environment[Clock]) >>> MyMetrics.live)
+  val runnableApp = app.provideSomeLayer((Registry.live ++ ZLayer.environment[Clock]) >>> MyMetrics.live)
 }
