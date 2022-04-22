@@ -4,28 +4,29 @@ import zio.RIO
 import zio.metrics.encoders._
 import zio.test._
 import zio.test.Assertion._
+import zio.test.ZIOSpecDefault
 
-object StatsDEncoderTest extends DefaultRunnableSpec {
+object StatsDEncoderTest extends ZIOSpecDefault {
 
   override def spec =
     suite("StatsDEncoder")(
-      testM("StatsD Encoder encodes counters") {
+      test("StatsD Encoder encodes counters") {
         testCounter.map(
           tup =>
             assert(tup._1)(isSome(equalTo("foobar:1|c"))) &&
               assert(tup._2)(isSome(equalTo("foobar:1|c|@0.5")))
         )
       },
-      testM("StatsD Encoder encodes gauges") {
+      test("StatsD Encoder encodes gauges") {
         testGauge.map(g => assert(g)(isSome(equalTo("foobar:1|g"))))
       },
-      testM("StatsD Encoder encodes timers") {
+      test("StatsD Encoder encodes timers") {
         testTimer.map(t => assert(t)(isSome(equalTo("foobar:1|ms"))))
       },
-      testM("StatsD Encoder encodes meters") {
+      test("StatsD Encoder encodes meters") {
         testMeter.map(m => assert(m)(isSome(equalTo("foobar:1|m"))))
       },
-      testM("StatsD Encoder encodes sets") {
+      test("StatsD Encoder encodes sets") {
         testSet.map(s => assert(s)(isSome(equalTo("foobar:barfoo|s"))))
       }
     ).provideCustomLayer(Encoder.statsd)

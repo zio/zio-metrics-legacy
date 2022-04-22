@@ -42,11 +42,13 @@ If we use the client instead we save ourselves issues as with `tags` above:
 ```scala mdoc:silent
   import zio.metrics.statsd._
   import zio.metrics.Client.ClientEnv
-  import zio.ZManaged
+  import zio.{ZIO, Scope}
   
-  val statsDClient: ZManaged[ClientEnv, Throwable, StatsDClient] = StatsDClient()
-  statsDClient.use { client => 
-    client.gauge("name", 34.0)
+  val statsDClient: ZIO[Scope with ClientEnv, Throwable, StatsDClient] = StatsDClient()
+  ZIO.scoped {
+      statsDClient.flatMap { client => 
+        client.gauge("name", 34.0)
+      }
   }
 ```
 
@@ -62,7 +64,7 @@ the values will be actually sent the StatsD server. A sampleRate of 1.0 (or
 above) ensures that all values are sent.
 
 ```scala mdoc:silent
-  statsDClient.use { client => 
+  statsDClient.flatMap { client => 
     client.counter("counterName", 3.0)       // no sample rate
     client.counter("counterName", 2.0, 0.75) // 75% sample rate
     client.increment("counterName")
@@ -76,10 +78,10 @@ The number of milliseconds between a start and end time.
 ```scala mdoc:silent
   import java.util.concurrent.TimeUnit
   import zio.RIO
-  import zio.clock.Clock
-  import zio.duration.Duration
+  import zio.Clock
+  import zio.Duration
   
-  statsDClient.use { client => 
+  statsDClient.flatMap { client => 
     for {
       clock <- RIO.environment[Clock]
       t1    <- clock.get.currentTime(TimeUnit.MILLISECONDS)
@@ -94,7 +96,7 @@ The number of milliseconds between a start and end time.
 Measures the rate of events over time, calculated at the server.
 
 ```scala mdoc:silent
-  statsDClient.use { client => 
+  statsDClient.flatMap { client => 
     client.meter("zmetrics.meter", 2.5)
   }
 ```
@@ -103,7 +105,7 @@ Measures the rate of events over time, calculated at the server.
 Counts the number of unique occurrences of events over a period of time.
 
 ```scala mdoc:silent
-  statsDClient.use { client => 
+  statsDClient.flatMap { client => 
     client.set("zmetrics.meter", "ocurrence")
   }
 ```
@@ -120,7 +122,7 @@ Allows you to measure the statistical distribution of a set of values.
   import zio.metrics.dogstatsd._
   
   val dogStatsDClient = DogStatsDClient()
-  dogStatsDClient.use { dogClient =>
+  dogStatsDClient.flatMap { dogClient =>
     dogClient.histogram(
         "zmetrics.hist", 
         2.5,                        // value
@@ -134,7 +136,7 @@ Allows you to measure the statistical distribution of a set of values.
 Allow you to characterize the status of a service in order to monitor it within Datadog.
 
 ```scala mdoc:silent
-  dogStatsDClient.use { dogClient =>
+  dogStatsDClient.flatMap { dogClient =>
     dogClient.serviceCheck(
       "zmetrics.checks", 
       ServiceCheckOk,
@@ -155,7 +157,7 @@ displayed.
 ```scala mdoc:silent
   val tagEnv = Tag("env", "prod")
   val tagVersion = Tag("version", "0.1.0")
-  dogStatsDClient.use { dogClient =>
+  dogStatsDClient.flatMap { dogClient =>
     dogClient.event(
       "zmetrics.dog.event",         // name
       "something amazing happened", // event text/message
@@ -183,7 +185,7 @@ also provides constructors with default values for each such that:
   Client() == Client(5, 5000L, 100, None, None, None)
 ```
 
-The `Client` constructors return a `ZManaged`. You can create your own specific client
+The `Client` constructors return a `ZIO` with `Scope`. You can create your own specific client
 by reusing the default client constructors like this:
 
 ```scala mdoc:silent
@@ -205,22 +207,25 @@ this is a base client, ZIO-Metrics-StatsD also provide `StatsD` and a
 
 ```scala mdoc:silent
   import zio.{ RIO, Runtime, Task }
-  import zio.clock.Clock
-  import zio.console._
+  import zio.Clock
+  import zio.Console
+  import zio.Console.printLine
   import zio.Chunk
   import zio.metrics.encoders._
 
   // Provide a runtime
-  val rt = Runtime.unsafeFromLayer(Encoder.statsd ++ Console.live ++ Clock.live)
+  val rt = Runtime.unsafeFromLayer(Encoder.statsd)
   
   val program = {
     val messages = Chunk(1.0, 2.2, 3.4, 4.6, 5.1, 6.0, 7.9)
     val createClient = Client()
-    createClient.use { client =>
-      for {
-        opt <- RIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
-        _   <- RIO.collectAll(opt.map(m => client.sendM(true)(m)))
-      } yield ()
+    ZIO.scoped {
+        createClient.flatMap { client =>
+          for {
+            opt <- RIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
+            _   <- RIO.collectAll(opt.map(m => client.sendM(true)(m)))
+          } yield ()
+        }
     }
   }
 ```
@@ -264,7 +269,7 @@ We can now run our sample client so:
 
 ```scala mdoc:silent
   def main(args: Array[String]): Unit = {
-    rt.unsafeRun(program >>= (lst => putStrLn(s"Main: $lst").provideSomeLayer(Console.live)))
+    rt.unsafeRun(program >>= (lst => printLine(s"Main: $lst")))
   }
 ```
 
@@ -276,12 +281,12 @@ prints the encoded message to console and then uses the default host and port
 from `UDPClient`.
 
 ```scala mdoc:silent
-  val myudp: Chunk[Metric] => RIO[Encoder with Console, Chunk[Int]] = msgs =>
+  val myudp: Chunk[Metric] => RIO[Encoder, Chunk[Int]] = msgs =>
     for {
       sde <- RIO.environment[Encoder]
       opt <- RIO.foreach(msgs)(sde.get.encode(_))
-      _   <- putStrLn(s"udp: $opt")
-      l   <- RIO.foreach(opt.collect { case Some(msg) => msg })(s => UDPClient().use(_.send(s)))
+      _   <- printLine(s"udp: $opt")
+      l   <- RIO.foreach(opt.collect { case Some(msg) => msg })(s => ZIO.scoped(UDPClient().flatMap(_.send(s))))
     } yield l
 ```
 
@@ -290,9 +295,9 @@ and we can use this instead of the default behavior by using the `withListener` 
 ```scala mdoc:silent
   val messages = Chunk(1.0, 2.2, 3.4, 4.6, 5.1, 6.0, 7.9)
   val createCustomClient = Client.withListener { l =>
-    myudp(l).provideSomeLayer[Encoder](Console.live)
+    myudp(l)
   }
-  createCustomClient.use { client =>
+  createCustomClient.flatMap { client =>
     for {
       opt <- RIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
       _   <- RIO.collectAll(opt.map(m => client.sendM(true)(m)))
@@ -301,7 +306,7 @@ and we can use this instead of the default behavior by using the `withListener` 
 ```
 
 A message processor is defined as: `Chunk[Metric] => RIO[Encoder, F[A]]`, since
-`myudp` requires `Encoder with Console` which is NOT the same type as just
+`myudp` requires `Encoder` which is NOT the same type as just
 `Encoder`, we need to prove to the compiler our encoding capabilities using `provideSome`.
 
 ## StatsD Client
@@ -320,7 +325,7 @@ create and offer/send metrics to the queue. Here's a sample of how it's used.
       clock <- RIO.environment[Clock]
       t1 <- clock.get.currentTime(TimeUnit.MILLISECONDS)
       _  <- statsDClient.increment("zmetrics.counter", 0.9)
-      _  <- putStrLn(s"waiting for $r ms") *> clock.get.sleep(Duration(r, TimeUnit.MILLISECONDS))
+      _  <- printLine(s"waiting for $r ms") *> clock.get.sleep(Duration(r, TimeUnit.MILLISECONDS))
       t2 <- clock.get.currentTime(TimeUnit.MILLISECONDS)
       _  <- statsDClient.timer("zmetrics.timer", (t2 - t1).toDouble, 0.9)
     } yield ()
@@ -332,10 +337,12 @@ We can reuse `rt`, the runtime created earlier to run our `program`:
   def main1(args: Array[String]): Unit = {
     val timeouts = Seq(34L, 76L, 52L)
     rt.unsafeRun(
-      createStatsDClient.use { statsDClient =>
-        RIO
-          .foreach(timeouts)(l => program(l)(statsDClient))
-          .repeat(schd)
+        ZIO.scoped {
+          createStatsDClient.flatMap { statsDClient =>
+            RIO
+              .foreach(timeouts)(l => program(l)(statsDClient))
+              .repeat(schd)
+          }
       }
     )
     Thread.sleep(10000)             // wait for all messages to be consumed
@@ -355,7 +362,7 @@ supported by StatsD.
       clock <- RIO.environment[Clock]
       t1 <- clock.get.currentTime(TimeUnit.MILLISECONDS)
       _  <- dogStatsDClient.increment("zmetrics.dog.counter", 0.9)
-      _  <- putStrLn(s"waiting for $r ms") *> clock.get.sleep(Duration(r, TimeUnit.MILLISECONDS))
+      _  <- printLine(s"waiting for $r ms") *> clock.get.sleep(Duration(r, TimeUnit.MILLISECONDS))
       t2 <- clock.get.currentTime(TimeUnit.MILLISECONDS)
       d  = (t2 - t1).toDouble
       _  <- dogStatsDClient.timer("zmetrics.dog.timer", d, 0.9)
@@ -369,15 +376,17 @@ Since we need a different `Encoder` for DogStatsD than for StatsD, we'll have to
 create a new runtime to support it.
 
 ```scala mdoc:silent
-  val rtDog = Runtime.unsafeFromLayer(Encoder.dogstatsd ++ Console.live ++ Clock.live)
+  val rtDog = Runtime.unsafeFromLayer(Encoder.dogstatsd)
   
   def main2(args: Array[String]): Unit = {
     val timeouts = Seq(34L, 76L, 52L)
     rtDog.unsafeRun(
-      createDogStatsDClient.use { dogStatsDClient =>
-        RIO
-          .foreach(timeouts)(l => dogProgram(l)(dogStatsDClient))
-          .repeat(schd)
+       ZIO.scoped {
+          createDogStatsDClient.flatMap { dogStatsDClient =>
+            RIO
+              .foreach(timeouts)(l => dogProgram(l)(dogStatsDClient))
+              .repeat(schd)
+          }
       }
     )
     Thread.sleep(10000)

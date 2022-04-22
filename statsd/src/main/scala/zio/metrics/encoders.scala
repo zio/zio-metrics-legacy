@@ -3,11 +3,11 @@ package zio.metrics
 import java.text.DecimalFormat
 import java.time.Instant
 
-import zio.{ Has, Layer, Task, ZLayer }
+import zio.{ Layer, Task, ZLayer }
 
 object encoders {
 
-  type Encoder = Has[Encoder.Service[Metric]]
+  type Encoder = Encoder.Service[Metric]
 
   object Encoder {
     trait Service[M] {
@@ -40,7 +40,7 @@ object encoders {
           (acc, d) => if (d < 1.0) acc + s"|@${format.format(d)}" else acc
         )
 
-      override def encode(metric: Metric): Task[Option[String]] = Task {
+      override def encode(metric: Metric): Task[Option[String]] = Task.succeed {
         metric match {
           case srm: SampledMetric =>
             Some(encode(metric, Some(srm.sampleRate)))
@@ -88,7 +88,7 @@ object encoders {
         s"_sc|$name|$status$timestamp$hostname$tagString$message"
       }
 
-      override def encode(metric: Metric): Task[Option[String]] = Task {
+      override def encode(metric: Metric): Task[Option[String]] = Task.succeed {
         metric match {
           case sc: ServiceCheck => Some(encodeSeviceCheck(sc))
           case evt: Event       => Some(encodeEvent(evt))

@@ -1,7 +1,6 @@
 package zio.metrics
 
-import zio.{ Has, ZLayer }
-import zio.{ Ref, Task, UIO }
+import zio.{ Ref, Task, UIO, ZIO, ZLayer }
 
 package object dropwizard {
 
@@ -12,8 +11,8 @@ package object dropwizard {
   import com.codahale.metrics.MetricRegistry.MetricSupplier
   import com.codahale.metrics.Reservoir
 
-  type Registry          = Has[Registry.Service]
-  type HasMetricRegistry = Has[Option[MetricRegistry]]
+  type Registry          = Registry.Service
+  type HasMetricRegistry = Option[MetricRegistry]
 
   object Registry {
     trait Service {
@@ -28,58 +27,58 @@ package object dropwizard {
     private def label2Name[L: Show](label: Label[L]): String =
       MetricRegistry.name(Show[L].show(label.name), label.labels: _*)
 
-    val explicit: ZLayer[HasMetricRegistry, Nothing, Registry] =
-      ZLayer.fromFunction[HasMetricRegistry, Registry.Service](
-        optionalRegistry =>
-          new Service {
-            private val registryRef: UIO[Ref[MetricRegistry]] = {
-              val registry = optionalRegistry.get
-              Ref.make(registry.getOrElse(new MetricRegistry()))
-            }
+    val explicit: ZLayer[HasMetricRegistry, Nothing, Registry] = {
+      ZLayer.fromZIO {
+        ZIO.serviceWithZIO[HasMetricRegistry] { registry =>
+          Ref.make(registry.getOrElse(new MetricRegistry())).map { reg =>
+            new Service {
 
-            def getCurrent(): UIO[MetricRegistry] = registryRef >>= (_.get)
+              def getCurrent(): UIO[MetricRegistry] = reg.get
 
-            def registerCounter[L: Show](label: Label[L]): Task[DWCounter] =
-              registryRef >>= (_.modify(r => {
-                val name = label2Name(label)
-                (r.counter(name), r)
-              }))
+              def registerCounter[L: Show](label: Label[L]): Task[DWCounter] =
+                reg.modify(r => {
+                  val name = label2Name(label)
+                  (r.counter(name), r)
+                })
 
-            def registerGauge[L: Show, A](label: Label[L], f: () => A): Task[DWGauge[A]] =
-              registryRef >>= (_.modify(r => {
-                val name   = label2Name(label)
-                val gauges = r.getGauges(MetricFilter.startsWith(name))
-                val dwgauge = if (gauges.isEmpty()) {
-                  val gw = new DWGauge[A]() {
-                    def getValue(): A = f()
+              def registerGauge[L: Show, A](label: Label[L], f: () => A): Task[DWGauge[A]] =
+                reg.modify(r => {
+                  val name   = label2Name(label)
+                  val gauges = r.getGauges(MetricFilter.startsWith(name))
+                  val dwgauge = if (gauges.isEmpty()) {
+                    val gw = new DWGauge[A]() {
+                      def getValue(): A = f()
+                    }
+                    gw.asInstanceOf[DWGauge[A]]
+                  } else gauges.get(gauges.firstKey()).asInstanceOf[DWGauge[A]]
+                  (r.register(name, dwgauge), r)
+                })
+
+              def registerHistogram[L: Show](label: Label[L], reservoir: Reservoir): Task[DWHistogram] =
+                reg.modify(r => {
+                  val name = label2Name(label)
+                  val suppplier = new MetricSupplier[DWHistogram] {
+                    def newMetric(): DWHistogram = new DWHistogram(reservoir)
                   }
-                  gw.asInstanceOf[DWGauge[A]]
-                } else gauges.get(gauges.firstKey()).asInstanceOf[DWGauge[A]]
-                (r.register(name, dwgauge), r)
-              }))
+                  (r.histogram(name, suppplier), r)
+                })
 
-            def registerHistogram[L: Show](label: Label[L], reservoir: Reservoir): Task[DWHistogram] =
-              registryRef >>= (_.modify(r => {
-                val name = label2Name(label)
-                val suppplier = new MetricSupplier[DWHistogram] {
-                  def newMetric(): DWHistogram = new DWHistogram(reservoir)
-                }
-                (r.histogram(name, suppplier), r)
-              }))
+              def registerTimer[L: Show](label: Label[L]): Task[DWTimer] =
+                reg.modify(r => {
+                  val name = label2Name(label)
+                  (r.timer(name), r)
+                })
 
-            def registerTimer[L: Show](label: Label[L]): Task[DWTimer] =
-              registryRef >>= (_.modify(r => {
-                val name = label2Name(label)
-                (r.timer(name), r)
-              }))
-
-            def registerMeter[L: Show](label: Label[L]): Task[DWMeter] =
-              registryRef >>= (_.modify(r => {
-                val name = label2Name(label)
-                (r.meter(name), r)
-              }))
+              def registerMeter[L: Show](label: Label[L]): Task[DWMeter] =
+                reg.modify(r => {
+                  val name = label2Name(label)
+                  (r.meter(name), r)
+                })
+            }
           }
-      )
+        }
+      }
+    }
 
     val live: ZLayer[Any, Nothing, Registry] = ZLayer.succeed[Option[MetricRegistry]](None) >>> explicit
 

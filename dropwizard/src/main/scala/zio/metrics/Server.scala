@@ -14,19 +14,15 @@ import org.http4s.dsl.io._
 import org.http4s.blaze.server._
 import zio.RIO
 import zio.ZIO
-import zio.blocking.Blocking
-import zio.clock.Clock
-import zio.console.Console
+
 import zio.interop.catz._
 import zio.metrics.dropwizard.DropwizardExtractor._
 import zio.metrics.dropwizard.typeclasses._
-import zio.random.Random
-import zio.system.System
 
 object Server {
   val port: Int = envOrNone("HTTP_PORT").fold(9090)(_.toInt)
 
-  type HttpEnvironment = Clock with Console with System with Random with Blocking
+  type HttpEnvironment = Any
   type HttpTask[A]     = RIO[HttpEnvironment, A]
 
   type KleisliApp = Kleisli[HttpTask, Request[HttpTask], Response[HttpTask]]
@@ -38,7 +34,8 @@ object Server {
       ZIO
         .runtime[HttpEnvironment]
         .flatMap { implicit rts =>
-          BlazeServerBuilder[HttpTask](rts.platform.executor.asEC)
+          BlazeServerBuilder[HttpTask]
+            .withExecutionContext(rts.runtimeConfig.executor.asExecutionContext)
             .bindHttp(port)
             .withHttpApp(app)
             .serve

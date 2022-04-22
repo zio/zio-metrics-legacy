@@ -3,9 +3,8 @@ package zio.metrics
 import java.util.concurrent.ThreadLocalRandom
 
 import zio._
-import zio.clock.Clock
-import zio.duration.Duration
-import zio.duration.Duration.Finite
+import zio.Duration
+import zio.Duration.Finite
 import zio.metrics.encoders._
 import zio.stream.ZStream
 
@@ -18,8 +17,6 @@ final class Client(
 )(
   private val queue: Queue[Metric]
 ) {
-
-  type UDPQueue = ZQueue[Nothing, Any, Encoder, Throwable, Nothing, Metric]
 
   private val duration: Duration = Finite(timeout)
 
@@ -35,7 +32,7 @@ final class Client(
     case d @ Distribution(name, _, _, _)         => d.copy(name = s"$prefix.$name")
   }
 
-  private val udpClient: ZManaged[Any, Throwable, UDPClient] = (host, port) match {
+  private val udpClient: ZIO[Scope, Throwable, UDPClient] = (host, port) match {
     case (None, None)       => UDPClient()
     case (Some(h), Some(p)) => UDPClient(h, p)
     case (Some(h), None)    => UDPClient(h, 8125)
@@ -43,7 +40,7 @@ final class Client(
   }
 
   private val sample: Chunk[Metric] => Task[Chunk[Metric]] = metrics =>
-    Task(
+    Task.succeed(
       metrics.filter(
         m =>
           m match {
@@ -59,21 +56,23 @@ final class Client(
       sde  <- RIO.environment[Encoder]
       flt  <- sample(metrics)
       msgs <- RIO.foreach(flt)(sde.get.encode(_))
-      ints <- RIO.foreach(msgs.collect { case Some(msg) => msg })(s => udpClient.use(_.send(s)))
+      ints <- RIO.foreach(msgs.collect { case Some(msg) => msg })(s => ZIO.scoped(udpClient.flatMap(_.send(s))))
     } yield ints
 
-  private def listen: URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
+  private def listen: ZIO[Scope with Client.ClientEnv, Nothing, Fiber[Throwable, Unit]] =
     listen[Chunk, Int](udp)
 
   private def listen[F[_], A](
     f: Chunk[Metric] => RIO[Encoder, F[A]]
-  ): URIO[Client.ClientEnv, Fiber[Throwable, Unit]] =
+  ): ZIO[Scope with Client.ClientEnv, Nothing, Fiber[Throwable, Unit]] =
     ZStream
-      .fromQueue[Encoder, Throwable, Metric](queue)
+      .fromQueue[Metric](queue)
       .groupedWithin(bufferSize, duration)
-      .mapM(l => f(l))
+      .mapZIO { l =>
+        f(l)
+      }
       .runDrain
-      .fork
+      .forkScoped
 
   val send: Metric => UIO[Unit] =
     metric =>
@@ -100,14 +99,14 @@ final class Client(
 
 object Client {
 
-  type ClientEnv = Encoder with Clock //with Console
+  type ClientEnv = Encoder
 
-  def apply(): ZManaged[ClientEnv, Throwable, Client] = apply(5, 5000, 100, None, None, None)
+  def apply(): ZIO[Scope with ClientEnv, Throwable, Client] = apply(5, 5000, 100, None, None, None)
 
-  def apply(bufferSize: Int, timeout: Long): ZManaged[ClientEnv, Throwable, Client] =
+  def apply(bufferSize: Int, timeout: Long): ZIO[Scope with ClientEnv, Throwable, Client] =
     apply(bufferSize, timeout, 100, None, None, None)
 
-  def apply(bufferSize: Int, timeout: Long, queueCapacity: Int): ZManaged[ClientEnv, Throwable, Client] =
+  def apply(bufferSize: Int, timeout: Long, queueCapacity: Int): ZIO[Scope with ClientEnv, Throwable, Client] =
     apply(bufferSize, timeout, queueCapacity, None, None, None)
 
   def apply(
@@ -117,17 +116,16 @@ object Client {
     host: Option[String],
     port: Option[Int],
     prefix: Option[String]
-  ): ZManaged[ClientEnv, Throwable, Client] =
-    ZManaged.make {
-      for {
-        queue  <- ZQueue.bounded[Metric](queueCapacity)
-        client = new Client(bufferSize, timeout, host, port, prefix)(queue)
-        fiber  <- client.listen
-      } yield (client, fiber)
-    } { case (client, fiber) => client.queue.shutdown *> fiber.join.orDie }
-      .map(_._1)
+  ): ZIO[Scope with ClientEnv, Throwable, Client] =
+    for {
+      queue  <- ZIO.acquireRelease(Queue.bounded[Metric](queueCapacity))(_.shutdown)
+      client = new Client(bufferSize, timeout, host, port, prefix)(queue)
+      _      <- client.listen
+    } yield client
 
-  def withListener[F[_], A](listener: Chunk[Metric] => RIO[Encoder, F[A]]): ZManaged[ClientEnv, Throwable, Client] =
+  def withListener[F[_], A](
+    listener: Chunk[Metric] => RIO[Encoder, F[A]]
+  ): ZIO[Scope with ClientEnv, Throwable, Client] =
     withListener(5, 5000, 100, None, None, None)(listener)
 
   def withListener[F[_], A](
@@ -137,14 +135,10 @@ object Client {
     host: Option[String],
     port: Option[Int],
     prefix: Option[String]
-  )(listener: Chunk[Metric] => RIO[Encoder, F[A]]): ZManaged[ClientEnv, Throwable, Client] =
-    ZManaged.make {
-      for {
-        queue  <- ZQueue.bounded[Metric](queueCapacity)
-        client = new Client(bufferSize, timeout, host, port, prefix)(queue)
-        fiber  <- client.listen(listener)
-      } yield (client, fiber)
-    } { case (client, fiber) => client.queue.shutdown *> fiber.join.orDie }
-      .map(_._1)
-
+  )(listener: Chunk[Metric] => RIO[Encoder, F[A]]): ZIO[Scope with ClientEnv, Throwable, Client] =
+    for {
+      queue  <- ZIO.acquireRelease(Queue.bounded[Metric](queueCapacity))(_.shutdown)
+      client = new Client(bufferSize, timeout, host, port, prefix)(queue)
+      _      <- client.listen(listener)
+    } yield client
 }

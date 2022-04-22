@@ -1,21 +1,21 @@
 package zio.metrics
 
-import zio.{ Has, Layer, RIO, Runtime, Task, ZLayer }
-import zio.console.putStrLn
+import zio.{ Layer, RIO, Runtime, Task, ZLayer }
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.helpers._
 import zio.metrics.prometheus.exporters.Exporters
 import io.prometheus.client.exporter.HTTPServer
-import zio.console.Console
 import io.prometheus.client.CollectorRegistry
+import zio.Console
+import zio.Console.printLine
 
 object MetricsLayer {
 
-  type Env = Registry with Exporters with Console
+  type Env = Registry with Exporters
 
-  val rt = Runtime.unsafeFromLayer(Registry.live ++ Exporters.live ++ Console.live)
+  val rt = Runtime.unsafeFromLayer(Registry.live ++ Exporters.live)
 
-  type Metrics = Has[Metrics.Service]
+  type Metrics = Metrics.Service
 
   object Metrics {
     trait Service {
@@ -70,8 +70,8 @@ object MetricsLayer {
           }
         )
 
-    val receiverHas: ZLayer[Has[(Counter, Histogram)], Nothing, Metrics] =
-      ZLayer.fromFunction[Has[(Counter, Histogram)], Metrics.Service](
+    val receiverHas: ZLayer[(Counter, Histogram), Nothing, Metrics] =
+      ZLayer.fromFunction[(Counter, Histogram), Metrics.Service](
         minst =>
           new Service {
             def getRegistry(): Task[CollectorRegistry] =
@@ -81,10 +81,10 @@ object MetricsLayer {
               inc(1.0, tags)
 
             def inc(amount: Double, tags: Array[String]): Task[Unit] =
-              minst.get._1.inc(amount, tags)
+              minst._1.inc(amount, tags)
 
             def time(f: () => Unit, tags: Array[String]): Task[Double] =
-              minst.get._2.time(f, tags)
+              minst._2.time(f, tags)
           }
       )
   }
@@ -108,24 +108,24 @@ object MetricsLayer {
   )
 
   val rLayer: Layer[Nothing, Metrics] = Metrics.receiver(c, h)
-  val rtReceiver: Runtime.Managed[Metrics with Exporters with Console] =
-    Runtime.unsafeFromLayer(rLayer ++ Exporters.live ++ Console.live)
+  val rtReceiver: Runtime.Scoped[Metrics with Exporters] =
+    Runtime.unsafeFromLayer(rLayer ++ Exporters.live)
 
   /*val chHas: ULayer[Has[(Counter, Histogram)]] = ZLayer.succeed[(Counter, Histogram)]((c, h))
   val rLayerHas: ZLayer[Any, Nothing, Metrics] = chHas >>> Metrics.receiverHas
   println(s"defining ReceiverHas RT: $rLayerHas")
-  val combinedLayer: ZLayer[Any, Nothing, Metrics with Console] = rLayerHas ++ Console.live
+  val combinedLayer: ZLayer[Any, Nothing, Metrics with Console] = rLayerHas
   println(s"combined: $combinedLayer")
   val rtReceiverHas = Runtime.unsafeFromLayer(combinedLayer)*/
 
   println("defining Test program")
   val exporterTest: RIO[
-    Metrics with Exporters with Console,
+    Metrics with Exporters,
     HTTPServer
   ] =
     for {
       m  <- RIO.environment[Metrics]
-      _  <- putStrLn("Exporters")
+      _  <- printLine("Exporters")
       r  <- m.get.getRegistry()
       _  <- initializeDefaultExports(r)
       hs <- http(r, 9090)
@@ -134,10 +134,10 @@ object MetricsLayer {
       _  <- m.get.inc(2.0, Array("LoginCounter", "login"))
       _  <- m.get.time(() => Thread.sleep(2000), Array("histogram", "get"))
       s  <- write004(r)
-      _  <- putStrLn(s)
+      _  <- printLine(s)
     } yield hs
 
-  val program = exporterTest >>= (server => putStrLn(s"Server port: ${server.getPort()}"))
+  val program = exporterTest flatMap (server => Console.printLine(s"Server port: ${server.getPort()}"))
 
   def main(args: Array[String]): Unit =
     rt.unsafeRun(program.provideSomeLayer[Env](Metrics.live))

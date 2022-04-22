@@ -1,21 +1,19 @@
 package zio.metrics
 
 import io.prometheus.client.CollectorRegistry
-import zio.clock.Clock
-import zio.duration._
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.exporters.Exporters
 import zio.metrics.prometheus.helpers._
 import zio.test.Assertion._
-import zio.test.environment.TestClock
-import zio.test.{ assert, DefaultRunnableSpec, ZSpec }
+import zio.test.{ assert, TestAspect, TestClock, TestEnvironment, ZIOSpecDefault, ZSpec }
 import zio.{ RIO, UIO, ZIO }
 
 import java.util
+import zio._
 
-object PrometheusTest extends DefaultRunnableSpec {
+object PrometheusTest extends ZIOSpecDefault {
 
-  private val env = Registry.live ++ Exporters.live ++ Clock.live
+  private val env = Registry.live ++ Exporters.live
 
   val counterTestRegistry: RIO[Registry, CollectorRegistry] = for {
     c <- Counter("simple_counter", Array("method", "resource"))
@@ -35,7 +33,7 @@ object PrometheusTest extends DefaultRunnableSpec {
 
   val histogramTestRegistry: RIO[Registry, CollectorRegistry] = for {
     h <- Histogram("simple_histogram", Array("method"), DefaultBuckets(Seq(10, 20, 30, 40, 50)))
-    _ <- RIO.foreach_(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.observe(_, Array("get")))
+    _ <- RIO.foreachDiscard(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.observe(_, Array("get")))
     r <- getCurrentRegistry()
   } yield r
 
@@ -45,14 +43,14 @@ object PrometheusTest extends DefaultRunnableSpec {
     r <- getCurrentRegistry()
   } yield r
 
-  val histogramDurationTestRegistry: ZIO[Registry with TestClock with Clock, Throwable, CollectorRegistry] = {
+  val histogramDurationTestRegistry: ZIO[Registry, Throwable, CollectorRegistry] = {
     for {
       h <- Histogram("duration_histogram", Array("method"), ExponentialBuckets(0.25, 2, 5))
       t <- h.startTimer(Array("time"))
-      _ <- ZIO.foreach_(List(75L, 750L, 2000L))(
+      _ <- ZIO.foreachDiscard(List(75L, 750L, 2000L))(
             n =>
               for {
-                _ <- UIO(n).delay(n.millis)
+                _ <- UIO.succeed(n).delay(n.millis)
                 _ <- TestClock.adjust(n.millis)
                 d <- h.observeDuration(t)
               } yield d
@@ -63,14 +61,14 @@ object PrometheusTest extends DefaultRunnableSpec {
 
   val summaryTestRegistry: RIO[Registry, CollectorRegistry] = for {
     s <- Summary("simple_summary", Array("method"), List((0.5, 0.05), (0.9, 0.01)))
-    _ <- RIO.foreach_(List(10.5, 25.0, 50.7, 57.3, 19.8))(s.observe(_, Array("put")))
+    _ <- RIO.foreachDiscard(List(10.5, 25.0, 50.7, 57.3, 19.8))(s.observe(_, Array("put")))
     r <- getCurrentRegistry()
   } yield r
 
-  override def spec: ZSpec[Environment, Failure] =
+  override def spec: ZSpec[TestEnvironment, Any] =
     suite("PrometheusLabelsTest")(
       suite("Counter")(
-        testM("counter increases by `inc` amount") {
+        test("counter increases by `inc` amount") {
           val timeSeriesNames = new util.HashSet[String]() {
             add("simple_counter_total")
           }
@@ -89,7 +87,7 @@ object PrometheusTest extends DefaultRunnableSpec {
         }
       ),
       suite("Gauge")(
-        testM("gauge returns latest value") {
+        test("gauge returns latest value") {
           val set: util.Set[String] = new util.HashSet[String]()
           set.add("simple_gauge")
 
@@ -105,7 +103,7 @@ object PrometheusTest extends DefaultRunnableSpec {
         }
       ),
       suite("Histogram")(
-        testM("histogram count and sum are as expected") {
+        test("histogram count and sum are as expected") {
           val set: util.Set[String] = new util.HashSet[String]()
           set.add("simple_histogram_count")
           set.add("simple_histogram_sum")
@@ -119,7 +117,7 @@ object PrometheusTest extends DefaultRunnableSpec {
             assert(sum)(equalTo(163.3))
           }
         },
-        testM("histogram timer accepts lambdas") {
+        test("histogram timer accepts lambdas") {
           val set: util.Set[String] = new util.HashSet[String]()
           set.add("simple_histogram_timer_count")
           set.add("simple_histogram_timer_sum")
@@ -134,7 +132,7 @@ object PrometheusTest extends DefaultRunnableSpec {
             assert(sum)(isLessThanEqualTo(3.0))
           }
         },
-        testM("histogram duration count and sum are as expected") {
+        test("histogram duration count and sum are as expected") {
           val set: util.Set[String] = new util.HashSet[String]()
           set.add("duration_histogram_count")
           set.add("duration_histogram_sum")
@@ -151,7 +149,7 @@ object PrometheusTest extends DefaultRunnableSpec {
         }
       ),
       suite("Summary")(
-        testM("summary count and sum are as expected") {
+        test("summary count and sum are as expected") {
           val set: util.Set[String] = new util.HashSet[String]()
           set.add("simple_summary_count")
           set.add("simple_summary_sum")
@@ -166,5 +164,5 @@ object PrometheusTest extends DefaultRunnableSpec {
           }
         }
       )
-    ).provideCustomLayer(env)
+    ).provideCustomLayer(env) @@ TestAspect.withLiveClock
 }

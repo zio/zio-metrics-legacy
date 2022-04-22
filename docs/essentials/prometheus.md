@@ -17,10 +17,10 @@ import zio.metrics.prometheus.helpers._
 import zio.metrics.prometheus.exporters._
 
 // also for printing debug messages to the console
-import zio.console.{ Console, putStrLn }
+import zio.Console
+import zio.Console.printLine
 // and for sleeping/clocks
-import zio.clock.Clock
-import zio.duration.Duration
+import zio.Duration
 import scala.concurrent.duration._
 // and for inspecting prometheus
 import java.util
@@ -30,7 +30,7 @@ We will also provide our own `Runtime`:
 
 ```scala mdoc:silent
   val rt = Runtime
-    .unsafeFromLayer(Registry.live ++ Exporters.live ++ Console.live ++ Clock.live)
+    .unsafeFromLayer(Registry.live ++ Exporters.live)
 ```
 
 We include ALL 5 metrics in the `runtime` since we will see examples for each, normally you
@@ -105,7 +105,7 @@ In this example we create a `CollectorRegistry` external to `zio-metrics`
 `myRegistry` to a layer (i.e. create a Layer that takes `Nothing` and outputs
 `Option[CollectorRegistry]`) and compose it with `Registry.explicit`. The you
 just need to use `myCustomLayer` wherever you would have used `Registry.live`,
-i.e. `counter.register(name, Array("exporter")).provideLayer(myCustomLayer)` or `val rt = Runtime.unsafeFromLayer(myCustomLayer ++ Exporters.live ++ Console.live)`
+i.e. `counter.register(name, Array("exporter")).provideLayer(myCustomLayer)` or `val rt = Runtime.unsafeFromLayer(myCustomLayer ++ Exporters.live)`
 
 ## Counter
 Counter has methods to increase a counter by 1 or by an arbitrary double
@@ -124,8 +124,8 @@ If the counter is registered with labels, then you need to increase the counter
   passing the same number of labels when registered.
 
 ```scala mdoc:silent
-  val testLabeledCounter: RIO[Registry, CollectorRegistry] = for {
-    c  <- Counter("simple_counter_labeled", Array("method", "resource"))
+  val testLabelledCounter: RIO[Registry, CollectorRegistry] = for {
+    c  <- Counter("simple_counter_labelled", Array("method", "resource"))
     _  <- c.inc(Array("get", "users"))
     _  <- c.inc(2.0, Array("get", "users"))
     r  <- getCurrentRegistry()
@@ -204,7 +204,7 @@ method](https://github.com/zio/zio-metrics/blob/master/prometheus/src/main/scala
 With labels it looks like this:
 
 ```scala mdoc:silent
-  val testLabeledGauge: RIO[Registry, (CollectorRegistry, Double)] = for {
+  val testLabelledGauge: RIO[Registry, (CollectorRegistry, Double)] = for {
     g  <- Gauge("simple_gauge", Array("method"))
     _  <- g.inc(Array("get"))
     _  <- g.inc(2.0, Array("get"))
@@ -254,7 +254,7 @@ given registry. Let's look at an example of how all this works.
   import io.prometheus.client.exporter.HTTPServer
   
   val exporterTest: RIO[
-    Registry with Exporters with Console,
+    Registry with Exporters,
     HTTPServer
   ] =
     for {
@@ -267,11 +267,11 @@ given registry. Let's look at an example of how all this works.
       h  <- histogram.register("export_histogram", Array("exporter", "method"))
       _  <- h.time(() => Thread.sleep(2000), Array("histogram", "get"))
       s  <- write004(r)
-      _  <- putStrLn(s)
+      _  <- printLine(s)
     } yield hs
 
   def main(args: Array[String]): Unit =
-    rt.unsafeRun(exporterTest >>= (server => putStrLn(s"Server port: ${server.getPort()}")))
+    rt.unsafeRun(exporterTest >>= (server => printLine(s"Server port: ${server.getPort()}")))
 ```
 
 Where `>>=` = `flatMap`. Also note that `exporters` refers to the helper object
@@ -362,10 +362,10 @@ when `startTimer` was called and each time we `observeDuration`.
  
 ```scala mdoc:silent
   val f = (n: Long) => {
-    RIO.sleep(Duration.fromScala(n.millis)) *> putStrLn(s"n = $n")
+    RIO.sleep(Duration.fromScala(n.millis)) *> printLine(s"n = $n")
   }
 
-  val testHistogramDuration: RIO[Registry with Console with Clock, CollectorRegistry] = for {
+  val testHistogramDuration: RIO[Registry, CollectorRegistry] = for {
     h <- Histogram("duration_histogram", Array("method"), ExponentialBuckets(0.25, 2, 5))
     t <- h.startTimer(Array("time"))
     dl <- RIO.foreach(List(75L, 750L, 2000L))(
@@ -375,7 +375,7 @@ when `startTimer` was called and each time we `observeDuration`.
                d <- h.observeDuration(t)
              } yield d
          )
-    _ <- RIO.foreach(dl)(d => putStrLn(d.toString()))
+    _ <- RIO.foreach(dl)(d => printLine(d.toString()))
     r <- getCurrentRegistry()
   } yield r
 ```
@@ -407,8 +407,7 @@ acquisition, use, and release of the timer and the task execution.
   } yield (r, a)
 ```
 
-Now lets inspect our values by `tap`ping our `RIO`. Add ` with Clock.Live`
- to the runtime `rt` before executing the following code.
+Now lets inspect our values by `tap`ping our `RIO`.
 
 ```scala mdoc:silent
   rt.unsafeRun(testHistogramDuration.tap(r => write004(r).map(println)))
@@ -495,10 +494,10 @@ you will register the exact metrics you need as private values and then you
 simply expose methods to use them in your `MeasuringPoints` through the Layer:
 
 ```scala
-  type Env = Registry with Exporters with Console
-  val rtLayer = Runtime.unsafeFromLayer(Registry.live ++ Exporters.live ++ Console.live)
+  type Env = Registry with Exporters
+  val rtLayer = Runtime.unsafeFromLayer(Registry.live ++ Exporters.live)
 
-  type Metrics = Has[Metrics.Service]
+  type Metrics = Metrics.Service
 
   object Metrics {
     trait Service {
@@ -541,12 +540,12 @@ And then we can use it so:
 
 ```scala
   val exporterTest: RIO[
-    Metrics with Exporters with Console,
+    Metrics with Exporters,
     HTTPServer
   ] =
     for {
       m  <- RIO.environment[Metrics]
-      _  <- putStrLn("Exporters")
+      _  <- printLine("Exporters")
       r  <- m.get.getRegistry()
       _  <- initializeDefaultExports(r)
       hs <- http(r, 9090)
@@ -555,10 +554,10 @@ And then we can use it so:
       _  <- m.get.inc(2.0, Array("LoginCounter", "login"))
       _  <- m.get.time(() => Thread.sleep(2000), Array("histogram", "get"))
       s  <- write004(r)
-      _  <- putStrLn(s)
+      _  <- printLine(s)
     } yield hs
 
-  val programL = exporterTest >>= (server => putStrLn(s"Server port: ${server.getPort()}"))
+  val programL = exporterTest >>= (server => printLine(s"Server port: ${server.getPort()}"))
 
   def main(args: Array[String]): Unit =
     rtLayer.unsafeRun(programL.provideSomeLayer[Env](Metrics.live))
@@ -609,7 +608,7 @@ The second approach is somewhat more generic and doesn't need extra calls to
 `Map` inside our custom Layer, here called `MetricsMap`:
 
 ```scala
-  type MetricMap = Has[MetricMap.Service]
+  type MetricMap = MetricMap.Service
 
   case class InvalidMetric(msg: String) extends Exception
 
@@ -683,15 +682,15 @@ This technique aloows you to register all your metrics in one place:
 and then usinig them downstream wherever you need:
 
 ```scala
-  val rtMM = Runtime.unsafeFromLayer(MetricMap.live ++ Registry.live ++ Exporters.live ++ Console.live)
+  val rtMM = Runtime.unsafeFromLayer(MetricMap.live ++ Registry.live ++ Exporters.live)
 
   val exporterTest: RIO[
-    MetricMap with Exporters with Console,
+    MetricMap with Exporters,
     HTTPServer
   ] =
     for {
       m  <- RIO.environment[MetricMap]
-      _  <- putStrLn("Exporters")
+      _  <- printLine("Exporters")
       r  <- m.get.getRegistry()
       _  <- initializeDefaultExports(r)
       hs <- http(r, 9090)
@@ -701,10 +700,10 @@ and then usinig them downstream wherever you need:
       h  <- m.get.getHistogram("export_histogram")
       _  <- h.time(() => Thread.sleep(2000), Array("histogram", "get"))
       s  <- write004(r)
-      _  <- putStrLn(s)
+      _  <- printLine(s)
     } yield hs
 
-  val programMM = startup *> exporterTest >>= (server => putStrLn(s"Server port: ${server.getPort()}"))
+  val programMM = startup *> exporterTest >>= (server => printLine(s"Server port: ${server.getPort()}"))
 
   def main(args: Array[String]): Unit =
     rt.unsafeRunMM(programMM)

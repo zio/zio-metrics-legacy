@@ -21,18 +21,19 @@ import com.codahale.metrics.SlidingTimeWindowArrayReservoir
 
 
 // also for printing debug messages to the console
-import zio.console.{ Console, putStrLn }
+import zio.Console
+import zio.Console.printLine
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
-import zio.duration.Duration
+import zio.Duration
 ```
 
 We will also provide our own `Runtime` which will use ZIOMetric Dropwizard's
-`Registry` layer  plus its Reporters layer plus ZIO's `Console` layer:
+`Registry` layer  plus its Reporters layer:
 
 ```scala mdoc:silent
-  val rt = Runtime.unsafeFromLayer(Registry.live ++ Reporters.live ++ Console.live)
+  val rt = Runtime.unsafeFromLayer(Registry.live ++ Reporters.live)
 ```
 
 We will assume the reader has working knowledge for Dropwizard already, if
@@ -100,7 +101,7 @@ In this example we create a `MetricRegistry` external to `zio-metrics`
 `myRegistry` to a layer (i.e. create a Layer that takes `Nothing` and outputs
 `Option[MetricRegistry]`) and compose it with `Registry.explicit`. The you
 just need to use `myCustomLayer` wherever you would have used `Registry.live`,
-i.e. `counter.register(name, Array("exporter")).provideLayer(myCustomLayer)` or `val rt = Runtime.unsafeFromLayer(myCustomLayer ++ Console.live)`
+i.e. `counter.register(name, Array("exporter")).provideLayer(myCustomLayer)` or `val rt = Runtime.unsafeFromLayer(myCustomLayer)`
 
 ## Counter
 Counter has methods to increase a counter by 1 or by an arbitrary double
@@ -118,7 +119,7 @@ passed as a parameter along with optional labels.
 Or with labels:
 
 ```scala mdoc:silent
-  val testLabeledCounter: RIO[Registry, MetricRegistry] = for {
+  val testLabelledCounter: RIO[Registry, MetricRegistry] = for {
     c   <- counter.register("DropwizardCounterHelper", Array("test", "counter"))
     _   <- c.inc()
     _   <- c.inc(2.0)
@@ -172,7 +173,7 @@ results:
   val str = for {
     r <- getCurrentRegistry()
     j <- DropwizardExtractor.writeJson(r)(None)
-    _ <- putStrLn(j.spaces2)
+    _ <- printLine(j.spaces2)
   } yield ()
 
   rt.unsafeRun(str)
@@ -224,7 +225,7 @@ Let's combine a couple of them:
     val json = rt.unsafeRun(tests >>= (r =>
     DropwizardExtractor.writeJson(r)(None))) // JSON Registry Printer
     RIO.sleep(Duration.fromScala(60.seconds))
-    putStrLn(json.spaces2).map(_ => 0)
+    printLine(json.spaces2).map(_ => 0)
   }
 ```
 
@@ -404,7 +405,7 @@ finally, we just have to call `Server.builder` and provide the environment:
     val app: RIO[HttpEnvironment, Unit] = kApp >>= builder
 
     app
-      .catchAll(t => putStrLn(s"$t"))
+      .catchAll(t => printLine(s"$t"))
       .run
       .map(r => { println(s"Exiting $r"); 0})
   }

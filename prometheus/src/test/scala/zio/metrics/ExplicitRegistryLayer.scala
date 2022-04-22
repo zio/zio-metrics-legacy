@@ -1,16 +1,16 @@
 package zio.metrics
 
 import zio.Runtime
-import zio.console.putStrLn
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.helpers._
 import zio.metrics.prometheus.exporters.Exporters
-import zio.console.Console
-import zio.{ Has, Layer, ZLayer }
+import zio.{ Layer, ZLayer }
 import zio.{ IO, RIO, Task }
 import io.prometheus.client.CollectorRegistry
 import io.prometheus.client.{ Counter => PCounter }
 import io.prometheus.client.exporter.HTTPServer
+import zio.Console
+import zio.Console.printLine
 
 object ExplicitRegistryLayer {
 
@@ -24,13 +24,15 @@ object ExplicitRegistryLayer {
 
   val myCustomLayer = ZLayer.succeed(myRegistry) >>> Registry.explicit
 
-  val rt = Runtime.unsafeFromLayer(MetricMap.live ++ Exporters.live ++ Console.live)
+  val rt = Runtime.unsafeFromLayer(MetricMap.live ++ Exporters.live)
 
-  type MetricMap = Has[MetricMap.Service]
+  type MetricMap = MetricMap.Service
 
   case class InvalidMetric(msg: String) extends Exception
 
   object MetricMap {
+    import zio.metrics.prometheus.Metric
+
     trait Service {
       def getRegistry(): Task[CollectorRegistry]
 
@@ -49,13 +51,15 @@ object ExplicitRegistryLayer {
         getCurrentRegistry().provideLayer(myCustomLayer)
 
       def put(key: String, metric: Metric): Task[Unit] =
-        Task(
-          this.metricsMap =
-            if (metricsMap.contains(key))
-              metricsMap.updated(key, metric)
-            else
-              metricsMap + (key -> metric)
-        ).unit
+        Task
+          .succeed(
+            this.metricsMap =
+              if (metricsMap.contains(key))
+                metricsMap.updated(key, metric)
+              else
+                metricsMap + (key -> metric)
+          )
+          .unit
 
       def getHistogram(key: String): IO[InvalidMetric, Histogram] =
         metricsMap(key) match {
@@ -88,12 +92,12 @@ object ExplicitRegistryLayer {
     } yield ()
 
   val exporterTest: RIO[
-    MetricMap with Exporters with Console,
+    MetricMap with Exporters,
     HTTPServer
   ] =
     for {
       m  <- RIO.environment[MetricMap]
-      _  <- putStrLn("Exporters")
+      _  <- printLine("Exporters")
       r  <- m.get.getRegistry()
       _  <- initializeDefaultExports(r)
       hs <- http(r, 9090)
@@ -103,10 +107,10 @@ object ExplicitRegistryLayer {
       h  <- m.get.getHistogram("export_histogram")
       _  <- h.time(() => Thread.sleep(2000), Array("histogram", "get"))
       s  <- write004(r)
-      _  <- putStrLn(s)
+      _  <- printLine(s)
     } yield hs
 
-  val program = startup *> exporterTest >>= (server => putStrLn(s"Server port: ${server.getPort()}"))
+  val program = startup *> exporterTest flatMap (server => Console.printLine(s"Server port: ${server.getPort()}"))
 
   def main(args: Array[String]): Unit =
     rt.unsafeRun(program)
