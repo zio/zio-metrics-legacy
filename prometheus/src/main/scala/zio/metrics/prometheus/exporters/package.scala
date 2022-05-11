@@ -1,7 +1,6 @@
 package zio.metrics.prometheus
 
-import zio.{ Layer, Task, ZLayer }
-
+import zio.{ Layer, Task, ZIO, ZLayer }
 import io.prometheus.client.CollectorRegistry
 import io.prometheus.client.exporter.{ HTTPServer, PushGateway }
 import io.prometheus.client.bridge.Graphite
@@ -40,12 +39,12 @@ package object exporters {
 
     val live: Layer[Nothing, Exporters] = ZLayer.succeed(new Service {
       def http(r: CollectorRegistry, port: Int): zio.Task[HTTPServer] =
-        Task.succeed {
+        ZIO.succeed {
           new HTTPServer(new InetSocketAddress(port), r)
         }
 
       def graphite(r: CollectorRegistry, host: String, port: Int, intervalSeconds: Int): Task[Thread] =
-        Task.succeed {
+        ZIO.succeed {
           val g = new Graphite(host, port)
           g.start(r, intervalSeconds)
         }
@@ -59,7 +58,7 @@ package object exporters {
         password: Option[String],
         httpConnectionFactory: Option[HttpConnectionFactory]
       ): Task[Unit] =
-        Task.succeed {
+        ZIO.succeed {
           val pg = new PushGateway(s"$host:$port")
 
           if (user.isDefined)
@@ -76,18 +75,18 @@ package object exporters {
         }
 
       def write004(r: CollectorRegistry): Task[String] =
-        Task.succeed {
+        ZIO.succeed {
           val writer = new StringWriter
           TextFormat.write004(writer, r.metricFamilySamples)
           writer.toString
         }
 
       def initializeDefaultExports(r: CollectorRegistry): Task[Unit] =
-        Task.succeed(DefaultExports.initialize())
+        ZIO.succeed(DefaultExports.initialize())
     })
 
     def stopHttp(server: HTTPServer): Task[Unit] =
-      Task.succeed(server.close())
+      ZIO.succeed(server.close())
   }
 
 }

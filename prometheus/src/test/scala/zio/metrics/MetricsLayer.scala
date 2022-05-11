@@ -1,6 +1,6 @@
 package zio.metrics
 
-import zio.{ Layer, RIO, Runtime, Task, ZLayer }
+import zio.{ Layer, RIO, Runtime, Task, ZIO, ZLayer }
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.helpers._
 import zio.metrics.prometheus.exporters.Exporters
@@ -70,9 +70,9 @@ object MetricsLayer {
           }
         )
 
-    val receiverHas: ZLayer[(Counter, Histogram), Nothing, Metrics] =
-      ZLayer.fromFunction[(Counter, Histogram), Metrics.Service](
-        minst =>
+    val receiverHas: ZLayer[(Counter, Histogram), Nothing, Metrics] = {
+      ZLayer.fromZIO {
+        ZIO.service[(Counter, Histogram)].map { minst =>
           new Service {
             def getRegistry(): Task[CollectorRegistry] =
               getCurrentRegistry().provideLayer(Registry.live)
@@ -86,7 +86,9 @@ object MetricsLayer {
             def time(f: () => Unit, tags: Array[String]): Task[Double] =
               minst._2.time(f, tags)
           }
-      )
+        }
+      }
+    }
   }
 
   import io.prometheus.client.{ Counter => PCounter, Histogram => PHistogram }
@@ -124,7 +126,7 @@ object MetricsLayer {
     HTTPServer
   ] =
     for {
-      m  <- RIO.environment[Metrics]
+      m  <- ZIO.environment[Metrics]
       _  <- printLine("Exporters")
       r  <- m.get.getRegistry()
       _  <- initializeDefaultExports(r)

@@ -9,7 +9,7 @@ reporters all connected through the `MetricRegistry`.
 Required imports for presented snippets:
 
 ```scala mdoc:silent
-import zio.{ RIO, Runtime, Task }
+import zio.{ RIO, ZIO, Runtime, Task }
 import com.codahale.metrics.{ MetricRegistry, Counter => DWCounter }
 import zio.metrics.{ Label => ZLabel}
 import zio.metrics.dropwizard._
@@ -54,7 +54,7 @@ methods. We'll start using environmental effects until the `Helper` methods are 
 
 ```scala mdoc:silent
   val testRegistry: RIO[Registry, (MetricRegistry, Counter)] = for {
-    dwr <- RIO.environment[Registry]
+    dwr <- ZIO.environment[Registry]
     dwc <- dwr.get.registerCounter(ZLabel("DropwizardTests", Array("test", "counter"), "Just a counter for your consideration"))
     c   <- Task(new Counter(dwc))
     r   <- dwr.get.getCurrent()
@@ -212,7 +212,7 @@ Let's combine a couple of them:
       _   <- c.inc(2.0)
       t   <- timer.register("DropwizardTimer", Array("test", "timer"))
       ctx <- t.start()
-      _ <- RIO.foreach(
+      _ <- ZIO.foreach(
             List(
               Thread.sleep(1000L),
               Thread.sleep(1400L),
@@ -249,7 +249,7 @@ based on the `Reservoir` type with `Uniform Reservoir` being the default type.
 ```scala mdoc:silent
   val testHistogram: RIO[Registry, MetricRegistry] = for {
     h <- histogram.register("DropwizardHistogram", Array("test", "histogram"))
-    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
+    _ <- ZIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
     r <- getCurrentRegistry()
   } yield r
 ```
@@ -262,7 +262,7 @@ of 512:
 ```scala mdoc:silent
   val testUniformHistogram: RIO[Registry, MetricRegistry] = for {
     h <- histogram.register("DropwizardUniformHistogram", Array("uniform", "histogram"), new UniformReservoir(512))
-    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
+    _ <- ZIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
     r <- getCurrentRegistry()
   } yield r
 ```
@@ -276,7 +276,7 @@ reservoir to the past 5 minutes of measurements:
 ```scala mdoc:silent
   val testExponentialHistogram: RIO[Registry, MetricRegistry] = for {
     h <- histogram.register("DropwizardExponentialHistogram", Array("exponential", "histogram"), new ExponentiallyDecayingReservoir)
-    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
+    _ <- ZIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
     r <- getCurrentRegistry()
   } yield r
 ```
@@ -286,7 +286,7 @@ Here's an example of a customized  `SlidingTimeWindowArrayReservoir`:
 ```scala mdoc:silent
   val testSlidingTimeWindowHistogram: RIO[Registry, MetricRegistry] = for {
     h <- histogram.register("DropwizardSlidingHistogram", Array("sliding", "histogram"), new SlidingTimeWindowArrayReservoir(30, TimeUnit.SECONDS))
-    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
+    _ <- ZIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.update(_))
     r <- getCurrentRegistry()
   } yield r
 ```
@@ -301,7 +301,7 @@ Measures the rate at which a set of events occur:
 ```scala mdoc:silent
   val testMeter: RIO[Registry, MetricRegistry] = for {
     m <- meter.register("DropwizardMeter", Array("test", "meter"))
-    _ <- RIO.foreach(Seq(1L, 2L, 3L, 4L, 5L))(m.mark(_))
+    _ <- ZIO.foreach(Seq(1L, 2L, 3L, 4L, 5L))(m.mark(_))
     r <- getCurrentRegistry()
   } yield r
 ```
@@ -317,7 +317,7 @@ of the rate of its occurrence.
     r   <- getCurrentRegistry()
     t   <- timer.register("DropwizardTimer", Array("test", "timer"))
     ctx <- t.start()
-    l <- RIO.foreach(
+    l <- ZIO.foreach(
           List(
             Thread.sleep(1000L),
             Thread.sleep(1400L),
@@ -384,7 +384,7 @@ For measuring, we can reuse our testing function from the `Reporters` section:
       _   <- c.inc(2.0)
       t   <- timer.register("DropwizardTimer", Array("test", "timer"))
       ctx <- t.start()
-      _ <- RIO.foreach(
+      _ <- ZIO.foreach(
             List(
               Thread.sleep(1000L),
               Thread.sleep(1400L),

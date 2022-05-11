@@ -1,6 +1,7 @@
 package zio.metrics.dropwizard
 
-import zio.{ Layer, Task, ZLayer }
+import zio.{ Layer, Task, ZIO, ZLayer }
+
 import java.util.Locale
 import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
@@ -37,9 +38,9 @@ package object reporters {
 
     val live: Layer[Nothing, Reporters] = ZLayer.succeed(new Service {
 
-      def jmx(r: MetricRegistry): zio.Task[JmxReporter] = Task.succeed(JmxReporter.forRegistry(r).build())
+      def jmx(r: MetricRegistry): zio.Task[JmxReporter] = ZIO.succeed(JmxReporter.forRegistry(r).build())
 
-      def console(r: MetricRegistry): Task[ConsoleReporter] = Task.succeed(
+      def console(r: MetricRegistry): Task[ConsoleReporter] = ZIO.succeed(
         ConsoleReporter
           .forRegistry(r)
           .convertRatesTo(TimeUnit.SECONDS)
@@ -48,7 +49,7 @@ package object reporters {
       )
 
       def slf4j(r: MetricRegistry, duration: Int, unit: TimeUnit, loggerName: String): Task[Slf4jReporter] =
-        Task.succeed(
+        ZIO.succeed(
           Slf4jReporter
             .forRegistry(r)
             .outputTo(LoggerFactory.getLogger(loggerName))
@@ -57,7 +58,7 @@ package object reporters {
             .build()
         )
 
-      def csv(r: MetricRegistry, file: File, locale: ju.Locale): zio.Task[Reporter] = Task.succeed(
+      def csv(r: MetricRegistry, file: File, locale: ju.Locale): zio.Task[Reporter] = ZIO.succeed(
         CsvReporter
           .forRegistry(r)
           .formatFor(locale)
@@ -67,7 +68,7 @@ package object reporters {
       )
 
       def graphite(r: MetricRegistry, host: String, port: Int, prefix: String): zio.Task[GraphiteReporter] =
-        Task.succeed {
+        ZIO.succeed {
           val graphite = new Graphite(new InetSocketAddress(host, port))
           GraphiteReporter
             .forRegistry(r)

@@ -6,9 +6,8 @@ import zio.metrics.prometheus.helpers._
 import zio.metrics.prometheus.exporters.Exporters
 import io.prometheus.client.exporter.HTTPServer
 import zio.{ Layer, ZLayer }
-import zio.{ IO, RIO, Task }
+import zio.{ IO, RIO, Task, ZIO }
 import io.prometheus.client.CollectorRegistry
-import zio.Console
 import zio.Console.printLine
 
 object MetricMapLayer {
@@ -40,7 +39,7 @@ object MetricMapLayer {
         getCurrentRegistry().provideLayer(Registry.live)
 
       def put(key: String, metric: Metric): Task[Unit] =
-        Task
+        ZIO
           .succeed(
             this.metricsMap =
               if (metricsMap.contains(key))
@@ -52,14 +51,14 @@ object MetricMapLayer {
 
       def getHistogram(key: String): IO[InvalidMetric, Histogram] =
         metricsMap(key) match {
-          case h @ Histogram(_) => IO.succeed(h)
-          case _                => IO.fail(InvalidMetric("Metric is not a Histogram or doesn't exists!"))
+          case h @ Histogram(_) => ZIO.succeed(h)
+          case _                => ZIO.fail(InvalidMetric("Metric is not a Histogram or doesn't exists!"))
         }
 
       def getCounter(key: String): IO[InvalidMetric, Counter] =
         metricsMap(key) match {
-          case c @ Counter(_) => IO.succeed(c)
-          case _              => IO.fail(InvalidMetric("Metric is not a Counter or doesn't exists!"))
+          case c @ Counter(_) => ZIO.succeed(c)
+          case _              => ZIO.fail(InvalidMetric("Metric is not a Counter or doesn't exists!"))
         }
     })
   }
@@ -69,7 +68,7 @@ object MetricMapLayer {
     Unit
   ] =
     for {
-      m     <- RIO.environment[MetricMap]
+      m     <- ZIO.environment[MetricMap]
       name  = "MetricMapLayer"
       c     <- Counter(name, Array("metricmap"))
       hname = "metricmap_histogram"
@@ -85,7 +84,7 @@ object MetricMapLayer {
     HTTPServer
   ] =
     for {
-      m  <- RIO.environment[MetricMap]
+      m  <- ZIO.environment[MetricMap]
       _  <- printLine("MetricMapLayer")
       r  <- m.get.getRegistry()
       _  <- initializeDefaultExports(r)
@@ -99,7 +98,7 @@ object MetricMapLayer {
       _  <- printLine(s)
     } yield hs
 
-  val program = startup *> exporterTest flatMap (server => Console.printLine(s"Server port: ${server.getPort()}"))
+  val program = startup *> exporterTest flatMap (server => printLine(s"Server port: ${server.getPort()}"))
 
   def main(args: Array[String]): Unit =
     rt.unsafeRun(program)

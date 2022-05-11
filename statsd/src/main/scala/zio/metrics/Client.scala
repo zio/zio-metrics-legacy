@@ -40,7 +40,7 @@ final class Client(
   }
 
   private val sample: Chunk[Metric] => Task[Chunk[Metric]] = metrics =>
-    Task.succeed(
+    ZIO.succeed(
       metrics.filter(
         m =>
           m match {
@@ -53,10 +53,10 @@ final class Client(
 
   private val udp: Chunk[Metric] => RIO[Encoder, Chunk[Int]] = metrics =>
     for {
-      sde  <- RIO.environment[Encoder]
+      sde  <- ZIO.environment[Encoder]
       flt  <- sample(metrics)
-      msgs <- RIO.foreach(flt)(sde.get.encode(_))
-      ints <- RIO.foreach(msgs.collect { case Some(msg) => msg })(s => ZIO.scoped(udpClient.flatMap(_.send(s))))
+      msgs <- ZIO.foreach(flt)(sde.get.encode(_))
+      ints <- ZIO.foreach(msgs.collect { case Some(msg) => msg })(s => ZIO.scoped(udpClient.flatMap(_.send(s))))
     } yield ints
 
   private def listen: ZIO[Scope with Client.ClientEnv, Nothing, Fiber[Throwable, Unit]] =

@@ -4,7 +4,7 @@ import io.prometheus.client.Summary.{ Child => SChild }
 import io.prometheus.client.Histogram.{ Child => HChild }
 import io.prometheus.client.Gauge.{ Child => GChild }
 import io.prometheus.client.Counter.{ Child => CChild }
-import zio.{ RIO, Task, UIO }
+import zio.{ RIO, Task, ZIO }
 import zio.metrics.prometheus.Registry.{ Percentile, Tolerance }
 import io.prometheus.client.{ Counter => PCounter, Gauge => PGauge }
 import io.prometheus.client.{ Histogram => PHistogram, Summary => PSummary }
@@ -18,19 +18,19 @@ final case class Counter(private val pCounter: PCounter) extends Metric {
   def inc(amount: Double): Task[Unit] = inc(amount, Array.empty[String])
 
   def inc(labelNames: Array[String]): Task[Unit] =
-    Task.succeed(if (labelNames.isEmpty) pCounter.inc() else pCounter.labels(labelNames: _*).inc())
+    ZIO.succeed(if (labelNames.isEmpty) pCounter.inc() else pCounter.labels(labelNames: _*).inc())
 
   def inc(amount: Double, labelNames: Array[String]): Task[Unit] =
-    Task.succeed(if (labelNames.isEmpty) pCounter.inc(amount) else pCounter.labels(labelNames: _*).inc(amount))
+    ZIO.succeed(if (labelNames.isEmpty) pCounter.inc(amount) else pCounter.labels(labelNames: _*).inc(amount))
 
   def labels(labelNames: Array[String]): CounterChild = CounterChild(pCounter.labels(labelNames: _*))
 
 }
 
 final case class CounterChild(private val pCounter: CChild) extends Metric {
-  def inc(): Task[Unit] = Task.succeed(pCounter.inc())
+  def inc(): Task[Unit] = ZIO.succeed(pCounter.inc())
 
-  def inc(amount: Double): Task[Unit] = Task.succeed(pCounter.inc(amount))
+  def inc(amount: Double): Task[Unit] = ZIO.succeed(pCounter.inc(amount))
 }
 
 object Counter {
@@ -49,13 +49,13 @@ final case class Gauge(private val pGauge: PGauge) extends Metric {
     getValue(Array.empty[String])
 
   def getValue(labelNames: Array[String]): Task[Double] =
-    Task.succeed(if (labelNames.isEmpty) pGauge.get() else pGauge.labels(labelNames: _*).get())
+    ZIO.succeed(if (labelNames.isEmpty) pGauge.get() else pGauge.labels(labelNames: _*).get())
 
   def inc(): Task[Unit] =
     inc(Array.empty[String])
 
   def inc(labelNames: Array[String]): Task[Unit] =
-    Task.succeed {
+    ZIO.succeed {
       if (labelNames.isEmpty) pGauge.inc()
       else pGauge.labels(labelNames: _*).inc()
     }
@@ -64,43 +64,43 @@ final case class Gauge(private val pGauge: PGauge) extends Metric {
     dec(Array.empty[String])
 
   def dec(labelNames: Array[String]): Task[Unit] =
-    Task.succeed(if (labelNames.isEmpty) pGauge.dec() else pGauge.labels(labelNames: _*).dec())
+    ZIO.succeed(if (labelNames.isEmpty) pGauge.dec() else pGauge.labels(labelNames: _*).dec())
 
   def inc(amount: Double): Task[Unit] =
     inc(amount, Array.empty[String])
 
   def inc(amount: Double, labelNames: Array[String]): Task[Unit] =
-    Task.succeed(if (labelNames.isEmpty) pGauge.inc(amount) else pGauge.labels(labelNames: _*).inc(amount))
+    ZIO.succeed(if (labelNames.isEmpty) pGauge.inc(amount) else pGauge.labels(labelNames: _*).inc(amount))
 
   def dec(amount: Double): Task[Unit] =
     dec(amount, Array.empty[String])
 
   def dec(amount: Double, labelNames: Array[String]): Task[Unit] =
-    Task.succeed(if (labelNames.isEmpty) pGauge.dec(amount) else pGauge.labels(labelNames: _*).dec(amount))
+    ZIO.succeed(if (labelNames.isEmpty) pGauge.dec(amount) else pGauge.labels(labelNames: _*).dec(amount))
 
   def set(amount: Double): Task[Unit] =
     set(amount, Array.empty[String])
 
   def set(amount: Double, labelNames: Array[String]): Task[Unit] =
-    Task.succeed(if (labelNames.isEmpty) pGauge.set(amount) else pGauge.labels(labelNames: _*).set(amount))
+    ZIO.succeed(if (labelNames.isEmpty) pGauge.set(amount) else pGauge.labels(labelNames: _*).set(amount))
 
   def setToCurrentTime(): Task[Unit] =
     setToCurrentTime(Array.empty[String])
 
   def setToCurrentTime(labelNames: Array[String]): Task[Unit] =
-    Task.succeed(
+    ZIO.succeed(
       if (labelNames.isEmpty) pGauge.setToCurrentTime() else pGauge.labels(labelNames: _*).setToCurrentTime()
     )
 
   def setToTime(f: () => Unit): Task[Unit] =
-    Task.succeed {
+    ZIO.succeed {
       val t = pGauge.startTimer()
       f()
       pGauge.set(t.setDuration())
     }
 
   def setToTime(f: () => Unit, labelNames: Array[String]): Task[Unit] =
-    Task.succeed {
+    ZIO.succeed {
       val t = if (labelNames.isEmpty) pGauge.startTimer() else pGauge.labels(labelNames: _*).startTimer()
       f()
       pGauge.set(t.setDuration())
@@ -111,22 +111,22 @@ final case class Gauge(private val pGauge: PGauge) extends Metric {
 
 final case class GaugeChild(private val pGauge: GChild) extends Metric {
 
-  def getValue(): Task[Double] = Task.succeed(pGauge.get())
+  def getValue(): Task[Double] = ZIO.succeed(pGauge.get())
 
-  def inc(): Task[Unit] = Task.succeed(pGauge.inc())
+  def inc(): Task[Unit] = ZIO.succeed(pGauge.inc())
 
-  def dec(): Task[Unit] = Task.succeed(pGauge.dec())
+  def dec(): Task[Unit] = ZIO.succeed(pGauge.dec())
 
-  def inc(amount: Double): Task[Unit] = Task.succeed(pGauge.inc(amount))
+  def inc(amount: Double): Task[Unit] = ZIO.succeed(pGauge.inc(amount))
 
-  def dec(amount: Double): Task[Unit] = Task.succeed(pGauge.dec(amount))
+  def dec(amount: Double): Task[Unit] = ZIO.succeed(pGauge.dec(amount))
 
-  def set(amount: Double): Task[Unit] = Task.succeed(pGauge.set(amount))
+  def set(amount: Double): Task[Unit] = ZIO.succeed(pGauge.set(amount))
 
-  def setToCurrentTime(): Task[Unit] = Task.succeed(pGauge.setToCurrentTime())
+  def setToCurrentTime(): Task[Unit] = ZIO.succeed(pGauge.setToCurrentTime())
 
   def setToTime(f: () => Unit): Task[Unit] =
-    Task.succeed {
+    ZIO.succeed {
       val t = pGauge.startTimer()
       f()
       pGauge.set(t.setDuration())
@@ -153,7 +153,7 @@ final case class Histogram(private val pHistogram: PHistogram) extends Metric {
     observe(amount, Array.empty[String])
 
   def observe(amount: Double, labelNames: Array[String]): Task[Unit] =
-    Task.succeed(
+    ZIO.succeed(
       if (labelNames.isEmpty) pHistogram.observe(amount) else pHistogram.labels(labelNames: _*).observe(amount)
     )
 
@@ -161,16 +161,16 @@ final case class Histogram(private val pHistogram: PHistogram) extends Metric {
     startTimer(Array.empty[String])
 
   def startTimer(labelNames: Array[String]): Task[HistogramTimer] =
-    Task.succeed(if (labelNames.isEmpty) pHistogram.startTimer() else pHistogram.labels(labelNames: _*).startTimer())
+    ZIO.succeed(if (labelNames.isEmpty) pHistogram.startTimer() else pHistogram.labels(labelNames: _*).startTimer())
 
   def observeDuration(timer: HistogramTimer): Task[Double] =
-    Task.succeed(timer.observeDuration())
+    ZIO.succeed(timer.observeDuration())
 
   def time(f: () => Unit): Task[Double] =
     time(f, Array.empty[String])
 
   def time(f: () => Unit, labelNames: Array[String]): Task[Double] =
-    Task.succeed {
+    ZIO.succeed {
       val t = if (labelNames.isEmpty) pHistogram.startTimer() else pHistogram.labels(labelNames: _*).startTimer()
       f()
       t.observeDuration()
@@ -181,16 +181,17 @@ final case class Histogram(private val pHistogram: PHistogram) extends Metric {
 
   def time[R, A](task: RIO[R, A], labelNames: Array[String]): RIO[R, (Double, A)] = {
     val t = if (labelNames.isEmpty) pHistogram.startTimer() else pHistogram.labels(labelNames: _*).startTimer()
-    task flatMap (a => Task.succeed((t.observeDuration(), a)))
+    task flatMap (a => ZIO.succeed((t.observeDuration(), a)))
   }
 
   def time_[R, A](task: RIO[R, A]): RIO[R, A] =
     time_(task, Array.empty[String])
 
   def time_[R, A](task: RIO[R, A], labelNames: Array[String]): RIO[R, A] =
-    Task
-      .succeed(if (labelNames.isEmpty) pHistogram.startTimer() else pHistogram.labels(labelNames: _*).startTimer())
-      .acquireReleaseWith(t => UIO.succeed(t.close()))(_ => task)
+    ZIO.acquireReleaseWith(
+      ZIO
+        .succeed(if (labelNames.isEmpty) pHistogram.startTimer() else pHistogram.labels(labelNames: _*).startTimer())
+    )(t => ZIO.succeed(t.close()))(_ => task)
 
   def labels(labelNames: Array[String]): HistogramChild = HistogramChild(pHistogram.labels(labelNames: _*))
 }
@@ -199,16 +200,16 @@ final case class HistogramChild(private val pHistogram: HChild) extends Metric {
   type HistogramTimer = PHistogram.Timer
 
   def observe(amount: Double): Task[Unit] =
-    Task.succeed(pHistogram.observe(amount))
+    ZIO.succeed(pHistogram.observe(amount))
 
   def startTimer(): Task[HistogramTimer] =
-    Task.succeed(pHistogram.startTimer())
+    ZIO.succeed(pHistogram.startTimer())
 
   def observeDuration(timer: HistogramTimer): Task[Double] =
-    Task.succeed(timer.observeDuration())
+    ZIO.succeed(timer.observeDuration())
 
   def time(f: () => Unit): Task[Double] =
-    Task.succeed {
+    ZIO.succeed {
       val t = pHistogram.startTimer()
       f()
       t.observeDuration()
@@ -216,13 +217,11 @@ final case class HistogramChild(private val pHistogram: HChild) extends Metric {
 
   def time[R, A](task: RIO[R, A]): RIO[R, (Double, A)] = {
     val t = pHistogram.startTimer()
-    task flatMap (a => Task.succeed((t.observeDuration(), a)))
+    task flatMap (a => ZIO.succeed((t.observeDuration(), a)))
   }
 
   def time_[R, A](task: RIO[R, A]): RIO[R, A] =
-    Task
-      .succeed(pHistogram.startTimer())
-      .acquireReleaseWith(t => UIO.succeed(t.close()))(_ => task)
+    ZIO.acquireReleaseWith(ZIO.succeed(pHistogram.startTimer()))(t => ZIO.succeed(t.close()))(_ => task)
 }
 
 object Histogram {
@@ -244,22 +243,22 @@ final case class Summary(private val pSummary: PSummary) extends Metric {
     observe(amount, Array.empty[String])
 
   def observe(amount: Double, labelNames: Array[String]): Task[Unit] =
-    Task.succeed(if (labelNames.isEmpty) pSummary.observe(amount) else pSummary.labels(labelNames: _*).observe(amount))
+    ZIO.succeed(if (labelNames.isEmpty) pSummary.observe(amount) else pSummary.labels(labelNames: _*).observe(amount))
 
   def startTimer(): Task[SummaryTimer] =
     startTimer(Array.empty[String])
 
   def startTimer(labelNames: Array[String]): Task[SummaryTimer] =
-    Task.succeed(if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer)
+    ZIO.succeed(if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer)
 
   def observeDuration(timer: SummaryTimer): Task[Double] =
-    Task.succeed(timer.observeDuration())
+    ZIO.succeed(timer.observeDuration())
 
   def time(f: () => Unit): Task[Double] =
     time(f, Array.empty[String])
 
   def time(f: () => Unit, labelNames: Array[String]): Task[Double] =
-    Task.succeed {
+    ZIO.succeed {
       val t = if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer()
       f()
       t.observeDuration()
@@ -270,16 +269,16 @@ final case class Summary(private val pSummary: PSummary) extends Metric {
 
   def time[R, A](task: RIO[R, A], labelNames: Array[String]): RIO[R, (Double, A)] = {
     val t = if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer()
-    task flatMap (a => RIO.succeed((t.observeDuration(), a)))
+    task flatMap (a => ZIO.succeed((t.observeDuration(), a)))
   }
 
   def time_[R, A](task: RIO[R, A]): RIO[R, A] =
     time_(task, Array.empty[String])
 
   def time_[R, A](task: RIO[R, A], labelNames: Array[String]): RIO[R, A] =
-    RIO
-      .attempt(if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer())
-      .acquireReleaseWith(t => UIO.succeed(t.close()))(_ => task)
+    ZIO.acquireReleaseWith(
+      ZIO.attempt(if (labelNames.isEmpty) pSummary.startTimer() else pSummary.labels(labelNames: _*).startTimer())
+    )(t => ZIO.succeed(t.close()))(_ => task)
 
   def labels(labelNames: Array[String]): SummaryChild = SummaryChild(pSummary.labels(labelNames: _*))
 }
@@ -288,16 +287,16 @@ final case class SummaryChild(private val pSummary: SChild) extends Metric {
   type SummaryTimer = PSummary.Timer
 
   def observe(amount: Double): Task[Unit] =
-    Task.succeed(pSummary.observe(amount))
+    ZIO.succeed(pSummary.observe(amount))
 
   def startTimer(): Task[SummaryTimer] =
-    Task.succeed(pSummary.startTimer())
+    ZIO.succeed(pSummary.startTimer())
 
   def observeDuration(timer: SummaryTimer): Task[Double] =
-    Task.succeed(timer.observeDuration())
+    ZIO.succeed(timer.observeDuration())
 
   def time(f: () => Unit): Task[Double] =
-    Task.succeed {
+    ZIO.succeed {
       val t = pSummary.startTimer()
       f()
       t.observeDuration()
@@ -305,13 +304,11 @@ final case class SummaryChild(private val pSummary: SChild) extends Metric {
 
   def time[R, A](task: RIO[R, A]): RIO[R, (Double, A)] = {
     val t = pSummary.startTimer()
-    task flatMap (a => RIO.succeed((t.observeDuration(), a)))
+    task flatMap (a => ZIO.succeed((t.observeDuration(), a)))
   }
 
   def time_[R, A](task: RIO[R, A]): RIO[R, A] =
-    RIO
-      .attempt(pSummary.startTimer())
-      .acquireReleaseWith(t => UIO.succeed(t.close()))(_ => task)
+    ZIO.acquireReleaseWith(ZIO.attempt(pSummary.startTimer()))(t => ZIO.succeed(t.close()))(_ => task)
 
 }
 

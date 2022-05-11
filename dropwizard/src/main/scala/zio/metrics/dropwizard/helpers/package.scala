@@ -1,6 +1,6 @@
 package zio.metrics.dropwizard
 
-import zio.RIO
+import zio.{ RIO, ZIO }
 import zio.metrics.Label
 import zio.metrics.dropwizard.reporters._
 import com.codahale.metrics.{ Counter => DWCounter, Gauge => DWGauge }
@@ -12,26 +12,26 @@ import java.util.concurrent.TimeUnit
 package object helpers {
 
   def getCurrentRegistry(): RIO[Registry, MetricRegistry] =
-    RIO.serviceWithZIO(_.getCurrent())
+    ZIO.serviceWithZIO(_.getCurrent())
 
   def registerCounter(name: String, labels: Array[String]): RIO[Registry, DWCounter] =
-    RIO.serviceWithZIO(_.registerCounter(Label(name, labels, s"$name counter")))
+    ZIO.serviceWithZIO(_.registerCounter(Label(name, labels, s"$name counter")))
 
   def registerGauge[A](name: String, labels: Array[String], f: () => A): RIO[Registry, DWGauge[A]] =
-    RIO.serviceWithZIO(_.registerGauge[String, A](Label(name, labels, s"$name gauge"), f))
+    ZIO.serviceWithZIO(_.registerGauge[String, A](Label(name, labels, s"$name gauge"), f))
 
   def registerTimer(name: String, labels: Array[String]): RIO[Registry, DWTimer] =
-    RIO.serviceWithZIO(_.registerTimer(Label(name, labels, s"$name timer")))
+    ZIO.serviceWithZIO(_.registerTimer(Label(name, labels, s"$name timer")))
 
   def registerMeter(name: String, labels: Array[String]): RIO[Registry, DWMeter] =
-    RIO.serviceWithZIO(_.registerMeter(Label(name, labels, s"$name meter")))
+    ZIO.serviceWithZIO(_.registerMeter(Label(name, labels, s"$name meter")))
 
   def registerHistogram(
     name: String,
     labels: Array[String],
     reservoir: Reservoir
   ): RIO[Registry, DWHistogram] =
-    RIO.serviceWithZIO(_.registerHistogram(Label(name, labels, s"$name histogram"), reservoir))
+    ZIO.serviceWithZIO(_.registerHistogram(Label(name, labels, s"$name histogram"), reservoir))
 
   object counter {
     def register(name: String) = Counter(name, Array.empty[String])
@@ -74,7 +74,7 @@ package object helpers {
   }
 
   def jmx(r: MetricRegistry): RIO[Reporters, Unit] =
-    RIO.serviceWithZIO(
+    ZIO.serviceWithZIO(
       dwr =>
         for {
           cr <- dwr.jmx(r)
@@ -82,7 +82,7 @@ package object helpers {
     )
 
   def console(r: MetricRegistry, duration: Long, unit: TimeUnit): RIO[Reporters, Unit] =
-    RIO.serviceWithZIO(
+    ZIO.serviceWithZIO(
       dwr =>
         for {
           cr <- dwr.console(r)

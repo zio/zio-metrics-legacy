@@ -5,8 +5,8 @@ import zio.metrics.prometheus._
 import zio.metrics.prometheus.exporters.Exporters
 import zio.metrics.prometheus.helpers._
 import zio.test.Assertion._
-import zio.test.{ assert, TestAspect, TestClock, TestEnvironment, ZIOSpecDefault, ZSpec }
-import zio.{ RIO, UIO, ZIO }
+import zio.test.{ assert, Spec, TestAspect, TestClock, TestEnvironment, ZIOSpecDefault }
+import zio.{ RIO, ZIO }
 
 import java.util
 import zio._
@@ -33,7 +33,7 @@ object PrometheusTest extends ZIOSpecDefault {
 
   val histogramTestRegistry: RIO[Registry, CollectorRegistry] = for {
     h <- Histogram("simple_histogram", Array("method"), DefaultBuckets(Seq(10, 20, 30, 40, 50)))
-    _ <- RIO.foreachDiscard(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.observe(_, Array("get")))
+    _ <- ZIO.foreachDiscard(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.observe(_, Array("get")))
     r <- getCurrentRegistry()
   } yield r
 
@@ -50,7 +50,7 @@ object PrometheusTest extends ZIOSpecDefault {
       _ <- ZIO.foreachDiscard(List(75L, 750L, 2000L))(
             n =>
               for {
-                _ <- UIO.succeed(n).delay(n.millis)
+                _ <- ZIO.succeed(n).delay(n.millis)
                 _ <- TestClock.adjust(n.millis)
                 d <- h.observeDuration(t)
               } yield d
@@ -61,11 +61,11 @@ object PrometheusTest extends ZIOSpecDefault {
 
   val summaryTestRegistry: RIO[Registry, CollectorRegistry] = for {
     s <- Summary("simple_summary", Array("method"), List((0.5, 0.05), (0.9, 0.01)))
-    _ <- RIO.foreachDiscard(List(10.5, 25.0, 50.7, 57.3, 19.8))(s.observe(_, Array("put")))
+    _ <- ZIO.foreachDiscard(List(10.5, 25.0, 50.7, 57.3, 19.8))(s.observe(_, Array("put")))
     r <- getCurrentRegistry()
   } yield r
 
-  override def spec: ZSpec[TestEnvironment, Any] =
+  override def spec: Spec[TestEnvironment, Any] =
     suite("PrometheusLabelsTest")(
       suite("Counter")(
         test("counter increases by `inc` amount") {

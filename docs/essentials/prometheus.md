@@ -9,7 +9,7 @@ exporters all connected through the `CollectorRegistry`.
 Required imports for presented snippets:
 
 ```scala mdoc:silent
-import zio.{ RIO, Runtime }
+import zio.{ RIO, ZIO, Runtime }
 import io.prometheus.client.CollectorRegistry
 import zio.metrics.{ Label => ZLabel}
 import zio.metrics.prometheus._
@@ -54,7 +54,7 @@ methods. We'll start using environmental effects until the `Helper` methods are 
 
 ```scala mdoc:silent
   val testRegistry: RIO[Registry, CollectorRegistry] = for {
-    pr <- RIO.environment[Registry]
+    pr <- ZIO.environment[Registry]
     _  <- pr.get.registerCounter(ZLabel("simple_counter", Array("method"), "Just a simple counter for your consideration"))
     r  <- pr.get.getCurrent()
   } yield r
@@ -334,12 +334,12 @@ If, instead, we want to measure arbitrary values:
 ```scala mdoc:silent
   val testHistogram: RIO[Registry, CollectorRegistry] = for {
     h <- histogram.register("simple_histogram", Array("method"))
-    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.observe(_, Array("get")))
+    _ <- ZIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.observe(_, Array("get")))
     r <- getCurrentRegistry()
   } yield r
 ```
 
-`RIO.foreach` will take each value of the list `List(10.5, 25.0, 50.7, 57.3,
+`ZIO.foreach` will take each value of the list `List(10.5, 25.0, 50.7, 57.3,
 19.8)` and apply the function `h.observe(_, Array("get"))` to each
 value in a synchronous manner, where `_` refers to the value (10.5, 25.0,
 etc.) and `Array("get")` is the specific label for the current observation.
@@ -349,7 +349,7 @@ We can override the `DefaultBuckets` so:
 ```scala mdoc:silent
   val testHistogramBuckets: RIO[Registry, CollectorRegistry] = for {
     h <- histogram.register("simple_histogram", Array("method"), DefaultBuckets(Seq(10, 20, 30, 40, 50)))
-    _ <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.observe(_, Array("get")))
+    _ <- ZIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(h.observe(_, Array("get")))
     r <- getCurrentRegistry()
   } yield r
 ```
@@ -368,14 +368,14 @@ when `startTimer` was called and each time we `observeDuration`.
   val testHistogramDuration: RIO[Registry, CollectorRegistry] = for {
     h <- Histogram("duration_histogram", Array("method"), ExponentialBuckets(0.25, 2, 5))
     t <- h.startTimer(Array("time"))
-    dl <- RIO.foreach(List(75L, 750L, 2000L))(
+    dl <- ZIO.foreach(List(75L, 750L, 2000L))(
            n =>
              for {
                _ <- f(n)
                d <- h.observeDuration(t)
              } yield d
          )
-    _ <- RIO.foreach(dl)(d => printLine(d.toString()))
+    _ <- ZIO.foreach(dl)(d => printLine(d.toString()))
     r <- getCurrentRegistry()
   } yield r
 ```
@@ -437,7 +437,7 @@ documentation for more information.
 ```scala mdoc:silent
   val testSummary: RIO[Registry, CollectorRegistry] = for {
     s  <- Summary("simple_summary", Array("method"), List((0.5, 0.05), (0.9, 0.01)))
-    _  <- RIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(s.observe(_, Array("put")))
+    _  <- ZIO.foreach(List(10.5, 25.0, 50.7, 57.3, 19.8))(s.observe(_, Array("put")))
     r  <- getCurrentRegistry()
   } yield r
 ```
@@ -544,7 +544,7 @@ And then we can use it so:
     HTTPServer
   ] =
     for {
-      m  <- RIO.environment[Metrics]
+      m  <- ZIO.environment[Metrics]
       _  <- printLine("Exporters")
       r  <- m.get.getRegistry()
       _  <- initializeDefaultExports(r)
@@ -667,7 +667,7 @@ This technique aloows you to register all your metrics in one place:
     Unit
   ] =
     for {
-      m     <- RIO.environment[MetricMap]
+      m     <- ZIO.environment[MetricMap]
       name  = "ExportersTest"
       c     <- Counter(name, Array("exporter"))
       hname = "export_histogram"
@@ -689,7 +689,7 @@ and then usinig them downstream wherever you need:
     HTTPServer
   ] =
     for {
-      m  <- RIO.environment[MetricMap]
+      m  <- ZIO.environment[MetricMap]
       _  <- printLine("Exporters")
       r  <- m.get.getRegistry()
       _  <- initializeDefaultExports(r)

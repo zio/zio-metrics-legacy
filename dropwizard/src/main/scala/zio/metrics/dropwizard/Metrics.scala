@@ -1,6 +1,6 @@
 package zio.metrics.dropwizard
 
-import zio.{ RIO, Task }
+import zio.{ RIO, Task, ZIO }
 import com.codahale.metrics.{ Counter => DWCounter, Gauge => DWGauge }
 import com.codahale.metrics.{ Timer => DWTimer, Meter => DWMeter }
 import com.codahale.metrics.{ Histogram => DWHistogram }
@@ -11,10 +11,10 @@ sealed trait Metric {}
 
 class Counter(private val dwCounter: DWCounter) extends Metric {
   def inc(): Task[Unit] =
-    Task.succeed(dwCounter.inc())
+    ZIO.succeed(dwCounter.inc())
 
   def inc(amount: Double): Task[Unit] =
-    Task.succeed(dwCounter.inc(amount.toLong))
+    ZIO.succeed(dwCounter.inc(amount.toLong))
 }
 
 object Counter {
@@ -26,7 +26,7 @@ object Counter {
 
 class Gauge(private val dwGauge: DWGauge[_]) extends Metric {
   def getValue[A](): Task[A] =
-    Task.succeed(dwGauge.getValue().asInstanceOf[A])
+    ZIO.succeed(dwGauge.getValue().asInstanceOf[A])
 }
 
 object Gauge {
@@ -38,10 +38,10 @@ object Gauge {
 
 class Timer(private val dwTimer: DWTimer) extends Metric {
   def start(): zio.Task[DWTimer.Context] =
-    Task.succeed(dwTimer.time())
+    ZIO.succeed(dwTimer.time())
 
   def stop(c: DWTimer.Context): Task[Long] =
-    Task.succeed(c.stop())
+    ZIO.succeed(c.stop())
 }
 
 object Timer {
@@ -53,10 +53,10 @@ object Timer {
 
 class Meter(private val dwMeter: DWMeter) extends Metric {
   def mark(): zio.Task[Unit] =
-    Task.succeed(dwMeter.mark())
+    ZIO.succeed(dwMeter.mark())
 
   def mark(amount: Long): zio.Task[Unit] =
-    Task.succeed(dwMeter.mark(amount))
+    ZIO.succeed(dwMeter.mark(amount))
 }
 
 object Meter {
@@ -68,7 +68,7 @@ object Meter {
 
 class Histogram(private val dwHistogram: DWHistogram) extends Metric {
   def update(amount: Double): Task[Unit] =
-    Task.succeed(dwHistogram.update(amount.toLong))
+    ZIO.succeed(dwHistogram.update(amount.toLong))
 }
 
 object Histogram {
