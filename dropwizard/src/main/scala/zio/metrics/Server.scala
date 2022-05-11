@@ -35,7 +35,7 @@ object Server {
         .runtime[HttpEnvironment]
         .flatMap { implicit rts =>
           BlazeServerBuilder[HttpTask]
-            .withExecutionContext(rts.runtimeConfig.executor.asExecutionContext)
+            .withExecutionContext(rts.executor.asExecutionContext)
             .bindHttp(port)
             .withHttpApp(app)
             .serve

@@ -1,7 +1,7 @@
 package zio.metrics
 
 import zio.metrics.encoders._
-import zio.{ Chunk, RIO, Task }
+import zio.{ Chunk, RIO }
 import zio.test._
 import zio.test.Assertion._
 import zio.test.TestAspect.{ flaky, forked, timeout }
@@ -12,7 +12,7 @@ import zio.test.ZIOSpecDefault
 object ClientTest extends ZIOSpecDefault {
   private val port = 8126
 
-  override def spec: ZSpec[TestEnvironment, Any] =
+  override def spec: Spec[TestEnvironment, Any] =
     suite("ClientTest") {
       test("client with sendAsync works") {
         val messages = List(1.0, 2.2, 3.4, 4.6)
@@ -36,11 +36,11 @@ object ClientTest extends ZIOSpecDefault {
           clientWithAgent.flatMap {
             case (client, agent) =>
               for {
-                opt <- RIO.foreach(messages)(
-                        d => Task.succeed(Counter("clientbar", d, 1.0, Seq.empty[zio.metrics.Tag]))
+                opt <- ZIO.foreach(messages)(
+                        d => ZIO.succeed(Counter("clientbar", d, 1.0, Seq.empty[zio.metrics.Tag]))
                       )
-                _       <- RIO.foreachDiscard(opt)(m => client.sendAsync(m))
-                metrics <- RIO.foreach(opt)(_ => agent.nextReceivedMetric)
+                _       <- ZIO.foreachDiscard(opt)(m => client.sendAsync(m))
+                metrics <- ZIO.foreach(opt)(_ => agent.nextReceivedMetric)
               } yield assert(metrics.toSet)(hasSameElements(expectedSentMetricsSet))
           }
         }
@@ -50,9 +50,9 @@ object ClientTest extends ZIOSpecDefault {
 
   private val myudp: Chunk[Metric] => RIO[Encoder, Chunk[Int]] = msgs =>
     for {
-      sde <- RIO.environment[Encoder]
-      opt <- RIO.foreach(msgs)(sde.get.encode(_))
-      l <- RIO.foreach(opt.collect { case Some(msg) => msg })(
+      sde <- ZIO.environment[Encoder]
+      opt <- ZIO.foreach(msgs)(sde.get.encode(_))
+      l <- ZIO.foreach(opt.collect { case Some(msg) => msg })(
             s => ZIO.scoped(UDPClient("localhost", port).flatMap(_.send(s)))
           )
     } yield l

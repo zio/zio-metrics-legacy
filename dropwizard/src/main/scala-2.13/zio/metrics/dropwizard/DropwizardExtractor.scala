@@ -1,6 +1,6 @@
 package zio.metrics.dropwizard
 
-import zio.{ RIO, Task }
+import zio.{ RIO, Task, ZIO }
 import com.codahale.metrics.Snapshot
 
 import scala.jdk.CollectionConverters._
@@ -16,7 +16,7 @@ object DropwizardExtractor {
       override val extractCounters: MetricRegistry => Filter => RIO[Registry, List[Json]] = registry =>
         (filter: Filter) => {
           val metricFilter = Registry.makeFilter(filter)
-          Task.succeed(
+          ZIO.succeed(
             registry
               .getCounters(metricFilter)
               .asScala
@@ -28,7 +28,7 @@ object DropwizardExtractor {
       override val extractGauges: MetricRegistry => Filter => RIO[Registry, List[Json]] = registry =>
         (filter: Filter) => {
           val metricFilter = Registry.makeFilter(filter)
-          Task.succeed(
+          ZIO.succeed(
             registry
               .getGauges(metricFilter)
               .asScala
@@ -54,7 +54,7 @@ object DropwizardExtractor {
       override val extractTimers: MetricRegistry => Filter => RIO[Registry, List[Json]] = registry =>
         (filter: Filter) => {
           val metricFilter = Registry.makeFilter(filter)
-          Task.succeed(
+          ZIO.succeed(
             registry
               .getTimers(metricFilter)
               .asScala
@@ -76,7 +76,7 @@ object DropwizardExtractor {
       override val extractHistograms: MetricRegistry => Filter => RIO[Registry, List[Json]] = registry =>
         (filter: Filter) => {
           val metricFilter = Registry.makeFilter(filter)
-          Task.succeed(
+          ZIO.succeed(
             registry
               .getHistograms(metricFilter)
               .asScala
@@ -95,7 +95,7 @@ object DropwizardExtractor {
       override val extractMeters: MetricRegistry => Filter => RIO[Registry, List[Json]] = registry =>
         (filter: Filter) => {
           val metricFilter = Registry.makeFilter(filter)
-          Task.succeed(
+          ZIO.succeed(
             registry
               .getMeters(metricFilter)
               .asScala

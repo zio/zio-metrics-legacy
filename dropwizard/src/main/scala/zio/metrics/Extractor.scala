@@ -3,7 +3,7 @@ package zio.metrics.dropwizard
 import cats.Monoid
 import cats.Foldable
 import cats.syntax.semigroup._
-import zio.{ RIO, Task }
+import zio.{ RIO, Task, ZIO }
 import com.codahale.metrics.MetricRegistry
 //import zio.metrics.dropwizard.typeclasses._
 //import zio.metrics.dropwizard.typeclasses.{ Foldable, Monoid }
@@ -33,7 +33,7 @@ object RegistryPrinter {
       ("meters", E.extractMeters(r)(filter))
     )
 
-    fs.foldLeft(RIO.attempt(M.empty))(
+    fs.foldLeft(ZIO.attempt(M.empty))(
       (accT, f) => {
         for {
           acc <- accT

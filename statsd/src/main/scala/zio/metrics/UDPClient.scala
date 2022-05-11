@@ -7,10 +7,10 @@ import zio.nio.core.SocketAddress
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.DatagramChannel
-import zio.{ IO, Scope, Task, ZIO }
+import zio.{ Scope, Task, ZIO }
 
 class UDPClient(channel: DatagramChannel) {
-  def send(data: String): Task[Int] = IO.succeed {
+  def send(data: String): Task[Int] = ZIO.succeed {
     val buf: ByteBuffer = ByteBuffer.allocate(512)
     buf.clear()
     buf.put(data.getBytes())
@@ -20,16 +20,16 @@ class UDPClient(channel: DatagramChannel) {
   }
 
   def close(): Task[Unit] =
-    IO.succeed(channel.close())
+    ZIO.succeed(channel.close())
 }
 object UDPClient {
   def apply(channel: DatagramChannel): ZIO[Scope, Throwable, UDPClient] =
-    ZIO.acquireRelease(Task.succeed(new UDPClient(channel)))(_.close().orDie)
+    ZIO.acquireRelease(ZIO.succeed(new UDPClient(channel)))(_.close().orDie)
 
   def apply(): ZIO[Scope, Throwable, UDPClient] = apply("localhost", 8125)
 
   def apply(host: String, port: Int): ZIO[Scope, Throwable, UDPClient] =
-    ZIO.acquireRelease(Task.succeed {
+    ZIO.acquireRelease(ZIO.succeed {
       val address = new InetSocketAddress(host, port)
       new UDPClient(DatagramChannel.open().connect(address))
     })(_.close().orDie)

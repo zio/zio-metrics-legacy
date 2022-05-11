@@ -83,7 +83,7 @@ The number of milliseconds between a start and end time.
   
   statsDClient.flatMap { client => 
     for {
-      clock <- RIO.environment[Clock]
+      clock <- ZIO.clock
       t1    <- clock.get.currentTime(TimeUnit.MILLISECONDS)
       _     <- clock.get.sleep(Duration(75, TimeUnit.MILLISECONDS))
       t2    <- clock.get.currentTime(TimeUnit.MILLISECONDS)
@@ -222,7 +222,7 @@ this is a base client, ZIO-Metrics-StatsD also provide `StatsD` and a
     ZIO.scoped {
         createClient.flatMap { client =>
           for {
-            opt <- RIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
+            opt <- ZIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
             _   <- RIO.collectAll(opt.map(m => client.sendM(true)(m)))
           } yield ()
         }
@@ -283,10 +283,10 @@ from `UDPClient`.
 ```scala mdoc:silent
   val myudp: Chunk[Metric] => RIO[Encoder, Chunk[Int]] = msgs =>
     for {
-      sde <- RIO.environment[Encoder]
-      opt <- RIO.foreach(msgs)(sde.get.encode(_))
+      sde <- ZIO.environment[Encoder]
+      opt <- ZIO.foreach(msgs)(sde.get.encode(_))
       _   <- printLine(s"udp: $opt")
-      l   <- RIO.foreach(opt.collect { case Some(msg) => msg })(s => ZIO.scoped(UDPClient().flatMap(_.send(s))))
+      l   <- ZIO.foreach(opt.collect { case Some(msg) => msg })(s => ZIO.scoped(UDPClient().flatMap(_.send(s))))
     } yield l
 ```
 
@@ -299,7 +299,7 @@ and we can use this instead of the default behavior by using the `withListener` 
   }
   createCustomClient.flatMap { client =>
     for {
-      opt <- RIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
+      opt <- ZIO.foreach(messages)(d => Task(Counter("clientbar", d, 1.0, Seq.empty[Tag])))
       _   <- RIO.collectAll(opt.map(m => client.sendM(true)(m)))
     } yield ()
   }
@@ -322,7 +322,7 @@ create and offer/send metrics to the queue. Here's a sample of how it's used.
 
   def program(r: Long)(statsDClient: StatsDClient) =
     for {
-      clock <- RIO.environment[Clock]
+      clock <- ZIO.clock
       t1 <- clock.get.currentTime(TimeUnit.MILLISECONDS)
       _  <- statsDClient.increment("zmetrics.counter", 0.9)
       _  <- printLine(s"waiting for $r ms") *> clock.get.sleep(Duration(r, TimeUnit.MILLISECONDS))
@@ -359,7 +359,7 @@ supported by StatsD.
 
   def dogProgram(r: Long)(dogStatsDClient: DogStatsDClient) =
     for {
-      clock <- RIO.environment[Clock]
+      clock <- ZIO.clock
       t1 <- clock.get.currentTime(TimeUnit.MILLISECONDS)
       _  <- dogStatsDClient.increment("zmetrics.dog.counter", 0.9)
       _  <- printLine(s"waiting for $r ms") *> clock.get.sleep(Duration(r, TimeUnit.MILLISECONDS))

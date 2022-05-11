@@ -5,7 +5,7 @@ import zio.metrics.prometheus._
 import zio.metrics.prometheus.helpers._
 import zio.metrics.prometheus.exporters.Exporters
 import zio.{ Layer, ZLayer }
-import zio.{ IO, RIO, Task }
+import zio.{ IO, RIO, Task, ZIO }
 import io.prometheus.client.CollectorRegistry
 import io.prometheus.client.{ Counter => PCounter }
 import io.prometheus.client.exporter.HTTPServer
@@ -51,7 +51,7 @@ object ExplicitRegistryLayer {
         getCurrentRegistry().provideLayer(myCustomLayer)
 
       def put(key: String, metric: Metric): Task[Unit] =
-        Task
+        ZIO
           .succeed(
             this.metricsMap =
               if (metricsMap.contains(key))
@@ -63,14 +63,14 @@ object ExplicitRegistryLayer {
 
       def getHistogram(key: String): IO[InvalidMetric, Histogram] =
         metricsMap(key) match {
-          case h @ Histogram(_) => IO.succeed(h)
-          case _                => IO.fail(InvalidMetric("Metric is not a Histogram or doesn't exists!"))
+          case h @ Histogram(_) => ZIO.succeed(h)
+          case _                => ZIO.fail(InvalidMetric("Metric is not a Histogram or doesn't exists!"))
         }
 
       def getCounter(key: String): IO[InvalidMetric, Counter] =
         metricsMap(key) match {
-          case c @ Counter(_) => IO.succeed(c)
-          case _              => IO.fail(InvalidMetric("Metric is not a Counter or doesn't exists!"))
+          case c @ Counter(_) => ZIO.succeed(c)
+          case _              => ZIO.fail(InvalidMetric("Metric is not a Counter or doesn't exists!"))
         }
     })
   }
@@ -80,7 +80,7 @@ object ExplicitRegistryLayer {
     Unit
   ] =
     for {
-      m     <- RIO.environment[MetricMap]
+      m     <- ZIO.environment[MetricMap]
       name  = "ExportersTest"
       c     <- counter.register(name, Array("exporter")).provideLayer(myCustomLayer)
       hname = "export_histogram"
@@ -96,7 +96,7 @@ object ExplicitRegistryLayer {
     HTTPServer
   ] =
     for {
-      m  <- RIO.environment[MetricMap]
+      m  <- ZIO.environment[MetricMap]
       _  <- printLine("Exporters")
       r  <- m.get.getRegistry()
       _  <- initializeDefaultExports(r)

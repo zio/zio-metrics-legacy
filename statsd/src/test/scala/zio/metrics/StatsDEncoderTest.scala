@@ -1,6 +1,6 @@
 package zio.metrics
 
-import zio.RIO
+import zio.{ RIO, ZIO }
 import zio.metrics.encoders._
 import zio.test._
 import zio.test.Assertion._
@@ -33,7 +33,7 @@ object StatsDEncoderTest extends ZIOSpecDefault {
 
   val encode: Metric => RIO[Encoder, Option[String]] = metric =>
     for {
-      sde   <- RIO.environment[Encoder]
+      sde   <- ZIO.environment[Encoder]
       coded <- sde.get.encode(metric)
     } yield coded
 
