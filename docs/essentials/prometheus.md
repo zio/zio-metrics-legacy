@@ -138,7 +138,9 @@ You can run and verify the results so:
   val timeSeriesNames = new util.HashSet[String]() {
     add("simple_counter_total")
   }
-  val r = rt.unsafeRun(testCounter)
+  val r = Unsafe.unsafeCompat { implicit u =>
+      rt.unsafe.run(testCounter).getOrThrow()
+    }
   val count = r
     .filteredMetricFamilySamples(timeSeriesNames)
     .nextElement()
@@ -218,7 +220,9 @@ And to run and verify the result:
 ```scala mdoc:silent
   val setG: util.Set[String] = new util.HashSet[String]()
   setG.add("simple_gauge")
-  val rG = rt.unsafeRun(testGauge)
+  val rG = Unsafe.unsafeCompat { implicit u =>
+      rt.unsafe.run(testGauge).getOrThrow()
+    }
   val a1 = rG._1
     .filteredMetricFamilySamples(setG)
     .nextElement()
@@ -271,7 +275,9 @@ given registry. Let's look at an example of how all this works.
     } yield hs
 
   def main(args: Array[String]): Unit =
-    rt.unsafeRun(exporterTest >>= (server => printLine(s"Server port: ${server.getPort()}")))
+    Unsafe.unsafeCompat { implicit u =>
+      rt.unsafe.run(exporterTest >>= (server => printLine(s"Server port: ${server.getPort()}"))).getOrThrow()
+    }
 ```
 
 Where `>>=` = `flatMap`. Also note that `exporters` refers to the helper object
@@ -319,14 +325,18 @@ You can, of course, verify the usual way:
   setHT.add("simple_histogram_timer_count")
   setHT.add("simple_histogram_timer_sum")
 
-  val rht   = rt.unsafeRun(testHistogramTimer)
+  val rht   = Unsafe.unsafeCompat { implicit u =>
+      rt.unsafe.run(testHistogramTimer).getOrThrow()
+    }
   val cnt   = rht.filteredMetricFamilySamples(setHT).nextElement().samples.get(0).value
   val sum   = rht.filteredMetricFamilySamples(setHT).nextElement().samples.get(1).value
 ```
 
 or simpler using our `exporters` helper:
 ```scala mdoc:silent
-  val rhtE = rt.unsafeRun(testHistogramTimerHelper)
+  val rhtE = Unsafe.unsafeCompat { implicit u =>
+      rt.unsafe.run(testHistogramTimerHelper).getOrThrow()
+    }
   write004(rhtE)
 ```
 
@@ -410,7 +420,9 @@ acquisition, use, and release of the timer and the task execution.
 Now lets inspect our values by `tap`ping our `RIO`.
 
 ```scala mdoc:silent
-  rt.unsafeRun(testHistogramDuration.tap(r => write004(r).map(println)))
+  Unsafe.unsafeCompat { implicit u =>
+      rt.unsafe.run(testHistogramDuration.tap(r => write004(r).map(println))).getOrThrow()
+    }
 ```
 
 Please note there's no reason to use `tap` here, its just to demonstrate that we
@@ -418,7 +430,9 @@ are returning `RIO`s which means we have at our disposal all its combinators. We
 might as well just use
 
 ```
-  val rhd = rt.unsafeRun(testHistogramDuration)
+  val rhd = Unsafe.unsafeCompat { implicit u =>
+      rt.unsafe.run(testHistogramDuration).getOrThrow()
+    }
   write004(rhd)
 ```
 
@@ -513,12 +527,15 @@ simply expose methods to use them in your `MeasuringPoints` through the Layer:
 
     val live: Layer[Nothing, Metrics] = ZLayer.succeed(new Service {
 
-      private val (myCounter, myHistogram) = rtLayer.unsafeRun(
-        for {
-          c <- counter.register("myCounter", Array("name", "method"))
-          h <- histogram.register("myHistogram", Array("name", "method"))
-        } yield (c, h)
-      )
+      private val (myCounter, myHistogram) =
+        Unsafe.unsafeCompat { implicit u =>
+          rt.unsafe.run(
+            for {
+              c <- counter.register("myCounter", Array("name", "method"))
+              h <- histogram.register("myHistogram", Array("name", "method"))
+            } yield (c, h)
+          ).getOrThrow()
+        }
 
       def getRegistry(): Task[CollectorRegistry] =
         getCurrentRegistry().provideLayer(Registry.live)
@@ -560,7 +577,9 @@ And then we can use it so:
   val programL = exporterTest >>= (server => printLine(s"Server port: ${server.getPort()}"))
 
   def main(args: Array[String]): Unit =
-    rtLayer.unsafeRun(programL.provideSomeLayer[Env](Metrics.live))
+    Unsafe.unsafeCompat { implicit u =>
+      rtLayer.unsafe.run(programL.provideSomeLayer[Env](Metrics.live)).getOrThrow()
+    }
 ```
 
 The key of this approach is that even if you register only one counter, you can
@@ -572,17 +591,17 @@ counters as combination of tags you can devise for your app. Your
 use it.
 
 The main drawback, as far as I can tell, is that you need that extra call to
-`unsafeRun` in order to extract and use the metrics themselves. If you don't,
+`Runtime.unsafe.run` in order to extract and use the metrics themselves. If you don't,
 then every call to `inc` or `time` would attemp to re-register the metric which
 results in an Exception. This is because things wrapped up in `ZIO`s are
 descriptions of a program so flatmapping or folding on them causes them to
 start their execution flow from the beginning.
 
-Although the ideal is to call `unsafeRun` only once in your App, this is only an
+Although the ideal is to call `Runtime.unsafe.run` only once in your App, this is only an
 ideal and calling it a second (or even third) time is OK as long as you do not
 abuse its usage.
 
-You can, however, eliminate this extra `unsafeRun` by registering your `counter`
+You can, however, eliminate this extra `Runtime.unsafe.run` by registering your `counter`
 and `histogram` during startup and pass them as inputs to your `ZLayer` using
 `fromFunction`:
 
@@ -604,7 +623,7 @@ and `histogram` during startup and pass them as inputs to your `ZLayer` using
 ```
 
 The second approach is somewhat more generic and doesn't need extra calls to
-`unsafeRun` but it requires the use of `PartialFunction`s and keeping a private
+`Runtime.unsafe.run` but it requires the use of `PartialFunction`s and keeping a private
 `Map` inside our custom Layer, here called `MetricsMap`:
 
 ```scala
@@ -706,5 +725,7 @@ and then usinig them downstream wherever you need:
   val programMM = startup *> exporterTest >>= (server => printLine(s"Server port: ${server.getPort()}"))
 
   def main(args: Array[String]): Unit =
-    rt.unsafeRunMM(programMM)
+    Unsafe.unsafeCompat { implicit u =>
+      rt.unsafe.run(programMM).getOrThrow()
+    }
 ```
