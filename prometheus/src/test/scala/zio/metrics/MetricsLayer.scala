@@ -1,6 +1,6 @@
 package zio.metrics
 
-import zio.{ Layer, RIO, Runtime, Task, ZIO, ZLayer }
+import zio.{ Layer, RIO, Runtime, Task, Unsafe, ZIO, ZLayer }
 import zio.metrics.prometheus._
 import zio.metrics.prometheus.helpers._
 import zio.metrics.prometheus.exporters.Exporters
@@ -13,7 +13,9 @@ object MetricsLayer {
 
   type Env = Registry with Exporters
 
-  val rt = Runtime.unsafeFromLayer(Registry.live ++ Exporters.live)
+  val rt = Unsafe.unsafeCompat { implicit u =>
+    Runtime.unsafe.fromLayer(Registry.live ++ Exporters.live)
+  }
 
   type Metrics = Metrics.Service
 
@@ -31,12 +33,17 @@ object MetricsLayer {
 
     val live: Layer[Nothing, Metrics] = ZLayer.succeed(new Service {
 
-      private val (myCounter, myHistogram) = rt.unsafeRun(
-        for {
-          c <- counter.register("myCounter", Array("name", "method"))
-          h <- histogram.register("myHistogram", Array("name", "method"))
-        } yield (c, h)
-      )
+      private val (myCounter, myHistogram) =
+        Unsafe.unsafeCompat { implicit u =>
+          rt.unsafe
+            .run(
+              for {
+                c <- counter.register("myCounter", Array("name", "method"))
+                h <- histogram.register("myHistogram", Array("name", "method"))
+              } yield (c, h)
+            )
+            .getOrThrow()
+        }
 
       def getRegistry(): Task[CollectorRegistry] =
         getCurrentRegistry().provideLayer(Registry.live)
@@ -110,8 +117,9 @@ object MetricsLayer {
   )
 
   val rLayer: Layer[Nothing, Metrics] = Metrics.receiver(c, h)
-  val rtReceiver: Runtime.Scoped[Metrics with Exporters] =
-    Runtime.unsafeFromLayer(rLayer ++ Exporters.live)
+  val rtReceiver: Runtime.Scoped[Metrics with Exporters] = Unsafe.unsafeCompat { implicit u =>
+    Runtime.unsafe.fromLayer(rLayer ++ Exporters.live)
+  }
 
   /*val chHas: ULayer[Has[(Counter, Histogram)]] = ZLayer.succeed[(Counter, Histogram)]((c, h))
   val rLayerHas: ZLayer[Any, Nothing, Metrics] = chHas >>> Metrics.receiverHas
@@ -142,5 +150,7 @@ object MetricsLayer {
   val program = exporterTest flatMap (server => Console.printLine(s"Server port: ${server.getPort()}"))
 
   def main(args: Array[String]): Unit =
-    rt.unsafeRun(program.provideSomeLayer[Env](Metrics.live))
+    Unsafe.unsafeCompat { implicit u =>
+      rt.unsafe.run(program.provideSomeLayer[Env](Metrics.live)).getOrThrow()
+    }
 }

@@ -31,17 +31,15 @@ object Server {
 
   def builder[Ctx]: KleisliApp => HttpTask[Unit] =
     (app: KleisliApp) =>
-      ZIO
-        .runtime[HttpEnvironment]
-        .flatMap { implicit rts =>
-          BlazeServerBuilder[HttpTask]
-            .withExecutionContext(rts.executor.asExecutionContext)
-            .bindHttp(port)
-            .withHttpApp(app)
-            .serve
-            .compile
-            .drain
-        }
+      ZIO.executor.flatMap { executor =>
+        BlazeServerBuilder[HttpTask]
+          .withExecutionContext(executor.asExecutionContext)
+          .bindHttp(port)
+          .withHttpApp(app)
+          .serve
+          .compile
+          .drain
+      }
 
   def serveMetrics: MetricRegistry => HttpRoutes[Server.HttpTask] =
     registry =>

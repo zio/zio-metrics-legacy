@@ -137,7 +137,9 @@ You can run and verify the results so:
 
 ```scala mdoc:silent
     val name = MetricRegistry.name("DropwizardCounter", Array("test", "counter"): _*)
-    val r    = rt.unsafeRun(testCounter)
+    val r    = Unsafe.unsafeCompat { implicit u =>
+      rt.unsafe.run(testCounter).getOrThrow()
+    }
     val cs   = r.getCounters()
     val c    = if (cs.get(name) == null) 0 else cs.get(name).getCount
 ```
@@ -161,7 +163,9 @@ You can run and verify the results so:
 
 ```scala mdoc:silent
     val gaugeName = MetricRegistry.name("DropwizardGauge", Array("test", "gauge"): _*)
-    val rGauge    = rt.unsafeRun(testGauge)
+    val rGauge    = Unsafe.unsafeCompat { implicit u =>
+      rt.unsafe.run(testGauge).getOrThrow()
+    }
     val gs   = rGauge._1.getGauges()
     val g    = if (gs.get(gaugeName) == null) Long.MaxValue else gs.get(gaugeName).getValue().asInstanceOf[Long]
 ```
@@ -176,7 +180,9 @@ results:
     _ <- printLine(j.spaces2)
   } yield ()
 
-  rt.unsafeRun(str)
+  Unsafe.unsafeCompat { implicit u =>
+      rt.unsafe.run(str).getOrThrow()
+    }
 ```
 
 Let's discuss `Reporters` next.
@@ -222,8 +228,11 @@ Let's combine a couple of them:
     } yield r
 
   def run(args: List[String]) = {
-    val json = rt.unsafeRun(tests >>= (r =>
-    DropwizardExtractor.writeJson(r)(None))) // JSON Registry Printer
+    val json = Unsafe.unsafeCompat { implicit u =>
+          rt.unsafe.run(tests >>= (r =>
+            DropwizardExtractor.writeJson(r)(None))) // JSON Registry Printer
+            .getOrThrow()
+        }
     RIO.sleep(Duration.fromScala(60.seconds))
     printLine(json.spaces2).map(_ => 0)
   }
@@ -331,7 +340,9 @@ As usual, you can verify its data directly:
 
 ```scala mdoc:silent
   val timerName = MetricRegistry.name("DropwizardTimer", Array("test", "timer"): _*)
-  val rTimer    = rt.unsafeRun(testTimer)
+  val rTimer    = Unsafe.unsafeCompat { implicit u =>
+      rt.unsafe.run(testTimer).getOrThrow()
+    }
   val meanRate = rTimer._1
     .getTimers()
     .get(timerName)

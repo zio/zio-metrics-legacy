@@ -5,14 +5,16 @@ import zio.metrics.prometheus._
 import zio.metrics.prometheus.helpers._
 import zio.metrics.prometheus.exporters.Exporters
 import io.prometheus.client.exporter.HTTPServer
-import zio.{ Layer, ZLayer }
+import zio.{ Layer, Unsafe, ZLayer }
 import zio.{ IO, RIO, Task, ZIO }
 import io.prometheus.client.CollectorRegistry
 import zio.Console.printLine
 
 object MetricMapLayer {
 
-  val rt = Runtime.unsafeFromLayer(MetricMap.live ++ Registry.live ++ Exporters.live)
+  val rt = Unsafe.unsafeCompat { implicit u =>
+    Runtime.unsafe.fromLayer(MetricMap.live ++ Registry.live ++ Exporters.live)
+  }
 
   type MetricMap = MetricMap.Service
 
@@ -101,5 +103,7 @@ object MetricMapLayer {
   val program = startup *> exporterTest flatMap (server => printLine(s"Server port: ${server.getPort()}"))
 
   def main(args: Array[String]): Unit =
-    rt.unsafeRun(program)
+    Unsafe.unsafeCompat { implicit u =>
+      rt.unsafe.run(program).getOrThrow()
+    }
 }

@@ -11,6 +11,7 @@ import io.prometheus.client.{ Counter => PCounter }
 import io.prometheus.client.exporter.HTTPServer
 import zio.Console
 import zio.Console.printLine
+import zio.Unsafe
 
 object ExplicitRegistryLayer {
 
@@ -24,7 +25,9 @@ object ExplicitRegistryLayer {
 
   val myCustomLayer = ZLayer.succeed(myRegistry) >>> Registry.explicit
 
-  val rt = Runtime.unsafeFromLayer(MetricMap.live ++ Exporters.live)
+  val rt = Unsafe.unsafeCompat { implicit u =>
+    Runtime.unsafe.fromLayer(MetricMap.live ++ Exporters.live)
+  }
 
   type MetricMap = MetricMap.Service
 
@@ -113,5 +116,7 @@ object ExplicitRegistryLayer {
   val program = startup *> exporterTest flatMap (server => Console.printLine(s"Server port: ${server.getPort()}"))
 
   def main(args: Array[String]): Unit =
-    rt.unsafeRun(program)
+    Unsafe.unsafeCompat { implicit u =>
+      rt.unsafe.run(program).getOrThrow()
+    }
 }

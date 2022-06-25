@@ -269,7 +269,9 @@ We can now run our sample client so:
 
 ```scala mdoc:silent
   def main(args: Array[String]): Unit = {
-    rt.unsafeRun(program >>= (lst => printLine(s"Main: $lst")))
+    Unsafe.unsafeCompat { implicit u =>
+      rt.unsafe.run(program >>= (lst => printLine(s"Main: $lst"))).getOrThrow()
+    }
   }
 ```
 
@@ -336,15 +338,17 @@ We can reuse `rt`, the runtime created earlier to run our `program`:
 ```scala mdoc:silent
   def main1(args: Array[String]): Unit = {
     val timeouts = Seq(34L, 76L, 52L)
-    rt.unsafeRun(
-        ZIO.scoped {
-          createStatsDClient.flatMap { statsDClient =>
-            RIO
-              .foreach(timeouts)(l => program(l)(statsDClient))
-              .repeat(schd)
+    Unsafe.unsafeCompat { implicit u =>
+      rt.unsafe.run(
+          ZIO.scoped {
+              createStatsDClient.flatMap { statsDClient =>
+                RIO
+                  .foreach(timeouts)(l => program(l)(statsDClient))
+                  .repeat(schd)
+              }
           }
-      }
-    )
+      ).getOrThrow()
+    }
     Thread.sleep(10000)             // wait for all messages to be consumed
   }
 ```
@@ -380,15 +384,17 @@ create a new runtime to support it.
   
   def main2(args: Array[String]): Unit = {
     val timeouts = Seq(34L, 76L, 52L)
-    rtDog.unsafeRun(
-       ZIO.scoped {
-          createDogStatsDClient.flatMap { dogStatsDClient =>
-            RIO
-              .foreach(timeouts)(l => dogProgram(l)(dogStatsDClient))
-              .repeat(schd)
+    Unsafe.unsafeCompat { implicit u =>
+      rtDog.unsafe.run(
+          ZIO.scoped {
+               createDogStatsDClient.flatMap { dogStatsDClient =>
+                    RIO
+                      .foreach(timeouts)(l => dogProgram(l)(dogStatsDClient))
+                      .repeat(schd)
+                  }
           }
-      }
-    )
+      ).getOrThrow()
+    }
     Thread.sleep(10000)
   }
 
