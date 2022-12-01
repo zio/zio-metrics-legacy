@@ -164,5 +164,5 @@ object PrometheusTest extends ZIOSpecDefault {
           }
         }
       )
-    ).provideCustomLayer(env) @@ TestAspect.withLiveClock
+    ).provideLayer(env) @@ TestAspect.withLiveClock
 }

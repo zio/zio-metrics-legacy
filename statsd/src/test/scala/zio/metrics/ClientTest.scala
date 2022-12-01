@@ -46,7 +46,7 @@ object ClientTest extends ZIOSpecDefault {
         }
 
       }
-    }.provideCustomLayer(Encoder.statsd) @@ forked @@ timeout(5.seconds) @@ flaky(5) @@ TestAspect.withLiveClock
+    }.provideLayer(Encoder.statsd) @@ forked @@ timeout(5.seconds) @@ flaky(5) @@ TestAspect.withLiveClock
 
   private val myudp: Chunk[Metric] => RIO[Encoder, Chunk[Int]] = msgs =>
     for {

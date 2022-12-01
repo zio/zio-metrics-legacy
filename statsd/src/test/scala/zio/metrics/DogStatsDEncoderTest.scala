@@ -79,7 +79,7 @@ object DogStatsDEncoderTest extends ZIOSpecDefault {
           assert(tup._3)(isSome(equalTo("foobar:1|d|#metric:distribution")))
         }
       }
-    ).provideCustomLayer(Encoder.dogstatsd)
+    ).provideLayer(Encoder.dogstatsd)
 
   type OptString = Option[String]
 

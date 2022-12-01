@@ -18,5 +18,5 @@ object ExportersTest extends ZIOSpecDefault {
           exportedString <- write004(registry)
         } yield assert(exportedString)(containsString("# HELP ExportersTest_total help text"))
       }
-    ).provideCustomLayer(Registry.live ++ Exporters.live)
+    ).provideLayer(Registry.live ++ Exporters.live)
 }
