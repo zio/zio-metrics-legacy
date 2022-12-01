@@ -12,7 +12,7 @@ import zio.Console.printLine
 
 object MetricMapLayer {
 
-  val rt = Unsafe.unsafeCompat { implicit u =>
+  val rt = Unsafe.unsafe { implicit unsafe =>
     Runtime.unsafe.fromLayer(MetricMap.live ++ Registry.live ++ Exporters.live)
   }
 
@@ -103,7 +103,7 @@ object MetricMapLayer {
   val program = startup *> exporterTest flatMap (server => printLine(s"Server port: ${server.getPort()}"))
 
   def main(args: Array[String]): Unit =
-    Unsafe.unsafeCompat { implicit u =>
+    Unsafe.unsafe { implicit unsafe =>
       rt.unsafe.run(program).getOrThrow()
     }
 }

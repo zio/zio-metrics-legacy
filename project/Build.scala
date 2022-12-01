@@ -16,7 +16,7 @@ object Build {
 
   val Scala212 = "2.12.15"
   val Scala213 = "2.13.8"
-  val Scala3   = "3.1.0"
+  val Scala3   = "3.2.0"
 
   private def stdOptions(scalaVersion: String) = CrossVersion.partialVersion(scalaVersion) match {
     case Some((3, _)) =>

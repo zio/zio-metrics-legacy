@@ -55,5 +55,5 @@ object ReportersTest extends ZIOSpecDefault {
           } yield assert(true)(isTrue)
         }
       )
-    ).provideCustomLayer(Reporters.live ++ Registry.live) @@ TestAspect.withLiveClock
+    ).provideLayer(Reporters.live ++ Registry.live) @@ TestAspect.withLiveClock
 }

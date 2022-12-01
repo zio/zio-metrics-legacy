@@ -33,7 +33,7 @@ object ServerTest extends ZIOSpecDefault {
           assert(body)(containsString("\"timers\":"))
         }
       }
-    ).provideCustomLayer(Registry.live ++ Reporters.live) @@ TestAspect.withLiveClock
+    ).provideLayer(Registry.live ++ Reporters.live) @@ TestAspect.withLiveClock
 
   private def getURLContent(url: String): Task[String] = {
     val managed = ZIO.acquireRelease(ZIO.succeed(Source.fromURL(url)))(s => ZIO.attempt(s.close()).orDie)

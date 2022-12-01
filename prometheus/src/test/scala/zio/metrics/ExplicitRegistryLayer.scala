@@ -25,7 +25,7 @@ object ExplicitRegistryLayer {
 
   val myCustomLayer = ZLayer.succeed(myRegistry) >>> Registry.explicit
 
-  val rt = Unsafe.unsafeCompat { implicit u =>
+  val rt = Unsafe.unsafe { implicit unsafe =>
     Runtime.unsafe.fromLayer(MetricMap.live ++ Exporters.live)
   }
 
@@ -116,7 +116,7 @@ object ExplicitRegistryLayer {
   val program = startup *> exporterTest flatMap (server => Console.printLine(s"Server port: ${server.getPort()}"))
 
   def main(args: Array[String]): Unit =
-    Unsafe.unsafeCompat { implicit u =>
+    Unsafe.unsafe { implicit unsafe =>
       rt.unsafe.run(program).getOrThrow()
     }
 }

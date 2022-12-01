@@ -48,5 +48,5 @@ object DogStatsDClientTest extends ZIOSpecDefault {
           }
         }
       }
-    ).provideCustomLayer(Encoder.dogstatsd) @@ forked @@ timeout(10.seconds) @@ flaky(5) @@ TestAspect.withLiveClock
+    ).provideLayer(Encoder.dogstatsd) @@ forked @@ timeout(10.seconds) @@ flaky(5) @@ TestAspect.withLiveClock
 }

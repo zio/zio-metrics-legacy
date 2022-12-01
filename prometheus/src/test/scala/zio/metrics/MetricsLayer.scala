@@ -13,7 +13,7 @@ object MetricsLayer {
 
   type Env = Registry with Exporters
 
-  val rt = Unsafe.unsafeCompat { implicit u =>
+  val rt = Unsafe.unsafe { implicit unsafe =>
     Runtime.unsafe.fromLayer(Registry.live ++ Exporters.live)
   }
 
@@ -34,7 +34,7 @@ object MetricsLayer {
     val live: Layer[Nothing, Metrics] = ZLayer.succeed(new Service {
 
       private val (myCounter, myHistogram) =
-        Unsafe.unsafeCompat { implicit u =>
+        Unsafe.unsafe { implicit unsafe =>
           rt.unsafe
             .run(
               for {
@@ -117,7 +117,7 @@ object MetricsLayer {
   )
 
   val rLayer: Layer[Nothing, Metrics] = Metrics.receiver(c, h)
-  val rtReceiver: Runtime.Scoped[Metrics with Exporters] = Unsafe.unsafeCompat { implicit u =>
+  val rtReceiver: Runtime.Scoped[Metrics with Exporters] = Unsafe.unsafe { implicit unsafe =>
     Runtime.unsafe.fromLayer(rLayer ++ Exporters.live)
   }
 
@@ -150,7 +150,7 @@ object MetricsLayer {
   val program = exporterTest flatMap (server => Console.printLine(s"Server port: ${server.getPort()}"))
 
   def main(args: Array[String]): Unit =
-    Unsafe.unsafeCompat { implicit u =>
+    Unsafe.unsafe { implicit unsafe =>
       rt.unsafe.run(program.provideSomeLayer[Env](Metrics.live)).getOrThrow()
     }
 }

@@ -29,7 +29,7 @@ object StatsDEncoderTest extends ZIOSpecDefault {
       test("StatsD Encoder encodes sets") {
         testSet.map(s => assert(s)(isSome(equalTo("foobar:barfoo|s"))))
       }
-    ).provideCustomLayer(Encoder.statsd)
+    ).provideLayer(Encoder.statsd)
 
   val encode: Metric => RIO[Encoder, Option[String]] = metric =>
     for {

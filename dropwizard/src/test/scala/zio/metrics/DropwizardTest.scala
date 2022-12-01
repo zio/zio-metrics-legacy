@@ -102,7 +102,7 @@ object DropwizardTest extends ZIOSpecDefault {
 
       assertZIO(r)(equalTo(3.toLong))
     }
-  ).provideCustomLayer(Registry.live)
+  ).provideLayer(Registry.live)
 
   val gaugeSuite = suite("Gauge")(
     test("gauge increases in time") {
@@ -116,7 +116,7 @@ object DropwizardTest extends ZIOSpecDefault {
         assert(g)(isLessThan(tester()))
       }
     }
-  ).provideCustomLayer(Registry.live)
+  ).provideLayer(Registry.live)
 
   val histogramSuite = suite("Histogram")(
     test("histogram increases in time") {
@@ -149,7 +149,7 @@ object DropwizardTest extends ZIOSpecDefault {
         perc75th <- ZIO.succeed(r.getHistograms().get(name).getSnapshot.get75thPercentile())
       } yield assert(perc75th)(equalTo(53.5))
     }
-  ).provideCustomLayer(Registry.live)
+  ).provideLayer(Registry.live)
 
   val meterSuite = suite("Meter")(
     test("Meter count and mean rate are within bounds") {
@@ -165,7 +165,7 @@ object DropwizardTest extends ZIOSpecDefault {
         assert(meanRate)(isLessThanEqualTo(10000.toDouble))
       }
     }
-  ).provideCustomLayer(Registry.live)
+  ).provideLayer(Registry.live)
 
   val timerSuite = suite("Timer")(
     test("Timer called 3 times") {
@@ -190,7 +190,7 @@ object DropwizardTest extends ZIOSpecDefault {
         assert(meanRate)(isLessThan(0.84))
       }
     }
-  ).provideCustomLayer(Registry.live)
+  ).provideLayer(Registry.live)
 
   val printerSuite = suite("Report printer")(
     test("Report printer is consistent") {
@@ -199,7 +199,7 @@ object DropwizardTest extends ZIOSpecDefault {
         _        <- DropwizardExtractor.writeJson(registry)(None)
       } yield assert(true)(isTrue)
     }
-  ).provideCustomLayer(Registry.live)
+  ).provideLayer(Registry.live)
 
   def spec =
     suite("DropwizardTests")(counterSuite, gaugeSuite, histogramSuite, meterSuite, timerSuite, printerSuite)
